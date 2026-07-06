@@ -41,20 +41,20 @@ tunnel: <TUNNEL-UUID>
 credentials-file: C:\Users\<you>\.cloudflared\<TUNNEL-UUID>.json
 
 ingress:
-  - hostname: noderd.yourdomain.com
+  - hostname: noderd.farmos-mechanicalengineering.com
     service: http://localhost:1880
-  - hostname: api.yourdomain.com
+  - hostname: api.farmos-mechanicalengineering.com
     service: http://localhost:8000
   - service: http_status:404   # catch-all, required as the last rule
 ```
 
-Replace `yourdomain.com` with the domain from step 1, and the UUID/path with your actual values.
+Replace `<TUNNEL-UUID>` and `<you>` with the actual values from step 3's output.
 
 ## 5. Route DNS for both hostnames
 
 ```powershell
-cloudflared tunnel route dns greenhouse noderd.yourdomain.com
-cloudflared tunnel route dns greenhouse api.yourdomain.com
+cloudflared tunnel route dns greenhouse noderd.farmos-mechanicalengineering.com
+cloudflared tunnel route dns greenhouse api.farmos-mechanicalengineering.com
 ```
 
 This creates the CNAME records in Cloudflare DNS automatically — no manual DNS editing.
@@ -79,6 +79,6 @@ both Node-RED and the backend under stable hostnames.
 ## 8. Wire up the app config
 
 - **Vercel** → Project → Settings → Environment Variables → `NEXT_PUBLIC_API_URL` =
-  `https://api.yourdomain.com` → redeploy.
-- **Backend `.env`** on the lab desktop → `CORS_ORIGIN=http://localhost:3000,https://api.yourdomain.com,https://your-app.vercel.app`
+  `https://api.farmos-mechanicalengineering.com` → redeploy.
+- **Backend `.env`** on the lab desktop → `CORS_ORIGIN=http://localhost:3000,https://api.farmos-mechanicalengineering.com,https://greenhouse-dashboard-saccada.vercel.app`
   → `nssm restart GreenhouseBackend`.
