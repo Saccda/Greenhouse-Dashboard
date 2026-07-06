@@ -1,0 +1,293 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME VARIABLES
+   CSS custom properties that drive body background, body text, and all the
+   surface/text overrides below.  Tailwind's generated utility classes remain
+   fixed dark-hex values; we override them in .light with explicit selectors.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Dark — Helios Thermal Intelligence (#00297A primary) */
+:root,
+.dark {
+  --body-bg:  #001040;
+  --body-fg:  #d0e4ff;
+
+  /* Landing page + sidebar context */
+  --navy-bg:     #000a2e;
+  --navy-border: rgba(80,140,255,0.15);
+  --navy-subtle: rgba(80,140,255,0.08);
+  --navy-chip:   rgba(80,140,255,0.06);
+  --navy-input:  rgba(80,140,255,0.14);
+
+  /* Blue-tinted text hierarchy */
+  --t100: 208 228 255;
+  --t200: 170 206 255;
+  --t300: 132 182 248;
+  --t400: 96  155 228;
+  --t500: 68  126 198;
+  --t600: 46   98 168;
+
+  color-scheme: dark;
+}
+
+/* Light */
+.light {
+  --body-bg:  #f2f7f3;
+  --body-fg:  #162419;
+
+  /* Sidebar + landing page — light counterpart */
+  --navy-bg:     #f1f5f9;
+  --navy-border: #e2e8f0;
+  --navy-subtle: #e2e8f0;
+  --navy-chip:   #ffffff;
+  --navy-input:  #ffffff;
+
+  /* Dark green-tinted text — high contrast on white cards */
+  --t100:  22  36  26;
+  --t200:  40  62  46;
+  --t300:  60  90  67;
+  --t400:  85 120  93;
+  --t500: 108 148 116;
+  --t600: 132 165 139;
+
+  color-scheme: light;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE STYLES
+═══════════════════════════════════════════════════════════════════════════ */
+
+html, body {
+  background-color: var(--body-bg);
+  color:            var(--body-fg);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEXT COLOR OVERRIDES
+   Both .dark and .light remap slate-* to our theme variables.
+   Specificity (.dark .text-slate-X = 0-2-0) beats Tailwind (0-1-0).
+═══════════════════════════════════════════════════════════════════════════ */
+
+.dark  .text-slate-100,
+.light .text-slate-100 { color: rgb(var(--t100)); }
+
+.dark  .text-slate-200,
+.light .text-slate-200 { color: rgb(var(--t200)); }
+
+.dark  .text-slate-300,
+.light .text-slate-300 { color: rgb(var(--t300)); }
+
+.dark  .text-slate-400,
+.light .text-slate-400 { color: rgb(var(--t400)); }
+
+.dark  .text-slate-500,
+.light .text-slate-500 { color: rgb(var(--t500)); }
+
+.dark  .text-slate-600,
+.light .text-slate-600 { color: rgb(var(--t600)); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT MODE — SURFACE BACKGROUND OVERRIDES
+   Tailwind hard-codes dark hex into the generated utility classes.
+   We override every surface-* bg and border class here.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Backgrounds */
+.light .bg-surface,
+.light .bg-surface-base    { background-color: #f2f7f3; }
+.light .bg-surface-card    { background-color: #ffffff; }
+.light .bg-surface-hover   { background-color: #e8f3ea; }
+.light .bg-surface-border  { background-color: #cce0d0; }
+.light .bg-surface-bright  { background-color: #b3d0b8; }
+
+/* Borders */
+.light .border-surface-border { border-color: #c8dccb; }
+.light .border-surface-bright { border-color: #b3d0b8; }
+.light .border-surface-card   { border-color: #e0eee2; }
+.light .border-surface,
+.light .border-surface-base   { border-color: #c8dccb; }
+
+/* The frosted overlay in Control page */
+.light .bg-surface-base\/60 { background-color: rgba(242, 247, 243, 0.80); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT MODE — COMPONENT-SPECIFIC OVERRIDES
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Inputs / selects */
+.light input[type="text"],
+.light input[type="number"],
+.light input[type="date"],
+.light select,
+.light textarea {
+  background-color: #f2f7f3;
+  color:            #162419;
+  border-color:     #c8dccb;
+}
+
+/* Range sliders */
+.light input[type="range"] {
+  background-color: #c8dccb;
+}
+
+/* Recharts chart grid lines (SVG attr overridden by CSS) */
+.light .recharts-cartesian-grid-horizontal line,
+.light .recharts-cartesian-grid-vertical   line {
+  stroke: #d5e8d8;
+}
+
+/* Recharts axes tick text */
+.light .recharts-cartesian-axis-tick-value {
+  fill: #6b9273;
+}
+
+/* Recharts tooltip */
+.light .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #ffffff !important;
+  border-color:     #c8dccb !important;
+  color:            #162419 !important;
+}
+
+/* Active nav link background (brand-green stays the same) */
+.light .bg-brand-green\/10  { background-color: rgba(34, 197, 94, 0.12); }
+.light .bg-brand-green\/15  { background-color: rgba(34, 197, 94, 0.15); }
+.light .bg-brand-green\/20  { background-color: rgba(34, 197, 94, 0.20); }
+.light .border-brand-green\/30 { border-color: rgba(34, 197, 94, 0.35); }
+
+/* Status colours (same hue, slight opacity boost for white bg) */
+.light .bg-status-active\/15  { background-color: rgba(74, 222, 128, 0.18); }
+.light .bg-status-warning\/15 { background-color: rgba(245, 158, 11, 0.18); }
+.light .bg-status-danger\/15  { background-color: rgba(248, 113, 113, 0.18); }
+
+/* Alert / relay card border glow */
+.light .border-status-active\/30  { border-color: rgba(74, 222, 128, 0.40); }
+.light .border-status-warning\/30 { border-color: rgba(245, 158, 11, 0.40); }
+
+/* Header separator */
+.light header { border-bottom-color: #c8dccb; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HMI / SCADA PROCESS MIMIC — theme tokens
+   Used by ProcessMimic SVG and the Controller HMI bottom panels.
+═══════════════════════════════════════════════════════════════════════════ */
+
+:root, .dark {
+  --hmi-bg:    #000a2e;   /* SVG + panel background          */
+  --hmi-panel: #001850;   /* equipment / component body      */
+  --hmi-inner: #001240;   /* inner fills, input backgrounds  */
+  --hmi-bd:    #0d3a8a;   /* borders + inactive strokes      */
+  --hmi-pipe:  #0a2a70;   /* pipes, fins, off-state fills    */
+  --hmi-grid:  #001440;   /* background grid lines           */
+  --hmi-gh:    #000608;   /* greenhouse bg (dark end)        */
+  --hmi-gh2:   #001010;   /* greenhouse bg (light end)       */
+  --hmi-gh-bd: #0a2a15;   /* greenhouse border               */
+  --hmi-gh-rf: #001a10;   /* greenhouse roof band            */
+  --hmi-off:   #000a1e;   /* LED / indicator off fill        */
+  --hmi-txt:   #4a8fc8;   /* label text (readable on dark)   */
+}
+.light {
+  --hmi-bg:    #f0f5fb;
+  --hmi-panel: #dce8f5;
+  --hmi-inner: #e4eef8;
+  --hmi-bd:    #7aaac8;
+  --hmi-pipe:  #5880a5;
+  --hmi-grid:  #d0e2f2;
+  --hmi-gh:    #eef7f2;
+  --hmi-gh2:   #e0f0e8;
+  --hmi-gh-bd: #60a080;
+  --hmi-gh-rf: #a8d8b8;
+  --hmi-off:   #b5cde0;
+  --hmi-txt:   #1a4060;   /* label text (readable on light)  */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WEATHER MAP
+   Desaturate the base map tiles so precipitation blues/purples stand out
+═══════════════════════════════════════════════════════════════════════════ */
+
+.map-base-tiles { filter: grayscale(30%) brightness(0.96); }
+
+/* Prevent Leaflet's default focus outline from flashing */
+.leaflet-container:focus { outline: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RAIN ANIMATION
+═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes raindrop-fall {
+  0%   { transform: translateY(0);     opacity: 0;    }
+  8%   {                               opacity: 0.78; }
+  88%  {                               opacity: 0.78; }
+  100% { transform: translateY(600px); opacity: 0;    }
+}
+.raindrop { animation: raindrop-fall linear infinite; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar            { width: 6px; height: 6px; }
+::-webkit-scrollbar-track      { background: var(--body-bg); }
+::-webkit-scrollbar-thumb      { background: #1a55b0; border-radius: 3px; }
+.light ::-webkit-scrollbar-thumb { background: #b3d0b8; }
+::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LED ANIMATIONS
+═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes led-pulse {
+  0%, 100% { opacity: 1;    box-shadow: 0 0 6px 2px currentColor;  }
+  50%       { opacity: 0.55; box-shadow: 0 0 20px 6px currentColor; }
+}
+
+@keyframes led-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes ring-expand {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+
+.led-active  { animation: led-pulse 1.8s ease-in-out infinite; }
+.led-unknown { animation: led-blink 0.8s step-end infinite; }
+
+.led-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: ring-expand 1.8s ease-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISC UTILITIES
+═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes value-flash {
+  0%   { color: #4ade80; }
+  100% { color: inherit; }
+}
+.value-updated { animation: value-flash 0.6s ease-out; }
+
+.font-mono-num {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge-online  { @apply bg-status-active/15  text-status-active  border border-status-active/30;  }
+.badge-offline { @apply bg-status-offline/15 text-status-offline border border-status-offline/30; }
+.badge-warning { @apply bg-status-warning/15 text-status-warning border border-status-warning/30; }
+.badge-danger  { @apply bg-status-danger/15  text-status-danger  border border-status-danger/30;  }

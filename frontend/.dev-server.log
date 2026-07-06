@@ -1,0 +1,132 @@
+
+> greenhouse-dashboard@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use, trying 3001 instead.
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.5s
+ ○ Compiling /control ...
+ ✓ Compiled /control in 3.6s (741 modules)
+ GET /control 200 in 4330ms
+ ✓ Compiled in 717ms (364 modules)
+ GET /control 200 in 61ms
+ ✓ Compiled in 351ms (364 modules)
+ ✓ Compiled in 646ms (739 modules)
+ ✓ Compiled in 337ms (741 modules)
+ GET /control 200 in 184ms
+ ✓ Compiled in 573ms (741 modules)
+ ✓ Compiled in 358ms (741 modules)
+ GET /control 200 in 238ms
+ GET /control 200 in 95ms
+ ✓ Compiled in 575ms (741 modules)
+ GET /control 200 in 209ms
+ GET /control 200 in 37ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz'
+ GET /control 200 in 70ms
+ ✓ Compiled /icon.png in 489ms (409 modules)
+ GET /icon.png?ff45343b22518716 200 in 639ms
+ ✓ Compiled in 414ms (741 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ src\components\hmi\EquipmentMimic.tsx (117:12) @ PumpIcon
+ ⨯ ReferenceError: PumpIcon is not defined
+    at EquipmentMimic (./src/components/hmi/EquipmentMimic.tsx:375:101)
+digest: "2327676428"
+[0m [90m 115 |[39m           [33m<[39m[33mFlowDots[39m path[33m=[39m{tankControlPath} active[33m=[39m{r1On} count[33m=[39m{[35m6[39m} duration[33m=[39m{[35m2.6[39m} radius[33m=[39m{[35m6.5[39m} [33m/[39m[33m>[39m[0m
+[0m [90m 116 |[39m[0m
+[0m[31m[1m>[22m[39m[90m 117 |[39m           [33m<[39m[33mPumpIcon[39m cx[33m=[39m{[35m748[39m} cy[33m=[39m{[35m790[39m} active[33m=[39m{r3On} [33m/[39m[33m>[39m[0m
+[0m [90m     |[39m            [31m[1m^[22m[39m[0m
+[0m [90m 118 |[39m[0m
+[0m [90m 119 |[39m           {[90m/* live temperature / humidity readout, replacing the static placeholder */[39m}[0m
+[0m [90m 120 |[39m           [33m<[39m[33mReadoutCard[39m temp[33m=[39m{temp} hum[33m=[39m{hum} [33m/[39m[33m>[39m[0m
+ GET /control 500 in 213ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 425ms (741 modules)
+ GET /control 200 in 192ms
+ GET /control 200 in 141ms
+ ✓ Compiled /icon.png in 84ms (409 modules)
+ GET /icon.png?ff45343b22518716 200 in 172ms
+ GET /control 200 in 126ms
+ GET /control 200 in 66ms
+ ✓ Compiled in 417ms (741 modules)
+ ✓ Compiled in 473ms (741 modules)
+ GET /control 200 in 181ms
+ GET /control 200 in 53ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\server-development\0.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\server-development\0.pack.gz'
+ ✓ Compiled in 517ms (741 modules)
+ ✓ Compiled in 312ms (741 modules)
+ GET /control 200 in 174ms
+ GET /control 200 in 46ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 605ms (741 modules)
+ GET /control 200 in 88ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 289ms (741 modules)
+ ✓ Compiled in 75ms (364 modules)
+ ✓ Compiled in 139ms (741 modules)
+ ✓ Compiled in 106ms (741 modules)
+ GET /control 200 in 106ms
+ GET /control 200 in 54ms
+ ✓ Compiled in 205ms (741 modules)
+ ✓ Compiled in 141ms (741 modules)
+ GET /control 200 in 88ms
+ GET /control 200 in 66ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 164ms (741 modules)
+ ✓ Compiled in 118ms (741 modules)
+ ✓ Compiled in 137ms (741 modules)
+ ✓ Compiled in 199ms (741 modules)
+ GET /control 200 in 89ms
+ GET /control 200 in 74ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\server-development\0.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\server-development\0.pack.gz'
+ GET /control 200 in 50ms
+ GET /control 200 in 75ms
+ GET /control 200 in 57ms
+ ✓ Compiled in 171ms (364 modules)
+ ✓ Compiled / in 375ms (786 modules)
+ GET / 200 in 478ms
+ GET / 200 in 62ms
+ GET / 200 in 46ms
+ GET / 200 in 75ms
+ GET / 200 in 80ms
+ GET / 200 in 15ms
+ GET / 200 in 42ms
+ ✓ Compiled in 273ms (782 modules)
+ ✓ Compiled in 190ms (782 modules)
+ ✓ Compiled in 189ms (782 modules)
+ ✓ Compiled in 277ms (782 modules)
+ ✓ Compiled in 178ms (782 modules)
+ ✓ Compiled in 242ms (782 modules)
+ ✓ Compiled in 156ms (782 modules)
+ ✓ Compiled in 232ms (782 modules)
+ ✓ Compiled in 196ms (782 modules)
+ ✓ Compiled in 211ms (782 modules)
+ ✓ Compiled in 159ms (782 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\server-development\6.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\server-development\6.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\2.pack.gz_' -> 'D:\Greenhouse_Dashboard\frontend\.next\cache\webpack\client-development\2.pack.gz'
+ GET /control 200 in 98ms
+ GET /control 200 in 75ms
+ GET /control 200 in 66ms
+ GET /control 200 in 66ms
+ GET /control 200 in 52ms
+ GET /control 200 in 55ms
+ GET /control 200 in 49ms
+ ✓ Compiled in 244ms (782 modules)
+ ✓ Compiled in 196ms (782 modules)
+ ✓ Compiled in 179ms (782 modules)
+ ✓ Compiled in 191ms (782 modules)
+ ✓ Compiled in 164ms (782 modules)
+ ✓ Compiled in 156ms (782 modules)
+ ✓ Compiled in 183ms (782 modules)
+ ✓ Compiled in 162ms (782 modules)
+ ✓ Compiled in 209ms (782 modules)
+ ✓ Compiled in 173ms (782 modules)
+ ✓ Compiled in 268ms (782 modules)
+ GET /control 200 in 79ms
+ GET /control 200 in 84ms
+ GET /control 200 in 44ms

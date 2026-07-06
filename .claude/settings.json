@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(npx stylelint *)",
+      "WebFetch(domain:dribbble.com)"
+    ]
+  }
+}
