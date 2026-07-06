@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="light">
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('gh_theme')||'dark';document.documentElement.className=t;})()`,
+            __html: `(function(){var t=localStorage.getItem('gh_theme')||'light';document.documentElement.className=t;})()`,
           }}
         />
       </head>

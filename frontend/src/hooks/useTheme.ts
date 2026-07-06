@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 type Theme = "dark" | "light";
 
 const STORAGE_KEY = "gh_theme";
-const DEFAULT: Theme = "dark";
+const DEFAULT: Theme = "light";
 
 function applyTheme(theme: Theme) {
   const html = document.documentElement;
