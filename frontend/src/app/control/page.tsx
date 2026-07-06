@@ -113,8 +113,8 @@ export default function ControlPage() {
   const [humWarn,  setHumWarn]  = useState(settings.humWarn);
 
   const [selectedRelay, setSelectedRelay] = useState<RelayNum>(1);
-  const [lowSP,  setLowSP]  = useState(RELAY_CFG[1].defaultLow);
-  const [highSP, setHighSP] = useState(RELAY_CFG[1].defaultHigh);
+  const [lowSP,  setLowSP]  = useState<number>(RELAY_CFG[1].defaultLow);
+  const [highSP, setHighSP] = useState<number>(RELAY_CFG[1].defaultHigh);
   const [spStatus, setSpStatus] = useState<SpStatus>("idle");
   const [lastSent, setLastSent] = useState<string | null>(null);
 
