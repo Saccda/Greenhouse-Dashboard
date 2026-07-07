@@ -1,4 +1,4 @@
-# Cloudflare Tunnel — stable setup for Node-RED + backend
+ # Cloudflare Tunnel — stable setup for Node-RED + backend
 
 Your current Node-RED tunnel is a **quick tunnel** (`cloudflared tunnel --url ...`), which hands out
 a random `*.trycloudflare.com` URL that changes every time `cloudflared` restarts. That's fine for
@@ -59,16 +59,34 @@ cloudflared tunnel route dns greenhouse api.farmos-mechanicalengineering.com
 
 This creates the CNAME records in Cloudflare DNS automatically — no manual DNS editing.
 
-## 6. Run it as a persistent Windows service
+## 6. Run it as a persistent Windows service (via NSSM)
 
-`cloudflared` has built-in Windows service support (no NSSM needed for this one):
+`cloudflared`'s own `service install` command runs as the SYSTEM account and silently ignores
+`--config`/profile-relative paths in practice — it crash-loops with no arguments logged, which is a
+known pain point on Windows. Skip it entirely and wrap the exact command that already works (the one
+you tested in the foreground: `cloudflared tunnel --config <path> run greenhouse`) using NSSM, the
+same tool used for the backend service:
 
 ```powershell
-cloudflared service install
+C:\nssm\win64\nssm.exe install CloudflaredTunnel "C:\Program Files (x86)\cloudflared\cloudflared.exe" "tunnel --config C:\Users\<you>\.cloudflared\config.yml run greenhouse"
+C:\nssm\win64\nssm.exe set CloudflaredTunnel AppStdout "C:\Users\<you>\.cloudflared\service-out.log"
+C:\nssm\win64\nssm.exe set CloudflaredTunnel AppStderr "C:\Users\<you>\.cloudflared\service-err.log"
+C:\nssm\win64\nssm.exe set CloudflaredTunnel Start SERVICE_AUTO_START
+C:\nssm\win64\nssm.exe set CloudflaredTunnel AppRestartDelay 5000
+C:\nssm\win64\nssm.exe start CloudflaredTunnel
 ```
 
-This reads `config.yml` and registers `cloudflared` to auto-start on boot, same effect as the NSSM
-setup for the backend. Start it via `services.msc` or `net start cloudflared`.
+Verify:
+
+```powershell
+Get-Service CloudflaredTunnel
+```
+
+If you already ran `cloudflared service install` earlier, remove it first so it doesn't conflict:
+
+```powershell
+cloudflared service uninstall
+```
 
 ## 7. Retire the old quick tunnel
 
