@@ -39,17 +39,17 @@ Extract it somewhere permanent, e.g. `C:\nssm\`. Use the `win64\nssm.exe` binary
 Open an **elevated** (Run as Administrator) PowerShell or Command Prompt:
 
 ```powershell
-C:\nssm\win64\nssm.exe install GreenhouseBackend "D:\GreenhouseDashboard\backend\.venv\Scripts\python.exe" "-m uvicorn app:app --host 0.0.0.0 --port 8000"
+C:\nssm\nssm-2.24\win64\nssm.exe install GreenhouseBackend "D:\GreenhouseDashboard\backend\.venv\Scripts\python.exe" "-m uvicorn app:app --host 0.0.0.0 --port 8000"
 
-C:\nssm\win64\nssm.exe set GreenhouseBackend AppDirectory "D:\GreenhouseDashboard\backend"
-C:\nssm\win64\nssm.exe set GreenhouseBackend AppStdout "D:\GreenhouseDashboard\backend\data\service-out.log"
-C:\nssm\win64\nssm.exe set GreenhouseBackend AppStderr "D:\GreenhouseDashboard\backend\data\service-err.log"
-C:\nssm\win64\nssm.exe set GreenhouseBackend AppRotateFiles 1
-C:\nssm\win64\nssm.exe set GreenhouseBackend AppRotateBytes 1048576
-C:\nssm\win64\nssm.exe set GreenhouseBackend Start SERVICE_AUTO_START
-C:\nssm\win64\nssm.exe set GreenhouseBackend AppRestartDelay 5000
+C:\nssm\nssm-2.24\win64\nssm.exe set GreenhouseBackend AppDirectory "D:\GreenhouseDashboard\backend"
+C:\nssm\nssm-2.24\win64\nssm.exe set GreenhouseBackend AppStdout "D:\GreenhouseDashboard\backend\data\service-out.log"
+C:\nssm\nssm-2.24\win64\nssm.exe set GreenhouseBackend AppStderr "D:\GreenhouseDashboard\backend\data\service-err.log"
+C:\nssm\nssm-2.24\win64\nssm.exe set GreenhouseBackend AppRotateFiles 1
+C:\nssm\nssm-2.24\win64\nssm.exe set GreenhouseBackend AppRotateBytes 1048576
+C:\nssm\nssm-2.24\win64\nssm.exe set GreenhouseBackend Start SERVICE_AUTO_START
+C:\nssm\nssm-2.24\win64\nssm.exe set GreenhouseBackend AppRestartDelay 5000
 
-C:\nssm\win64\nssm.exe start GreenhouseBackend
+C:\nssm\nssm-2.24\win64\nssm.exe start GreenhouseBackend
 ```
 
 Notes on why each setting matters:
@@ -68,20 +68,18 @@ Notes on why each setting matters:
 ## 4. Manage the service
 
 ```powershell
-C:\nssm\win64\nssm.exe status GreenhouseBackend      # check state
-C:\nssm\win64\nssm.exe restart GreenhouseBackend     # after pulling code changes / editing .env
-C:\nssm\win64\nssm.exe stop GreenhouseBackend
-C:\nssm\win64\nssm.exe remove GreenhouseBackend confirm   # uninstall entirely
+C:\nssm\nssm-2.24\win64\nssm.exe status GreenhouseBackend      # check state
+C:\nssm\nssm-2.24\win64\nssm.exe restart GreenhouseBackend     # after pulling code changes / editing .env
+C:\nssm\nssm-2.24\win64\nssm.exe stop GreenhouseBackend
+C:\nssm\nssm-2.24\win64\nssm.exe remove GreenhouseBackend confirm   # uninstall entirely
 ```
 
 Or use the GUI: `services.msc` → find "GreenhouseBackend" → right-click for Start/Stop/Restart.
 
-## 5. Point Cloudflare Tunnel at it
+## 5. Cloudflare Tunnel
 
-In your tunnel's ingress config, add a route for the backend alongside the existing
-Node-RED one, pointing at `http://localhost:8000` (the port set above).
-
-Whatever public hostname Cloudflare gives that route (e.g. `https://api.yourdomain.com`)
-is what you'll set as `NEXT_PUBLIC_API_URL` in Vercel, and what you'll add to `CORS_ORIGIN`
-in `backend/.env` alongside the Vercel URL — then `nssm restart GreenhouseBackend` to pick
-up the `.env` change.
+Already wired up — `api.farmos-mechanicalengineering.com` is in `config.yml`'s ingress rules
+pointing at `http://localhost:8000` (see [CLOUDFLARE_TUNNEL.md](../CLOUDFLARE_TUNNEL.md)), and the
+`CloudflaredTunnel` NSSM service is already running. Once `GreenhouseBackend` is up and listening
+on port 8000, `https://api.farmos-mechanicalengineering.com/api/health` should work immediately —
+no extra tunnel changes needed.
