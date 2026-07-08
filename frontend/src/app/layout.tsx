@@ -3,7 +3,7 @@ import "./globals.css";
 import SidebarAwareLayout from "@/components/layout/SidebarAwareLayout";
 
 export const metadata: Metadata = {
-  title: "ME Greenhouse Monitor",
+  title: "Farm Monitoring Dashboard",
   description: "Mechanical Engineering — Real-time IoT monitoring for pepper farms",
 };
 

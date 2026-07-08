@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Greenhouse Monitor",
+  title: "Dashboard | Farm Monitoring Dashboard",
 };
 
 export default function DashboardPage() {
