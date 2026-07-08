@@ -98,5 +98,8 @@ both Node-RED and the backend under stable hostnames.
 
 - **Vercel** → Project → Settings → Environment Variables → `NEXT_PUBLIC_API_URL` =
   `https://api.farmos-mechanicalengineering.com` → redeploy.
-- **Backend `.env`** on the lab desktop → `CORS_ORIGIN=http://localhost:3000,https://api.farmos-mechanicalengineering.com,https://greenhouse-dashboard-saccada.vercel.app`
+- **Backend `.env`** on the lab desktop → `CORS_ORIGIN=http://localhost:3000,https://api.farmos-mechanicalengineering.com,https://greenhouse-dashboard-saccada.vercel.app,https://farmos-mechanicalengineering.com`
+  (include the bare custom domain too if it's also added as a Vercel domain — the browser sends
+  whichever hostname is in the address bar as the CORS `Origin`, so every hostname the frontend can
+  be reached at must be listed.)
   → `nssm restart GreenhouseBackend`.
