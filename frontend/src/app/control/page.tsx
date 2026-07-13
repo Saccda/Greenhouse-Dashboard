@@ -15,9 +15,9 @@ import type { LatestResponse, Farm } from "@/types";
 // ── Relay setpoint configuration ─────────────────────────────────────────────
 
 const RELAY_CFG = {
-  1: { label: "Cooling System", pLow: "P1", pHigh: "P2", unit: "°C", min: 20, max: 45, defaultLow: 25, defaultHigh: 35 },
-  2: { label: "Standby",        pLow: "P3", pHigh: "P4", unit: "",   min: 0,  max: 100, defaultLow: 40, defaultHigh: 60 },
-  3: { label: "Spray Pump",     pLow: "P5", pHigh: "P6", unit: "%",  min: 30, max: 100, defaultLow: 60, defaultHigh: 80 },
+  1: { label: "Cooling System", pLow: "P1", pHigh: "P2", unit: "°C", min: 20, max: 45, step: 0.5,  defaultLow: 25,    defaultHigh: 35 },
+  2: { label: "Standby",        pLow: "P3", pHigh: "P4", unit: "",   min: 0,  max: 100, step: 1,    defaultLow: 40,    defaultHigh: 60 },
+  3: { label: "Spray Pump",     pLow: "P5", pHigh: "P6", unit: "°C", min: 20, max: 45,  step: 0.01, defaultLow: 35.76, defaultHigh: 35.86 },
 } as const;
 type RelayNum = keyof typeof RELAY_CFG;
 type SpStatus = "idle" | "sending" | "sent" | "error";
@@ -435,14 +435,14 @@ export default function ControlPage() {
                   </label>
                   <div className="flex items-center gap-1.5">
                     <input
-                      type="number" min={cfg.min} max={cfg.max} value={lowSP}
+                      type="number" min={cfg.min} max={cfg.max} step={cfg.step} value={lowSP}
                       onChange={(e) => setLowSP(Number(e.target.value))}
                       className="w-16 text-green-500 text-xs font-mono-num text-right px-2 py-1.5 rounded-lg focus:outline-none border bg-surface-hover border-surface-border"
                     />
                     {cfg.unit && <span className="text-xs font-mono-num text-slate-400">{cfg.unit}</span>}
                   </div>
                 </div>
-                <input type="range" min={cfg.min} max={cfg.max} step={0.5} value={lowSP}
+                <input type="range" min={cfg.min} max={cfg.max} step={cfg.step} value={lowSP}
                   onChange={(e) => setLowSP(Number(e.target.value))}
                   className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-green-500 bg-surface-hover" />
               </div>
@@ -455,14 +455,14 @@ export default function ControlPage() {
                   </label>
                   <div className="flex items-center gap-1.5">
                     <input
-                      type="number" min={cfg.min} max={cfg.max} value={highSP}
+                      type="number" min={cfg.min} max={cfg.max} step={cfg.step} value={highSP}
                       onChange={(e) => setHighSP(Number(e.target.value))}
                       className="w-16 text-orange-500 text-xs font-mono-num text-right px-2 py-1.5 rounded-lg focus:outline-none border bg-surface-hover border-surface-border"
                     />
                     {cfg.unit && <span className="text-xs font-mono-num text-slate-400">{cfg.unit}</span>}
                   </div>
                 </div>
-                <input type="range" min={cfg.min} max={cfg.max} step={0.5} value={highSP}
+                <input type="range" min={cfg.min} max={cfg.max} step={cfg.step} value={highSP}
                   onChange={(e) => setHighSP(Number(e.target.value))}
                   className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-orange-500 bg-surface-hover" />
               </div>
