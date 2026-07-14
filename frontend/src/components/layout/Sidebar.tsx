@@ -14,10 +14,14 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  LogIn,
+  LogOut,
+  Users,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTheme } from "@/hooks/useTheme";
 import { useSettings } from "@/hooks/useSettings";
+import { useAuth } from "@/hooks/useAuth";
 
 const NAV_ITEMS = [
   { href: "/dashboard",  label: "Dashboard",  icon: LayoutDashboard },
@@ -39,8 +43,12 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { toggle, isDark } = useTheme();
   const { settings } = useSettings();
+  const { user, logout } = useAuth();
 
-  const initials = getInitials(settings.userName || "ME Team");
+  const initials = getInitials(user?.username || settings.userName || "ME Team");
+  const navItems = user?.role === "owner"
+    ? [...NAV_ITEMS, { href: "/users", label: "Users", icon: Users }]
+    : NAV_ITEMS;
 
   return (
     <aside
@@ -73,7 +81,7 @@ export default function Sidebar() {
 
       {/* ── Navigation ───────────────────────────────────────── */}
       <nav className="flex-1 py-4 flex flex-col gap-1 px-3">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
@@ -130,26 +138,61 @@ export default function Sidebar() {
       </button>
 
       {/* ── User / Settings footer ───────────────────────────── */}
-      <Link
-        href="/settings"
-        title={collapsed ? "User settings" : undefined}
-        className={clsx(
-          "flex items-center gap-3 border-t border-gray-100 transition-all duration-150 hover:bg-gray-50",
-          collapsed ? "justify-center p-3" : "px-3 py-3.5",
-        )}
-      >
-        <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center shrink-0 text-white font-bold text-[11px]">
-          {initials}
+      {user ? (
+        <div className={clsx(
+          "flex items-center border-t border-gray-100",
+          collapsed ? "justify-center p-3" : "px-3 py-3.5 gap-3",
+        )}>
+          <Link
+            href="/settings"
+            title={collapsed ? `${user.username} (${user.role})` : undefined}
+            className={clsx(
+              "flex items-center gap-3 min-w-0 flex-1 rounded-lg transition-colors duration-150 hover:bg-gray-50",
+              collapsed && "justify-center",
+            )}
+          >
+            <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center shrink-0 text-white font-bold text-[11px]">
+              {initials}
+            </div>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-gray-700 truncate leading-none">
+                  {user.username}
+                </p>
+                <p className="text-[10px] text-gray-400 truncate mt-0.5 capitalize">{user.role}</p>
+              </div>
+            )}
+          </Link>
+          {!collapsed && (
+            <button
+              onClick={logout}
+              title="Log out"
+              className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <LogOut size={15} />
+            </button>
+          )}
         </div>
-        {!collapsed && (
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-gray-700 truncate leading-none">
-              {settings.userName || "ME Team"}
-            </p>
-            <p className="text-[10px] text-gray-400 truncate mt-0.5">User settings</p>
+      ) : (
+        <Link
+          href="/login"
+          title={collapsed ? "Log in" : undefined}
+          className={clsx(
+            "flex items-center gap-3 border-t border-gray-100 transition-all duration-150 hover:bg-gray-50",
+            collapsed ? "justify-center p-3" : "px-3 py-3.5",
+          )}
+        >
+          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-gray-500">
+            <LogIn size={15} />
           </div>
-        )}
-      </Link>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-gray-700 truncate leading-none">Log in</p>
+              <p className="text-[10px] text-gray-400 truncate mt-0.5">Owner / developer access</p>
+            </div>
+          )}
+        </Link>
+      )}
 
     </aside>
   );

@@ -1,16 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Sliders, Save, Cpu, AlertTriangle, CheckCircle } from "lucide-react";
+import Link from "next/link";
+import { Sliders, Save, Cpu, AlertTriangle, CheckCircle, LogIn } from "lucide-react";
 import { clsx } from "clsx";
 import { format } from "date-fns";
 
 import { swrFetcher, fetchFarms, API_BASE } from "@/lib/api";
 import { useSettings, syncThresholdsToBackend } from "@/hooks/useSettings";
+import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/Header";
 import { RelayPanel } from "@/components/hmi/RelayIndicator";
 import EquipmentMimic from "@/components/hmi/EquipmentMimic";
 import type { LatestResponse, Farm } from "@/types";
+
+type StoredSetpoints = Record<string, { low: number; high: number; updated_at: string }>;
 
 // ── Relay setpoint configuration ─────────────────────────────────────────────
 
@@ -20,7 +24,7 @@ const RELAY_CFG = {
   3: { label: "Spray Pump",     pLow: "P5", pHigh: "P6", unit: "°C", min: 20, max: 45,  step: 0.01, defaultLow: 35.76, defaultHigh: 35.86 },
 } as const;
 type RelayNum = keyof typeof RELAY_CFG;
-type SpStatus = "idle" | "sending" | "sent" | "error";
+type SpStatus = "idle" | "sending" | "sent" | "error" | "unauthorized";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -106,6 +110,8 @@ function Sparkline({ data, label, unit, hiColor }: {
 
 export default function ControlPage() {
   const { settings, update } = useSettings();
+  const { user, token, logout } = useAuth();
+  const canWrite = !!user && user.role !== "pending";
   const [farm,  setFarm]  = useState(settings.defaultFarm);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [saved,    setSaved]    = useState(false);
@@ -117,6 +123,7 @@ export default function ControlPage() {
   const [highSP, setHighSP] = useState<number>(RELAY_CFG[1].defaultHigh);
   const [spStatus, setSpStatus] = useState<SpStatus>("idle");
   const [lastSent, setLastSent] = useState<string | null>(null);
+  const appliedKeyRef = useRef<string | null>(null);
 
   const [tempHistory, setTempHistory] = useState<number[]>([]);
   const [humHistory,  setHumHistory]  = useState<number[]>([]);
@@ -137,6 +144,12 @@ export default function ControlPage() {
     `/api/sensors/latest?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
   );
 
+  // Last-sent setpoints from any browser — lets a second tab pick up a
+  // change someone else made, on the same 15s cadence as the sensor poll.
+  const { data: spData } = useSWR<StoredSetpoints>(
+    `/api/setpoint?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
+  );
+
   const connectionStatus = error ? "offline" : latest ? "online" : "loading";
   const isOnline  = latest?.is_online ?? false;
   const temp      = !isOnline ? undefined : latest?.readings?.temperature?.value;
@@ -152,6 +165,28 @@ export default function ControlPage() {
     if (hum != null) setHumHistory(prev => [...prev.slice(-29), hum]);
   }, [hum]);
 
+  // Apply the last-sent setpoint only at "checkpoints" — mount, relay
+  // switch, or farm switch — never on every poll tick, and never while a
+  // send is in flight. A tab already sitting on a relay won't jump under
+  // the user's cursor if someone else changes that same relay elsewhere;
+  // it'll pick that up on the next relay/farm switch or reload.
+  useEffect(() => {
+    const key = `${farm}:${selectedRelay}`;
+    if (appliedKeyRef.current === key) return;
+    if (spStatus === "sending") return;
+    if (spData === undefined) return;
+
+    const stored = spData[String(selectedRelay)];
+    if (stored) {
+      setLowSP(stored.low);
+      setHighSP(stored.high);
+    } else {
+      setLowSP(RELAY_CFG[selectedRelay].defaultLow);
+      setHighSP(RELAY_CFG[selectedRelay].defaultHigh);
+    }
+    appliedKeyRef.current = key;
+  }, [farm, selectedRelay, spData, spStatus]);
+
   const alarms: string[] = [
     ...(!isOnline && connectionStatus === "offline" ? ["SYSTEM OFFLINE"] : []),
     ...(temp != null && temp > tempWarn ? [`TEMP HIGH  ${temp.toFixed(1)}°C > ${tempWarn}°C`] : []),
@@ -160,8 +195,6 @@ export default function ControlPage() {
 
   const handleRelayChange = (r: RelayNum) => {
     setSelectedRelay(r);
-    setLowSP(RELAY_CFG[r].defaultLow);
-    setHighSP(RELAY_CFG[r].defaultHigh);
   };
 
   const handleSendSetpoint = async () => {
@@ -170,14 +203,25 @@ export default function ControlPage() {
     try {
       const res = await fetch(`${API_BASE}/api/setpoint`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ farm, relay: selectedRelay, low: lowSP, high: highSP }),
       });
+      if (res.status === 401) {
+        logout();
+        setSpStatus("unauthorized");
+        setTimeout(() => setSpStatus("idle"), 4000);
+        return;
+      }
       if (!res.ok) throw new Error(await res.text());
       setSpStatus("sent");
       setLastSent(
         `R${selectedRelay} ${cfg.pLow}:${lowSP}${cfg.unit}  ${cfg.pHigh}:${highSP}${cfg.unit}  ${format(new Date(), "HH:mm:ss")}`,
       );
+      // We just sent this value ourselves — no need to re-apply it from the next poll.
+      appliedKeyRef.current = `${farm}:${selectedRelay}`;
       setTimeout(() => setSpStatus("idle"), 3000);
     } catch {
       setSpStatus("error");
@@ -187,7 +231,8 @@ export default function ControlPage() {
 
   const handleSave = async () => {
     update({ tempWarn, humWarn });
-    await syncThresholdsToBackend(tempWarn, humWarn);
+    const result = await syncThresholdsToBackend(tempWarn, humWarn, token);
+    if (result === "unauthorized") { logout(); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -247,19 +292,34 @@ export default function ControlPage() {
             />
           </div>
           <div className="mt-6 flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              className={clsx(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                saved
-                  ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
-                  : "bg-brand-green text-black hover:bg-brand-green/90",
-              )}
-            >
-              <Save size={14} />
-              {saved ? "Saved!" : "Save Thresholds"}
-            </button>
-            <p className="text-[11px] text-slate-600">Synced to backend — alert bot uses these values</p>
+            {canWrite ? (
+              <>
+                <button
+                  onClick={handleSave}
+                  className={clsx(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    saved
+                      ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
+                      : "bg-brand-green text-black hover:bg-brand-green/90",
+                  )}
+                >
+                  <Save size={14} />
+                  {saved ? "Saved!" : "Save Thresholds"}
+                </button>
+                <p className="text-[11px] text-slate-600">Synced to backend — alert bot uses these values</p>
+              </>
+            ) : user ? (
+              <p className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-amber-500 bg-amber-500/10 border border-amber-500/30">
+                Your account is awaiting approval from a farm owner
+              </p>
+            ) : (
+              <Link
+                href="/login?redirect=/control"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 border border-surface-border hover:border-brand-green/40 hover:text-slate-200 transition-colors"
+              >
+                <LogIn size={14} /> Log in to save thresholds
+              </Link>
+            )}
           </div>
         </section>
 
@@ -474,25 +534,39 @@ export default function ControlPage() {
               )}
 
               {/* Send button */}
-              <button
-                onClick={handleSendSetpoint}
-                disabled={spStatus === "sending" || lowSP >= highSP}
-                className={clsx(
-                  "mt-auto w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase transition-all active:scale-[0.98] border",
-                  spStatus === "sent"
-                    ? "bg-green-500/15 text-green-600 border-green-500/30"
-                    : spStatus === "error"
-                    ? "bg-red-500/15 text-red-600 border-red-500/30"
-                    : spStatus === "sending" || lowSP >= highSP
-                    ? "bg-surface-hover border-surface-border text-slate-400 cursor-not-allowed"
-                    : "bg-brand-green text-black hover:bg-brand-green/90 border-transparent",
-                )}
-              >
-                {spStatus === "sent"     ? "✓  Sent to Controller"
-                : spStatus === "error"   ? "✗  Failed — Retry"
-                : spStatus === "sending" ? "Sending…"
-                :                         "Send to Controller"}
-              </button>
+              {canWrite ? (
+                <button
+                  onClick={handleSendSetpoint}
+                  disabled={spStatus === "sending" || lowSP >= highSP}
+                  className={clsx(
+                    "mt-auto w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase transition-all active:scale-[0.98] border",
+                    spStatus === "sent"
+                      ? "bg-green-500/15 text-green-600 border-green-500/30"
+                      : spStatus === "error" || spStatus === "unauthorized"
+                      ? "bg-red-500/15 text-red-600 border-red-500/30"
+                      : spStatus === "sending" || lowSP >= highSP
+                      ? "bg-surface-hover border-surface-border text-slate-400 cursor-not-allowed"
+                      : "bg-brand-green text-black hover:bg-brand-green/90 border-transparent",
+                  )}
+                >
+                  {spStatus === "sent"         ? "✓  Sent to Controller"
+                  : spStatus === "unauthorized" ? "✗  Session expired — log in again"
+                  : spStatus === "error"        ? "✗  Failed — Retry"
+                  : spStatus === "sending"      ? "Sending…"
+                  :                              "Send to Controller"}
+                </button>
+              ) : user ? (
+                <p className="mt-auto w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase text-center text-amber-500 bg-amber-500/10 border border-amber-500/30">
+                  Awaiting owner approval
+                </p>
+              ) : (
+                <Link
+                  href="/login?redirect=/control"
+                  className="mt-auto w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase transition-all border flex items-center justify-center gap-2 text-slate-400 border-surface-border hover:border-brand-green/40 hover:text-slate-200"
+                >
+                  <LogIn size={14} /> Log in to send commands
+                </Link>
+              )}
 
               {lastSent && (
                 <p className="text-[11px] font-mono-num text-center leading-relaxed text-slate-400">

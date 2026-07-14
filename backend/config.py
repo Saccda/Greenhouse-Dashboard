@@ -66,6 +66,11 @@ FLASK_ENV   = os.getenv("FLASK_ENV", "development")
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGIN", "http://localhost:3000").split(",") if o.strip()]
 
 # ---------------------------------------------------------------------------
+# Auth — bearer-token sessions for write access (setpoints, threshold saves)
+# ---------------------------------------------------------------------------
+AUTH_TOKEN_TTL_DAYS = int(os.getenv("AUTH_TOKEN_TTL_DAYS", "30"))
+
+# ---------------------------------------------------------------------------
 # Farm definitions
 # Each farm maps to a distinct InfluxDB measurement.
 # Add more farms here — the frontend picks them up automatically.

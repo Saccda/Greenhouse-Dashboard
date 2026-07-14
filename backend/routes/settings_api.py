@@ -4,9 +4,10 @@
 GET  /api/settings        → current values
 POST /api/settings        → update and persist
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from services import auth_service
 from services import settings_service
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -24,7 +25,7 @@ def get_settings() -> dict:
 
 
 @router.post("")
-def update_settings(payload: ThresholdPayload) -> dict:
+def update_settings(payload: ThresholdPayload, _user: dict = Depends(auth_service.require_write_access)) -> dict:
     """Persist new thresholds. Takes effect on the next alert checker cycle."""
     return settings_service.save({
         "temp_warn": payload.temp_warn,

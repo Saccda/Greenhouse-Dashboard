@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SidebarAwareLayout from "@/components/layout/SidebarAwareLayout";
+import { AuthProvider } from "@/hooks/useAuth";
 
 export const metadata: Metadata = {
   title: "Farm Monitoring Dashboard",
@@ -18,9 +19,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="flex h-screen overflow-hidden">
-        <SidebarAwareLayout>
-          {children}
-        </SidebarAwareLayout>
+        <AuthProvider>
+          <SidebarAwareLayout>
+            {children}
+          </SidebarAwareLayout>
+        </AuthProvider>
       </body>
     </html>
   );

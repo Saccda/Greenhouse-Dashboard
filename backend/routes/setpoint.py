@@ -5,11 +5,13 @@ Node-RED, which publishes them to the ESP32 via MQTT (HiveMQ Cloud).
 Payload  :  { farm, relay, low, high }
 Node-RED :  POST {NODE_RED_URL}/api/setpoint
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 import httpx
 
 import config
+from services import auth_service
+from services import setpoint_service
 
 router = APIRouter(tags=["setpoint"])
 
@@ -21,9 +23,17 @@ class SetpointRequest(BaseModel):
     high:  float = Field(..., description="High setpoint value (P2/P4/P6)")
 
 
+@router.get("/api/setpoint")
+def get_setpoints(farm: str) -> dict:
+    """Last-sent setpoint per relay for this farm. Public — viewing stays open."""
+    if farm not in config.FARMS:
+        raise HTTPException(status_code=400, detail=f"Unknown farm '{farm}'")
+    return setpoint_service.get(farm)
+
+
 @router.post("/api/setpoint")
-async def send_setpoint(body: SetpointRequest):
-    """Proxy a setpoint command to Node-RED."""
+async def send_setpoint(body: SetpointRequest, _user: dict = Depends(auth_service.require_write_access)):
+    """Proxy a setpoint command to Node-RED, then persist it if the send succeeded."""
     if body.farm not in config.FARMS:
         raise HTTPException(status_code=400, detail=f"Unknown farm '{body.farm}'")
 
@@ -32,7 +42,7 @@ async def send_setpoint(body: SetpointRequest):
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(url, json=body.model_dump())
             r.raise_for_status()
-            return r.json()
+            result = r.json()
     except httpx.ConnectError:
         raise HTTPException(
             status_code=503,
@@ -45,3 +55,6 @@ async def send_setpoint(body: SetpointRequest):
             status_code=502,
             detail=f"Node-RED returned HTTP {e.response.status_code}",
         )
+
+    setpoint_service.save(body.farm, body.relay, body.low, body.high)
+    return result

@@ -1,14 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
+import Link from "next/link";
 import {
   Settings, MapPin, Wifi, ExternalLink,
-  RotateCcw, Check, Bell, SendHorizontal, Play,
+  RotateCcw, Check, Bell, SendHorizontal, Play, LogIn,
 } from "lucide-react";
 import { clsx } from "clsx";
 
 import { swrFetcher, fetchFarms, API_BASE } from "@/lib/api";
 import { useSettings, SETTINGS_DEFAULTS } from "@/hooks/useSettings";
+import { useAuth } from "@/hooks/useAuth";
 import type { Farm, HealthResponse } from "@/types";
 
 interface NotifStatus {
@@ -78,6 +80,8 @@ function InfoRow({ label, value, mono = false, isLink = false }: {
 
 export default function SettingsPage() {
   const { settings, update } = useSettings();
+  const { user } = useAuth();
+  const canWrite = !!user && user.role !== "pending";
   const [farms, setFarms] = useState<Farm[]>([]);
   const [saved, setSaved] = useState(false);
   const [tempWarn, setTempWarn] = useState(settings.tempWarn);
@@ -205,18 +209,31 @@ export default function SettingsPage() {
             </p>
 
             <div className="flex items-center gap-3 pt-4">
-              <button
-                onClick={handleSave}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                  saved
-                    ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
-                    : "bg-brand-green text-black hover:bg-brand-green/90",
-                )}
-              >
-                {saved && <Check size={14} />}
-                {saved ? "Saved!" : "Save Settings"}
-              </button>
+              {canWrite ? (
+                <button
+                  onClick={handleSave}
+                  className={clsx(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    saved
+                      ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
+                      : "bg-brand-green text-black hover:bg-brand-green/90",
+                  )}
+                >
+                  {saved && <Check size={14} />}
+                  {saved ? "Saved!" : "Save Settings"}
+                </button>
+              ) : user ? (
+                <p className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-amber-500 bg-amber-500/10 border border-amber-500/30">
+                  Awaiting owner approval
+                </p>
+              ) : (
+                <Link
+                  href="/login?redirect=/settings"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 border border-surface-border hover:border-brand-green/40 transition-colors"
+                >
+                  <LogIn size={14} /> Log in to save
+                </Link>
+              )}
               <button
                 onClick={handleReset}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 border border-surface-border hover:border-surface-bright transition-colors"

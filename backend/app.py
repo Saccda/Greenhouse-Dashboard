@@ -32,6 +32,8 @@ from routes.farms         import router as farms_router
 from routes.notifications import router as notifications_router
 from routes.settings_api  import router as settings_router
 from routes.setpoint      import router as setpoint_router
+from routes.auth          import router as auth_router
+from routes.users         import router as users_router
 from schemas              import HealthResponse
 from services             import influxdb_service as db
 from services             import alert_checker
@@ -84,6 +86,8 @@ app.include_router(farms_router)
 app.include_router(notifications_router)
 app.include_router(settings_router)
 app.include_router(setpoint_router)
+app.include_router(auth_router)
+app.include_router(users_router)
 
 # ── Root health — quick liveness probe used by the frontend ──────────────
 
