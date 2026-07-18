@@ -136,44 +136,45 @@ function ConceiveSection() {
 const CAD_IMAGES = [
   {
     src: "/Overview_CAD.png",
-    title: "Full farm layout",
-    caption: "The complete trellis grid, drawn to the real farm footprint, with the equipment skid tucked into the corner.",
+    title: "Complete Farm Layout",
+    caption: "A wide view showing how the whole farm, watering system, and main power station connect together.",
   },
   {
     src: "/System_Overview_CAD.png",
-    title: "Equipment skid & row integration",
-    caption: "Solar array, control rack, and tank train, with wiring and piping running out into the crop rows.",
-  },
-  {
-    src: "/CloseUpView.png",
-    title: "Water & control skid",
-    caption: "The operator rack, buffer tanks, and chiller unit that make up the water-supply train.",
-  },
-  {
-    src: "/CloseUp_Operator_CAD.png",
-    title: "Control rack detail",
-    caption: "Charge controller, battery bank, and manual control panel — the point a technician actually touches.",
-  },
-  {
-    src: "/CloseUp_SensorBox_CAD.png",
-    title: "Field-mounted sensor enclosure",
-    caption: "The local controller housing, pole-mounted inside the crop rows rather than back at the skid.",
-  },
-  {
-    src: "/CloseUp_Solar_CAD.png",
-    title: "Solar array",
-    caption: "The tilted PV mount that keeps the pumps, solenoids, and controller running off-grid.",
-  },
-  {
-    src: "/CloseUp_Sprikler_CAD.jpg",
-    title: "Misting nozzle drops",
-    caption: "Wire-suspended nozzles carry chilled mist down into each row, rather than a rigid overhead header.",
+    title: "Close Up View of The System",
+    caption: "A close look at solar tracker, cooling and spraying system and how the pipe are installed in the farm.",
   },
   {
     src: "/ClosesUpViewwithSolar_CAD.png",
-    title: "Solar + skid integration",
-    caption: "A wider angle showing how the solar mount and equipment skid share a single platform.",
+    title: "Solar Power Connection",
+    caption: "This view shows how the solar panels sit next to and safely plug into the main power equipment box.",
+  },  
+  {
+    src: "/CloseUp_Solar_CAD.png",
+    title: "Solar Tracker Setup",
+    caption: "Ground-mounted solar panels that track the sun to power the entire cooling, watering and control system without needing grid power.",
   },
+  {
+    src: "/CloseUpView.png",
+    title: "Cooling and Spraying System Architecture",
+    caption: "The central water station featuring built-in filters, a storage tank, and automatic valves to control water flow.",
+  },
+  {
+    src: "/CloseUp_Operator_CAD.png",
+    title: "Main Control Box and Screen",
+    caption: "A clear view of the weatherproof box housing the system computers and the simple control screen for the user.",
+  },
+    {
+    src: "/CloseUp_SensorBox_CAD.png",
+    title: "Weather and Soil Sensor Station",
+    caption: "A small, outdoor-rated sensor box placed directly in the field to check the daily weather and soil moisture.",
+  },
+  {
+    src: "/CloseUp_Sprikler_CAD.jpg",
+    title: "Automatic Overhead Misting Nozzle",
+    caption: "A close-up view of the overhead spray line showing the drop-down pipe and fine mist nozzle that waters the crops gently.",
+  },
+
 ];
 
 function CadGallery() {
@@ -239,7 +240,7 @@ function CadGallery() {
             <div className="flex items-start justify-between mt-3 gap-4">
               <div>
                 <p className="text-base font-semibold text-white">{CAD_IMAGES[active].title}</p>
-                <p className="text-sm text-slate-400 mt-1 max-w-xl">{CAD_IMAGES[active].caption}</p>
+                <p className="text-sm text-slate-400 mt-1">{CAD_IMAGES[active].caption}</p>
               </div>
               <button onClick={close} className="shrink-0 text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10">
                 <X size={18} />
