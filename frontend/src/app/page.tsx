@@ -6,7 +6,7 @@ import useSWR from "swr";
 import { clsx } from "clsx";
 import {
   Search, ArrowUpRight, Leaf,
-  LayoutDashboard, Sliders, BarChart3, Bell, History, Settings,
+  LayoutDashboard, Sliders, BarChart3, Bell, History, Info,
   MapPin, Clock, Thermometer, Droplets, Cpu,
 } from "lucide-react";
 
@@ -22,7 +22,7 @@ const SECTIONS = [
   { href: "/analytics",  label: "Analytics",  sub: "Trends & statistics",   icon: BarChart3       },
   { href: "/alert-log",  label: "Alert Log",  sub: "Event & alert history", icon: Bell            },
   { href: "/historical", label: "Historical", sub: "Date-range browser",    icon: History         },
-  { href: "/settings",   label: "Settings",   sub: "System configuration",  icon: Settings        },
+  { href: "/overview",   label: "Overview",   sub: "How the system works",  icon: Info            },
 ];
 
 interface AlertLogResponse { logs: { id: number; created_at: string }[]; count: number; }
@@ -138,7 +138,7 @@ export default function HomePage() {
   const [selectedFarmId, setSelectedFarmId] = useState(settings.defaultFarm);
   const [imgError,       setImgError]       = useState(false);
 
-  // Compute left column width so 3 rows of aspect-square cards fill the exact height.
+  // Compute left column width so 4 rows of aspect-square cards fill the exact height.
   // The image panel gets whatever remains via flex-1.
   const leftPanelRef  = useRef<HTMLDivElement>(null);
   const [leftWidth,      setLeftWidth]      = useState(320);
@@ -461,6 +461,31 @@ export default function HomePage() {
               </div>
             </div>
           )}
+
+          {/* Partner logos — collaboration credit, kept separate from our own identity in the header.
+              Each logo already carries its own white backing for legibility, so the group sits
+              directly on the photo instead of inside a second, redundant card. */}
+          <div className="absolute bottom-5 right-5 flex items-center gap-4" style={{ zIndex: 20 }}>
+            <span className="text-sm font-bold uppercase tracking-widest text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.85),0_1px_12px_rgba(0,0,0,0.6)] shrink-0">
+              In partnership with
+            </span>
+            <div className="flex items-center gap-3.5">
+              <div className="h-16 px-4 flex items-center bg-white rounded-xl shadow-lg">
+                <Image
+                  src="/soge_logo.png" alt="SOGE — Solar Green Energy Cambodia"
+                  width={2000} height={749}
+                  className="h-12 w-auto object-contain"
+                />
+              </div>
+              <div className="h-16 px-3 flex items-center bg-white rounded-xl shadow-lg">
+                <Image
+                  src="/FairsFarmLogo.png" alt="Fair Farms — Organic Spices"
+                  width={368} height={357}
+                  className="h-[3.4rem] w-auto object-contain"
+                />
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>

@@ -72,6 +72,13 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Fair Farms mark is pure black line-art on a transparent background —
+   flip it to white line-art in dark mode so it stays legible on the navy
+   auth panel. SOGE keeps its own colour and is left alone. */
+.dark .auth-mono-logo {
+  filter: invert(1);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    TEXT COLOR OVERRIDES
    Both .dark and .light remap slate-* to our theme variables.

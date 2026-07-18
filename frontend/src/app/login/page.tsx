@@ -1,66 +1,100 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { LogIn, AlertCircle } from "lucide-react";
+import { AlertCircle, User, Mail, AtSign, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuth } from "@/hooks/useAuth";
 import AuthShell from "@/components/auth/AuthShell";
+import { AuthInput, AuthPasswordInput, ModeToggle } from "@/components/auth/AuthInputs";
 
-function LoginForm() {
+type Mode = "signin" | "signup";
+
+function AuthForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError]       = useState<string | null>(null);
-  const [busy, setBusy]         = useState(false);
+  const [mode, setMode] = useState<Mode>(params.get("mode") === "signup" ? "signup" : "signin");
+  useEffect(() => {
+    setMode(params.get("mode") === "signup" ? "signup" : "signin");
+  }, [params]);
+
+  const changeMode = (m: Mode) => {
+    setMode(m);
+    const next = new URLSearchParams(params.toString());
+    if (m === "signup") next.set("mode", "signup"); else next.delete("mode");
+    router.replace(`/login${next.toString() ? `?${next}` : ""}`, { scroll: false });
+  };
+
+  const [username, setUsername]       = useState("");
+  const [password, setPassword]       = useState("");
+  const [email, setEmail]             = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [error, setError]             = useState<string | null>(null);
+  const [busy, setBusy]               = useState(false);
+
+  const redirectTo = () => router.push(params.get("redirect") ?? "/control");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const result = await login(username, password);
+    const result = mode === "signin"
+      ? await login(username, password)
+      : await register({ username, password, email, displayName });
     setBusy(false);
-    if (result.ok) {
-      router.push(params.get("redirect") ?? "/control");
-    } else {
-      setError(result.error);
-    }
+    if (result.ok) redirectTo();
+    else setError(result.error);
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <LogIn size={18} className="text-brand-green" />
-          <h1 className="text-xl font-semibold text-slate-100">Sign In</h1>
-        </div>
-        <p className="text-sm text-slate-500 -mt-2">
-          Manage setpoints and alert thresholds for your farm.
+    <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto space-y-7">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-100 tracking-tight">
+          {mode === "signin" ? "Welcome back" : "Create account"}
+        </h1>
+        <p className="text-sm text-slate-500 mt-2">
+          {mode === "signin"
+            ? "Manage setpoints and alert thresholds for your farm."
+            : "New accounts start view-only until a farm owner approves you."}
         </p>
+      </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs text-slate-400">Username</label>
-          <input
-            type="text" autoFocus value={username} required
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full bg-surface-hover border border-surface-bright text-slate-200 text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-green/50"
-          />
-        </div>
+      <ModeToggle mode={mode} onChange={changeMode} />
 
-        <div className="space-y-1.5">
-          <label className="text-xs text-slate-400">Password</label>
-          <input
-            type="password" value={password} required
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-surface-hover border border-surface-bright text-slate-200 text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-green/50"
-          />
-        </div>
+        {mode === "signup" && (
+          <>
+            <AuthInput
+              icon={User} type="text" placeholder="Display name" autoFocus required maxLength={64}
+              value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+            />
+            <AuthInput
+              icon={Mail} type="email" placeholder="Email" required
+              value={email} onChange={(e) => setEmail(e.target.value)}
+            />
+          </>
+        )}
+
+        <AuthInput
+          icon={AtSign} type="text" placeholder="Username" required
+          autoFocus={mode === "signin"}
+          minLength={mode === "signup" ? 3 : undefined}
+          maxLength={64}
+          pattern={mode === "signup" ? "[a-zA-Z0-9_.\\-]+" : undefined}
+          title={mode === "signup" ? "Letters, numbers, dots, underscores, or hyphens only" : undefined}
+          value={username} onChange={(e) => setUsername(e.target.value)}
+        />
+
+        <AuthPasswordInput
+          icon={Lock} placeholder="Password" required minLength={mode === "signup" ? 8 : undefined}
+          value={password} onChange={(e) => setPassword(e.target.value)}
+        />
+
+        {mode === "signin" && (
+          <p className="text-xs text-slate-500 -mt-4">
+            Forgot your password? Contact a farm owner to reset it.
+          </p>
+        )}
 
         {error && (
           <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
@@ -73,21 +107,15 @@ function LoginForm() {
           type="submit"
           disabled={busy}
           className={clsx(
-            "w-full py-2.5 rounded-lg text-sm font-medium transition-all",
+            "w-full py-3 rounded-full text-sm font-semibold transition-all",
             "bg-brand-green text-black hover:bg-brand-green/90 disabled:opacity-50",
           )}
         >
-          {busy ? "Signing in…" : "Sign In"}
+          {busy
+            ? (mode === "signin" ? "Signing in…" : "Creating account…")
+            : (mode === "signin" ? "Sign In" : "Create Account")}
         </button>
-
-        <p className="text-center text-xs text-slate-500">
-          New here?{" "}
-          <Link href="/register" className="text-brand-green hover:underline">
-            Create an account
-          </Link>
-        </p>
-      </form>
-    </div>
+    </form>
   );
 }
 
@@ -95,7 +123,7 @@ export default function LoginPage() {
   return (
     <AuthShell>
       <Suspense fallback={null}>
-        <LoginForm />
+        <AuthForm />
       </Suspense>
     </AuthShell>
   );

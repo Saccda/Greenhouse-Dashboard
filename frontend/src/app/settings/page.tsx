@@ -1,12 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import {
   Settings, MapPin, Wifi, ExternalLink,
   RotateCcw, Check, Bell, SendHorizontal, Play, LogIn,
+  Users, UserPlus, Trash2, KeyRound, ShieldAlert, UserCheck, Clock,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { format } from "date-fns";
 
 import { swrFetcher, fetchFarms, API_BASE } from "@/lib/api";
 import { useSettings, SETTINGS_DEFAULTS } from "@/hooks/useSettings";
@@ -24,11 +26,26 @@ interface NotifStatus {
   active_alerts:             Record<string, { since: string; minutes: number }>;
 }
 
-function Section({ title, icon: Icon, children }: {
-  title: string; icon: React.ElementType; children: React.ReactNode;
+interface ManagedUser {
+  username:     string;
+  role:         string;
+  created_at:   string | null;
+  email:        string | null;
+  display_name: string | null;
+}
+
+function authHeaders(token: string | null): HeadersInit {
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+function Section({ title, icon: Icon, children, className }: {
+  title: string; icon: React.ElementType; children: React.ReactNode; className?: string;
 }) {
   return (
-    <section className="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col h-full">
+    <section className={clsx("bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col h-full", className)}>
       <h2 className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5 shrink-0">
         <Icon size={13} />
         {title}
@@ -80,8 +97,9 @@ function InfoRow({ label, value, mono = false, isLink = false }: {
 
 export default function SettingsPage() {
   const { settings, update } = useSettings();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const canWrite = !!user && user.role !== "pending";
+  const canManage = !!user && user.role === "owner";
   const [farms, setFarms] = useState<Farm[]>([]);
   const [saved, setSaved] = useState(false);
   const [tempWarn, setTempWarn] = useState(settings.tempWarn);
@@ -114,6 +132,94 @@ export default function SettingsPage() {
     swrFetcher,
     { refreshInterval: 60_000 },
   );
+
+  // ── User management (owner-only) ─────────────────────────────────────
+  const { data: usersData, error: usersError, mutate: mutateUsers } = useSWR<{ users: ManagedUser[] }>(
+    canManage ? "/api/users" : null,
+    (path: string) =>
+      fetch(`${API_BASE}${path}`, { headers: authHeaders(token) }).then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      }),
+  );
+
+  const pendingUsers  = usersData?.users.filter((u) => u.role === "pending") ?? [];
+  const approvedUsers = usersData?.users.filter((u) => u.role !== "pending") ?? [];
+
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole,     setNewRole]     = useState("developer");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creating,    setCreating]    = useState(false);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/users`, {
+        method:  "POST",
+        headers: authHeaders(token),
+        body:    JSON.stringify({ username: newUsername, password: newPassword, role: newRole }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail ?? `Failed (${res.status})`);
+      }
+      setNewUsername("");
+      setNewPassword("");
+      setNewRole("developer");
+      mutateUsers();
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleUserRoleChange = useCallback(async (username: string, role: string) => {
+    await fetch(`${API_BASE}/api/users/${encodeURIComponent(username)}`, {
+      method:  "PATCH",
+      headers: authHeaders(token),
+      body:    JSON.stringify({ role }),
+    });
+    mutateUsers();
+  }, [token, mutateUsers]);
+
+  const handleDeleteUser = useCallback(async (username: string) => {
+    if (!confirm(`Delete user "${username}"? This can't be undone.`)) return;
+    const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(username)}`, {
+      method:  "DELETE",
+      headers: authHeaders(token),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      alert(body?.detail ?? `Failed to delete (${res.status})`);
+    }
+    mutateUsers();
+  }, [token, mutateUsers]);
+
+  const [resetTarget, setResetTarget] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  const handleResetUserPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(resetTarget)}`, {
+      method:  "PATCH",
+      headers: authHeaders(token),
+      body:    JSON.stringify({ password: resetPassword }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setResetError(body?.detail ?? `Failed (${res.status})`);
+      return;
+    }
+    setResetTarget(null);
+    setResetPassword("");
+    setResetError(null);
+  };
 
   const handleTestTelegram = async () => {
     setTestState("sending");
@@ -376,6 +482,185 @@ export default function SettingsPage() {
               Alert thresholds are set in <code className="bg-surface-bright px-1 rounded text-slate-400">backend/.env</code> or fall back to config.py defaults.
             </p>
           </Section>
+
+          {/* ── Row 3: User Management (owner-only) ───────────── */}
+          {canManage && (
+            <Section title="User Management" icon={Users} className="xl:col-span-2">
+              <div className="space-y-5">
+
+                {/* Add user */}
+                <div>
+                  <h3 className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                    <UserPlus size={12} /> Add User
+                  </h3>
+                  <form onSubmit={handleCreateUser} className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-500">Username</label>
+                      <input
+                        type="text" required value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        className="w-40 bg-surface-hover border border-surface-bright text-slate-200 text-sm rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-500">Password</label>
+                      <input
+                        type="password" required minLength={8} value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-40 bg-surface-hover border border-surface-bright text-slate-200 text-sm rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-500">Role</label>
+                      <select
+                        value={newRole} onChange={(e) => setNewRole(e.target.value)}
+                        className="bg-surface-hover border border-surface-bright text-slate-200 text-sm rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green/50"
+                      >
+                        <option value="developer">Developer</option>
+                        <option value="owner">Owner</option>
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={creating}
+                      className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-green text-black hover:bg-brand-green/90 disabled:opacity-50"
+                    >
+                      {creating ? "Adding…" : "Add User"}
+                    </button>
+                  </form>
+                  {createError && (
+                    <p className="flex items-center gap-1.5 text-xs text-red-400 mt-3">
+                      <ShieldAlert size={13} /> {createError}
+                    </p>
+                  )}
+                </div>
+
+                {usersError && <p className="text-xs text-red-400">Could not load users.</p>}
+                {!usersData && !usersError && <p className="text-xs text-slate-500">Loading users…</p>}
+
+                {/* Pending approval */}
+                {pendingUsers.length > 0 && (
+                  <div className="bg-amber-500/5 border border-amber-500/30 rounded-lg p-4">
+                    <h3 className="flex items-center gap-2 text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-3">
+                      <Clock size={12} /> Pending Approval ({pendingUsers.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {pendingUsers.map((u) => (
+                        <div key={u.username} className="flex flex-wrap items-center gap-3 py-2.5 border-b border-amber-500/20 last:border-0">
+                          <div className="min-w-[12rem] flex-1">
+                            <p className="text-sm text-slate-200 font-medium">{u.display_name || u.username}</p>
+                            <p className="text-[11px] text-slate-500">
+                              @{u.username}{u.email ? `  ·  ${u.email}` : ""}
+                              {u.created_at ? `  ·  requested ${format(new Date(u.created_at), "MMM d, yyyy")}` : ""}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleUserRoleChange(u.username, "developer")}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-brand-green text-black hover:bg-brand-green/90"
+                          >
+                            <UserCheck size={13} /> Approve as Developer
+                          </button>
+                          <button
+                            onClick={() => handleUserRoleChange(u.username, "owner")}
+                            className="px-3 py-1.5 rounded-md text-xs font-medium text-slate-300 border border-surface-bright hover:bg-surface-hover"
+                          >
+                            Approve as Owner
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u.username)}
+                            title="Reject / delete"
+                            className="p-1.5 rounded-md text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Accounts */}
+                {usersData && (
+                  <div>
+                    <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                      Accounts
+                    </h3>
+                    <div className="space-y-2">
+                      {approvedUsers.map((u) => (
+                        <div key={u.username} className="flex flex-wrap items-center gap-3 py-2.5 border-b border-surface-border last:border-0">
+                          <div className="min-w-[12rem] flex-1">
+                            <p className="text-sm text-slate-200 font-medium">{u.display_name || u.username}</p>
+                            <p className="text-[11px] text-slate-500">
+                              @{u.username}{u.email ? `  ·  ${u.email}` : ""}
+                              {u.created_at ? `  ·  since ${format(new Date(u.created_at), "MMM d, yyyy")}` : ""}
+                              {u.username === user?.username && "  ·  you"}
+                            </p>
+                          </div>
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleUserRoleChange(u.username, e.target.value)}
+                            className="bg-surface-hover border border-surface-bright text-slate-200 text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green/50 capitalize"
+                          >
+                            <option value="developer">Developer</option>
+                            <option value="owner">Owner</option>
+                            <option value="pending">Pending (suspend)</option>
+                          </select>
+                          <button
+                            onClick={() => { setResetTarget(u.username); setResetPassword(""); setResetError(null); }}
+                            title="Reset password"
+                            className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-surface-hover"
+                          >
+                            <KeyRound size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u.username)}
+                            title="Delete user"
+                            className="p-1.5 rounded-md text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      {approvedUsers.length === 0 && (
+                        <p className="text-xs text-slate-500">No approved accounts yet.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reset password inline panel */}
+                {resetTarget && (
+                  <div className="bg-brand-green/5 border border-brand-green/30 rounded-lg p-4">
+                    <h3 className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-3">
+                      Reset password — {resetTarget}
+                    </h3>
+                    <form onSubmit={handleResetUserPassword} className="flex items-end gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-500">New password</label>
+                        <input
+                          type="password" required minLength={8} autoFocus value={resetPassword}
+                          onChange={(e) => setResetPassword(e.target.value)}
+                          className="w-48 bg-surface-hover border border-surface-bright text-slate-200 text-sm rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green/50"
+                        />
+                      </div>
+                      <button type="submit" className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-green text-black hover:bg-brand-green/90">
+                        Set Password
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setResetTarget(null); setResetError(null); }}
+                        className="px-4 py-1.5 rounded-md text-sm font-medium text-slate-400 hover:text-slate-200 border border-surface-border"
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                    {resetError && <p className="text-xs text-red-400 mt-2">{resetError}</p>}
+                  </div>
+                )}
+
+              </div>
+            </Section>
+          )}
 
         </div>
       </main>

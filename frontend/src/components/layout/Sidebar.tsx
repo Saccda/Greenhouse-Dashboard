@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,11 +12,12 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Sun,
   Moon,
   LogIn,
   LogOut,
-  Users,
+  Info,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTheme } from "@/hooks/useTheme";
@@ -29,7 +30,7 @@ const NAV_ITEMS = [
   { href: "/analytics",  label: "Analytics",  icon: BarChart3       },
   { href: "/historical", label: "Historical", icon: History         },
   { href: "/alert-log",  label: "Alert Log",  icon: Bell            },
-  { href: "/settings",   label: "Settings",   icon: Settings        },
+  { href: "/overview",   label: "Overview",   icon: Info            },
 ];
 
 function getInitials(name: string): string {
@@ -41,14 +42,20 @@ function getInitials(name: string): string {
 export default function Sidebar() {
   const pathname  = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [menuOpen, setMenuOpen]   = useState(false);
   const { toggle, isDark } = useTheme();
   const { settings } = useSettings();
   const { user, logout } = useAuth();
 
   const initials = getInitials(user?.username || settings.userName || "ME Team");
-  const navItems = user?.role === "owner"
-    ? [...NAV_ITEMS, { href: "/users", label: "Users", icon: Users }]
-    : NAV_ITEMS;
+
+  useEffect(() => { setMenuOpen(false); }, [pathname, collapsed]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   return (
     <aside
@@ -81,7 +88,7 @@ export default function Sidebar() {
 
       {/* ── Navigation ───────────────────────────────────────── */}
       <nav className="flex-1 py-4 flex flex-col gap-1 px-3">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
@@ -137,40 +144,67 @@ export default function Sidebar() {
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>
 
-      {/* ── User / Settings footer ───────────────────────────── */}
+      {/* ── Account menu ─────────────────────────────────────── */}
       {user ? (
-        <div className={clsx(
-          "flex items-center border-t border-gray-100",
-          collapsed ? "justify-center p-3" : "px-3 py-3.5 gap-3",
-        )}>
-          <Link
-            href="/settings"
+        <div className="relative border-t border-gray-100">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
             title={collapsed ? `${user.username} (${user.role})` : undefined}
+            aria-expanded={menuOpen}
             className={clsx(
-              "flex items-center gap-3 min-w-0 flex-1 rounded-lg transition-colors duration-150 hover:bg-gray-50",
-              collapsed && "justify-center",
+              "flex items-center w-full transition-colors duration-150 hover:bg-gray-50",
+              collapsed ? "justify-center p-3" : "px-3 py-3.5 gap-3",
             )}
           >
             <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center shrink-0 text-white font-bold text-[11px]">
               {initials}
             </div>
             {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-gray-700 truncate leading-none">
-                  {user.username}
-                </p>
-                <p className="text-[10px] text-gray-400 truncate mt-0.5 capitalize">{user.role}</p>
-              </div>
+              <>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-xs font-semibold text-gray-700 truncate leading-none">
+                    {user.username}
+                  </p>
+                  <p className="text-[10px] text-gray-400 truncate mt-0.5 capitalize">{user.role}</p>
+                </div>
+                <ChevronUp
+                  size={13}
+                  className={clsx(
+                    "shrink-0 text-gray-300 transition-transform duration-150",
+                    !menuOpen && "rotate-180",
+                  )}
+                />
+              </>
             )}
-          </Link>
-          {!collapsed && (
-            <button
-              onClick={logout}
-              title="Log out"
-              className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              <LogOut size={15} />
-            </button>
+          </button>
+
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div
+                className={clsx(
+                  "absolute z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 overflow-hidden",
+                  collapsed ? "left-full ml-2 bottom-0 w-48" : "left-3 right-3 bottom-[calc(100%+6px)]",
+                )}
+              >
+                <Link
+                  href="/settings"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                >
+                  <Settings size={15} className="shrink-0 text-gray-400" />
+                  Settings
+                </Link>
+                <div className="h-px bg-gray-100 my-1" />
+                <button
+                  onClick={() => { setMenuOpen(false); logout(); }}
+                  className="flex items-center w-full text-left gap-2.5 px-3.5 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={15} className="shrink-0" />
+                  Log out
+                </button>
+              </div>
+            </>
           )}
         </div>
       ) : (
