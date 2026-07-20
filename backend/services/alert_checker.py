@@ -173,30 +173,37 @@ def _handle(
     Core state machine.
     Sends the right message, updates _active, and records the event.
     Durations on resolved events exclude connectivity gaps.
+
+    The log record is always written, independent of whether the Telegram
+    send succeeded — the log is the system's record of what it detected,
+    not a receipt of notification delivery. `send_message` returns False
+    if delivery fails to even one configured chat ID (multiple IDs are
+    supported, comma-separated), which must never cause the event itself
+    to go unrecorded.
     """
     if is_active:
         if key not in _active:
             _active[key]          = datetime.now(config.TIMEZONE)
             _active_farm[key]     = farm_id
             _alert_gap_start[key] = _farm_current_gap(farm_id)
-            if telegram.send_message(alert_msg):
-                _record(farm_id, alert_type, "alert", alert_msg, sensor_value, threshold)
-                print(f"[AlertChecker] ALERT: {key} (value={sensor_value})")
+            sent = telegram.send_message(alert_msg)
+            _record(farm_id, alert_type, "alert", alert_msg, sensor_value, threshold)
+            print(f"[AlertChecker] ALERT: {key} (value={sensor_value}, telegram_sent={sent})")
         else:
             effective, _ = _effective_duration(key)
-            if telegram.send_message(reminder_msg):
-                _record(farm_id, alert_type, "reminder", reminder_msg, sensor_value, threshold)
-                print(f"[AlertChecker] REMINDER: {key} ({effective:.0f} min effective)")
+            sent = telegram.send_message(reminder_msg)
+            _record(farm_id, alert_type, "reminder", reminder_msg, sensor_value, threshold)
+            print(f"[AlertChecker] REMINDER: {key} ({effective:.0f} min effective, telegram_sent={sent})")
     else:
         if key in _active:
             effective, gap = _effective_duration(key)
             del _active[key]
             _active_farm.pop(key, None)
             _alert_gap_start.pop(key, None)
-            if telegram.send_message(resolved_msg):
-                _record(farm_id, alert_type, "resolved", resolved_msg,
-                        sensor_value, threshold, effective, gap if gap > 0 else None)
-                print(f"[AlertChecker] RESOLVED: {key} ({effective:.0f} min effective, {gap:.0f} min gap)")
+            sent = telegram.send_message(resolved_msg)
+            _record(farm_id, alert_type, "resolved", resolved_msg,
+                    sensor_value, threshold, effective, gap if gap > 0 else None)
+            print(f"[AlertChecker] RESOLVED: {key} ({effective:.0f} min effective, {gap:.0f} min gap, telegram_sent={sent})")
 
 
 # ── Public API ────────────────────────────────────────────────────────────
