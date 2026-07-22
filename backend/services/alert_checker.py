@@ -35,6 +35,7 @@ from services import settings_service
 # Alert lifecycle
 _active:            dict[str, datetime] = {}   # key → time first became active
 _active_farm:       dict[str, str]      = {}   # key → farm_id (for gap bookkeeping)
+_active_type:       dict[str, str]      = {}   # key → alert_type (for maintenance-window auto-resolve)
 _alert_gap_start:   dict[str, float]    = {}   # key → farm's offline total when alert started
 
 # Per-farm connectivity tracking
@@ -185,6 +186,7 @@ def _handle(
         if key not in _active:
             _active[key]          = datetime.now(config.TIMEZONE)
             _active_farm[key]     = farm_id
+            _active_type[key]     = alert_type
             _alert_gap_start[key] = _farm_current_gap(farm_id)
             sent = telegram.send_message(alert_msg)
             _record(farm_id, alert_type, "alert", alert_msg, sensor_value, threshold)
@@ -199,11 +201,45 @@ def _handle(
             effective, gap = _effective_duration(key)
             del _active[key]
             _active_farm.pop(key, None)
+            _active_type.pop(key, None)
             _alert_gap_start.pop(key, None)
             sent = telegram.send_message(resolved_msg)
             _record(farm_id, alert_type, "resolved", resolved_msg,
                     sensor_value, threshold, effective, gap if gap > 0 else None)
             print(f"[AlertChecker] RESOLVED: {key} ({effective:.0f} min effective, {gap:.0f} min gap, telegram_sent={sent})")
+
+
+def _force_resolve_farm(farm_id: str, reason: str) -> None:
+    """
+    Close out any temperature/humidity/spray alert still open for this farm
+    the moment it enters the nightly maintenance shutdown.
+
+    Without this, an alert active at shutdown just sits in `_active` and
+    resumes the next morning as a "still active" reminder whose duration
+    spans two calendar days — which both re-notifies the same episode
+    across the overnight gap and makes the alert log useless for per-day
+    analysis (one row that looks like it lasted from yesterday afternoon
+    to this morning, instead of two clean, bounded episodes).
+    No Telegram message is sent for this — it's a bookkeeping close, not
+    a detected event; the next real check cycle will send a fresh ALERT
+    on its own if the condition is still true once the farm is back online.
+    """
+    for kind in ("temperature", "humidity", "spray_long"):
+        key = f"{kind}_{farm_id}"
+        if key not in _active:
+            continue
+        alert_type    = _active_type.get(key, kind)
+        effective, gap = _effective_duration(key)
+        del _active[key]
+        _active_farm.pop(key, None)
+        _active_type.pop(key, None)
+        _alert_gap_start.pop(key, None)
+        _record(
+            farm_id, alert_type, "resolved",
+            f"Auto-resolved: {reason} (active {effective:.0f} min before shutdown)",
+            None, None, effective, gap if gap > 0 else None,
+        )
+        print(f"[AlertChecker] AUTO-RESOLVED ({reason}): {key} ({effective:.0f} min effective)")
 
 
 # ── Public API ────────────────────────────────────────────────────────────
@@ -268,8 +304,10 @@ def _check_farm(farm_id: str) -> None:
         if key in _active:
             del _active[key]
             _active_farm.pop(key, None)
+            _active_type.pop(key, None)
             _alert_gap_start.pop(key, None)
             print(f"[AlertChecker] Maintenance window active — cleared offline state for {farm_id}")
+        _force_resolve_farm(farm_id, "maintenance window")
         return  # nothing more to check while hardware is intentionally off
 
     is_offline_sustained = not is_online and age_min >= config.OFFLINE_ALERT_MINUTES
