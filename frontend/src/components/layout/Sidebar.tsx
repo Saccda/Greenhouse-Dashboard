@@ -25,12 +25,12 @@ import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV_ITEMS = [
+  { href: "/overview",   label: "Overview",   icon: Info            },
   { href: "/dashboard",  label: "Dashboard",  icon: LayoutDashboard },
   { href: "/control",    label: "Control",    icon: Sliders         },
   { href: "/analytics",  label: "Analytics",  icon: BarChart3       },
   { href: "/historical", label: "Historical", icon: History         },
   { href: "/alert-log",  label: "Alert Log",  icon: Bell            },
-  { href: "/overview",   label: "Overview",   icon: Info            },
 ];
 
 function getInitials(name: string): string {

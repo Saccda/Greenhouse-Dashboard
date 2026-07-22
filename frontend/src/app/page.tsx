@@ -17,12 +17,12 @@ import WeatherWidget from "@/components/weather/WeatherWidget";
 import type { LatestResponse, Farm } from "@/types";
 
 const SECTIONS = [
+  { href: "/overview",   label: "Overview",   sub: "How the system works",  icon: Info            },
   { href: "/dashboard",  label: "Dashboard",  sub: "Live sensor readings",  icon: LayoutDashboard },
   { href: "/control",    label: "Control",    sub: "Relay & thresholds",    icon: Sliders         },
   { href: "/analytics",  label: "Analytics",  sub: "Trends & statistics",   icon: BarChart3       },
   { href: "/alert-log",  label: "Alert Log",  sub: "Event & alert history", icon: Bell            },
   { href: "/historical", label: "Historical", sub: "Date-range browser",    icon: History         },
-  { href: "/overview",   label: "Overview",   sub: "How the system works",  icon: Info            },
 ];
 
 interface AlertLogResponse { logs: { id: number; created_at: string }[]; count: number; }
