@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
-import { Bell, Filter, RefreshCw, Thermometer, Droplets, Droplet, Timer } from "lucide-react";
+import { Bell, Filter, RefreshCw, Download, Thermometer, Droplets, Droplet, Timer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { clsx } from "clsx";
 import { format, parseISO } from "date-fns";
 
-import { swrFetcher } from "@/lib/api";
+import { API_BASE, swrFetcher } from "@/lib/api";
 import KPICard from "@/components/ui/KPICard";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -136,6 +136,10 @@ export default function AlertLogPage() {
     { refreshInterval: 300_000 },
   );
 
+  function handleExport() {
+    window.location.href = `${API_BASE}/api/notifications/log/export?${params}`;
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
 
@@ -211,6 +215,15 @@ export default function AlertLogPage() {
             <option value="reminder">Reminder</option>
             <option value="resolved">Resolved</option>
           </select>
+
+          {/* Export */}
+          <button
+            onClick={handleExport}
+            disabled={!data?.logs.length}
+            className="flex items-center gap-1.5 bg-surface-card border border-surface-border text-slate-300 text-xs rounded-lg px-3 py-1.5 hover:text-slate-100 hover:border-slate-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-300 disabled:hover:border-surface-border ml-auto"
+          >
+            <Download size={13} /> Export CSV
+          </button>
         </div>
 
         {/* Table */}

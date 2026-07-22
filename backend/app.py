@@ -12,6 +12,9 @@ Endpoints:
   GET  /api/notifications/history
   POST /api/notifications/test
   POST /api/notifications/check-now
+  GET  /api/notifications/log
+  GET  /api/notifications/log/export
+  GET  /api/notifications/log/summary
   GET  /docs   (Swagger UI)
 
 Run:

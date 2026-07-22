@@ -1,8 +1,10 @@
 """
 /api/notifications — alert status, history, test, and persistent log
 """
+import csv
+import io
 from datetime import datetime
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 import config
 from services import telegram_service as telegram
@@ -77,6 +79,54 @@ def get_log(
         limit      = limit,
     )
     return {"logs": rows, "count": len(rows)}
+
+
+@router.get("/log/export")
+def export_log(
+    farm:       str | None = Query(default=None),
+    alert_type: str | None = Query(default=None, alias="type"),
+    event:      str | None = Query(default=None),
+    days:       int        = Query(default=7, ge=1, le=365),
+) -> Response:
+    """
+    Download the persistent alert log as CSV. Same filters as /log,
+    but not paginated — returns every matching row for the period.
+    """
+    rows = alert_log.get_logs(
+        farm_id    = farm,
+        alert_type = alert_type,
+        event      = event,
+        days       = days,
+        limit      = 100_000,
+    )
+
+    fields = [
+        "created_at", "farm_id", "alert_type", "event",
+        "sensor_value", "threshold", "duration_min", "gap_minutes", "message",
+    ]
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+
+    stamp = datetime.now(config.TIMEZONE).strftime("%Y%m%d_%H%M%S")
+    name_parts = ["alert_log", f"{days}d"]
+    if alert_type:
+        name_parts.append(alert_type)
+    if event:
+        name_parts.append(event)
+    name_parts.append(stamp)
+    filename = "_".join(name_parts) + ".csv"
+
+    # UTF-8 BOM so Excel on Windows renders the °/emoji in `message` correctly
+    # instead of misreading the file as the system codepage.
+    csv_text = chr(0xFEFF) + buf.getvalue()
+
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/log/summary")
