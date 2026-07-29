@@ -1,12 +1,15 @@
 """
-Password hashing + bearer-token sessions — stdlib only (hashlib/hmac/secrets).
+Password hashing + httpOnly-cookie sessions — stdlib only (hashlib/hmac/secrets).
 
 Token shape:  base64url(json payload) + "." + hex HMAC-SHA256 signature
 Payload:      {"u": username, "r": role, "exp": unix_timestamp}
 
-No server-side revocation list — "logout" only clears client storage.
-Acceptable for a 2-3 person internal tool; rotating SECRET_KEY invalidates
-every outstanding token at once if a compromise is ever suspected.
+The token itself is carried in an httpOnly cookie (see set_session_cookie /
+clear_session_cookie) — never exposed to JS, so it can't be read by an XSS
+payload or lifted via localStorage inspection. No server-side revocation
+list — "logout" only clears the cookie. Acceptable for a 2-3 person
+internal tool; rotating SECRET_KEY invalidates every outstanding session at
+once if a compromise is ever suspected.
 """
 from __future__ import annotations
 
@@ -18,10 +21,12 @@ import re
 import secrets
 import time
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Cookie, Depends, HTTPException, Response
 
 import config
 from services import user_service
+
+SESSION_COOKIE_NAME = "gh_session"
 
 _PBKDF2_ITERATIONS = 550_000
 
@@ -51,16 +56,18 @@ def _sign(payload_b64: str) -> str:
     return hmac.new(config.SECRET_KEY.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
 
 
-def issue_token(username: str, role: str) -> tuple[str, int]:
+def issue_token(username: str, role: str, farms: list[str] | None = None) -> tuple[str, int]:
     """Return (token, expires_at_unix_ts)."""
     expires_at = int(time.time()) + config.AUTH_TOKEN_TTL_DAYS * 86400
-    payload = json.dumps({"u": username, "r": role, "exp": expires_at}, separators=(",", ":"))
+    payload = json.dumps(
+        {"u": username, "r": role, "f": farms, "exp": expires_at}, separators=(",", ":")
+    )
     payload_b64 = base64.urlsafe_b64encode(payload.encode()).decode()
     return f"{payload_b64}.{_sign(payload_b64)}", expires_at
 
 
 def verify_token(token: str) -> dict | None:
-    """Return {"username", "role"} if valid and unexpired, else None."""
+    """Return {"username", "role", "farms"} if valid and unexpired, else None."""
     try:
         payload_b64, signature = token.split(".", 1)
     except ValueError:
@@ -73,11 +80,11 @@ def verify_token(token: str) -> dict | None:
         return None
     if payload.get("exp", 0) < time.time():
         return None
-    return {"username": payload["u"], "role": payload["r"]}
+    return {"username": payload["u"], "role": payload["r"], "farms": payload.get("f")}
 
 
-def login(username: str, password: str) -> tuple[str, str, int] | None:
-    """Return (token, role, expires_at) on success, None on any failure."""
+def login(username: str, password: str) -> tuple[str, str, list[str] | None, int] | None:
+    """Return (token, role, farms, expires_at) on success, None on any failure."""
     now = time.time()
     fail_count, locked_until = _login_attempts.get(username, (0, 0.0))
     if now < locked_until:
@@ -91,15 +98,43 @@ def login(username: str, password: str) -> tuple[str, str, int] | None:
         return None
 
     _login_attempts.pop(username, None)
-    token, expires_at = issue_token(user["username"], user["role"])
-    return token, user["role"], expires_at
+    farms = user.get("farms")
+    token, expires_at = issue_token(user["username"], user["role"], farms)
+    return token, user["role"], farms, expires_at
 
 
-def register(username: str, password: str, email: str, display_name: str) -> tuple[str, str, int] | str:
+def set_session_cookie(response: Response, token: str, expires_at: int) -> None:
+    """Set the session cookie — httpOnly (no JS access), scoped per config.COOKIE_DOMAIN/SECURE."""
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        max_age=max(0, expires_at - int(time.time())),
+        expires=expires_at,
+        path="/",
+        domain=config.COOKIE_DOMAIN,
+        secure=config.COOKIE_SECURE,
+        httponly=True,
+        samesite="lax",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    """Clear the session cookie. Must match the same domain/path used to set it."""
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        domain=config.COOKIE_DOMAIN,
+    )
+
+
+def register(username: str, password: str, email: str, display_name: str) -> tuple[str, str, list[str] | None, int] | str:
     """
     Self-service registration — always lands in the 'pending' role, with
     no write access until an owner promotes the account via /api/users.
-    Returns (token, role, expires_at) on success, or an error string on failure.
+    Also starts with farms=[] (sees no farm at all, not "unrestricted") —
+    an unreviewed stranger's account shouldn't default to seeing every farm's
+    data; an owner assigns specific farm access when approving them.
+    Returns (token, role, farms, expires_at) on success, or an error string on failure.
     """
     if not _USERNAME_RE.match(username):
         return "Username must be 3-64 characters: letters, numbers, dots, underscores, or hyphens only"
@@ -109,21 +144,27 @@ def register(username: str, password: str, email: str, display_name: str) -> tup
         return "Password must be at least 8 characters"
 
     salt_hex, hash_hex = hash_password(password)
-    user_service.upsert_user(username, "pending", salt_hex, hash_hex, email=email, display_name=display_name)
-    token, expires_at = issue_token(username, "pending")
-    return token, "pending", expires_at
+    user_service.upsert_user(
+        username, "pending", salt_hex, hash_hex, email=email, display_name=display_name, farms=[],
+    )
+    token, expires_at = issue_token(username, "pending", [])
+    return token, "pending", [], expires_at
 
 
-async def require_auth(authorization: str | None = Header(default=None)) -> dict:
+async def require_auth(
+    gh_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+) -> dict:
     """
-    FastAPI dependency — any valid, unexpired token is sufficient to be
-    "logged in," including a 'pending' (unapproved) account. Use
+    FastAPI dependency — any valid, unexpired session cookie is sufficient to
+    be "logged in," including a 'pending' (unapproved) account. Applied at
+    the router level (deny-by-default) on every route that isn't explicitly
+    public, so a new endpoint is protected automatically. Use
     require_write_access for setpoints/thresholds, or require_admin for
     anything that manages other user accounts.
     """
-    if not authorization or not authorization.startswith("Bearer "):
+    if not gh_session:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    claims = verify_token(authorization.removeprefix("Bearer "))
+    claims = verify_token(gh_session)
     if claims is None:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
     return claims
@@ -141,3 +182,16 @@ async def require_admin(user: dict = Depends(require_auth)) -> dict:
     if user["role"] != "owner":
         raise HTTPException(status_code=403, detail="Only farm owners can manage user accounts")
     return user
+
+
+def require_farm_access(user: dict, farm_id: str) -> None:
+    """
+    Raise 403 if this account isn't allowed to see farm_id.
+    user["farms"] is None -> unrestricted (sees every farm); an explicit
+    list (including []) restricts to exactly those farm IDs. Orthogonal to
+    role — a "pending" account can still be scoped to a farm it may view,
+    just not write to.
+    """
+    farms = user.get("farms")
+    if farms is not None and farm_id not in farms:
+        raise HTTPException(status_code=403, detail=f"Your account doesn't have access to farm '{farm_id}'")

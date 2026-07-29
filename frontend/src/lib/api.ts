@@ -15,7 +15,7 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:500
 const BASE = API_BASE;
 
 async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
+  const res = await fetch(`${BASE}${path}`, { cache: "no-store", credentials: "include" });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(`API ${path}: ${res.status} ${text}`);
@@ -59,7 +59,7 @@ export function fetchHealth(): Promise<{ status: string; influxdb: string }> {
 
 // ── SWR fetcher (pass directly to useSWR) ────────────────────────────────
 export const swrFetcher = (url: string) =>
-  fetch(`${BASE}${url}`).then((r) => {
+  fetch(`${BASE}${url}`, { credentials: "include" }).then((r) => {
     if (!r.ok) throw new Error(`${r.status}`);
     return r.json();
   });

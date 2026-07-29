@@ -66,25 +66,54 @@ FLASK_ENV   = os.getenv("FLASK_ENV", "development")
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGIN", "http://localhost:3000").split(",") if o.strip()]
 
 # ---------------------------------------------------------------------------
-# Auth — bearer-token sessions for write access (setpoints, threshold saves)
+# Auth — httpOnly cookie sessions
 # ---------------------------------------------------------------------------
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("AUTH_TOKEN_TTL_DAYS", "30"))
+
+# Cookie scope. Empty in local dev — a cookie set by localhost:5000 is
+# automatically visible to localhost:3010 (cookies aren't port-scoped).
+# In production, set to ".yourdomain.com" so the cookie is shared between
+# the API subdomain and the frontend's own subdomain (lets the frontend's
+# Next.js middleware see session presence without a proxy).
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "") or None
+
+# Secure requires HTTPS. Browsers treat localhost as a secure context even
+# over plain HTTP, but this stays env-driven rather than hardcoded true so
+# it's explicit and doesn't silently depend on that browser-specific carve-out.
+COOKIE_SECURE = FLASK_ENV != "development"
 
 # ---------------------------------------------------------------------------
 # Farm definitions
 # Each farm maps to a distinct InfluxDB measurement.
 # Add more farms here — the frontend picks them up automatically.
 # ---------------------------------------------------------------------------
+# fogger_spec drives the "estimated water use" figure on the Historical page:
+#   total_spray_minutes * lines * foggers_per_line * flow_lpm_per_fogger
+# All foggers are assumed to fire together, since a single relay/pump drives
+# the whole manifold with no per-line control. Leave a farm's fogger_spec as
+# None until its line/fogger count and per-fogger flow rate are confirmed —
+# the API returns estimated_water_liters=null rather than guessing.
 FARMS: dict[str, dict] = {
     "kampot": {
         "display_name": "Kampot Farm",
         "measurement":  "PepperFarmData",
         "location":     "Kampot Province",
+        "fogger_spec":  {"lines": 9, "foggers_per_line": 18, "flow_lpm_per_fogger": 3.0},
     },
     "kep": {
         "display_name": "Kep Farm",
         "measurement":  "KepFarmData",
         "location":     "Kep Province",
+        "fogger_spec":  None,  # TODO: confirm Kep's line/fogger layout and per-fogger flow rate
+    },
+    "campus": {
+        "display_name": "PP Campus",
+        # TODO: placeholder — the campus cooling/spray rig isn't streaming to
+        # InfluxDB yet. Confirm the real measurement name (and MQTT setpoint
+        # topic in frontend/src/app/control/page.tsx) once that pipeline exists.
+        "measurement":  "CampusData",
+        "location":     "Phnom Penh",
+        "fogger_spec":  None,
     },
 }
 DEFAULT_FARM = "kampot"

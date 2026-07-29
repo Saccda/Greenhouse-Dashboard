@@ -16,6 +16,7 @@ import { format, parseISO } from "date-fns";
 
 import { useDashboard } from "@/hooks/useDashboard";
 import { useSettings }  from "@/hooks/useSettings";
+import { useFarmSelection } from "@/hooks/useFarmSelection";
 import Header           from "@/components/layout/Header";
 import KPICard          from "@/components/ui/KPICard";
 import SensorChart      from "@/components/charts/SensorChart";
@@ -26,7 +27,7 @@ import type { TimeRange, Aggregation } from "@/types";
 
 export default function DashboardContent() {
   const { settings }                  = useSettings();
-  const [farm,        setFarm]        = useState(settings.defaultFarm);
+  const { farm, setFarm, farms }      = useFarmSelection();
   const [timeRange,   setTimeRange]   = useState<TimeRange>("-24h");
   const [aggregation] = useState<Aggregation>("15m");
   const tempWarn                      = settings.tempWarn;
@@ -36,7 +37,6 @@ export default function DashboardContent() {
     latest,
     history,
     sprayStats,
-    farms,
     isLoading,
     connectionStatus,
     lastUpdated,

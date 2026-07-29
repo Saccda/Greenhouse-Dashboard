@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -9,12 +9,12 @@ import { format, parseISO } from "date-fns";
 import { Thermometer, Droplets, Activity } from "lucide-react";
 import { clsx } from "clsx";
 
-import { swrFetcher, fetchFarms } from "@/lib/api";
+import { swrFetcher } from "@/lib/api";
 import { calcStats, fmt } from "@/lib/stats";
-import { useSettings } from "@/hooks/useSettings";
+import { useFarmSelection } from "@/hooks/useFarmSelection";
 import Header from "@/components/layout/Header";
 import KPICard from "@/components/ui/KPICard";
-import type { HistoryResponse, Farm, TimeRange, Aggregation } from "@/types";
+import type { HistoryResponse, TimeRange, Aggregation } from "@/types";
 
 // ── Period options ────────────────────────────────────────────────────────
 const PERIODS = [
@@ -44,14 +44,8 @@ function ChartTooltip({ active, payload, label }: any) {
 
 // ── Main page ─────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { settings } = useSettings();
-  const [farm,   setFarm]   = useState(settings.defaultFarm);
-  const [farms,  setFarms]  = useState<Farm[]>([]);
+  const { farm, setFarm, farms } = useFarmSelection();
   const [period, setPeriod] = useState(PERIODS[0]);
-
-  useEffect(() => {
-    fetchFarms().then((r) => setFarms(r.farms)).catch(console.error);
-  }, []);
 
   const { data: history, isLoading, error } = useSWR<HistoryResponse>(
     `/api/sensors/history?farm=${farm}&range=${period.range}&agg=${period.agg}`,

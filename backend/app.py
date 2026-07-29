@@ -1,8 +1,16 @@
 """
 Greenhouse Monitor — FastAPI backend
 
+Auth model: every route below requires a logged-in session (httpOnly
+`gh_session` cookie) except /api/health and /api/auth/* themselves — see
+services/auth_service.py and each router's `dependencies=[...]`.
+
 Endpoints:
-  GET  /api/health
+  GET  /api/health                (public — liveness probe)
+  POST /api/auth/login            (public)
+  POST /api/auth/register         (public)
+  GET  /api/auth/me
+  POST /api/auth/logout
   GET  /api/farms/
   GET  /api/farms/{farm_id}
   GET  /api/sensors/latest?farm=kampot
@@ -10,12 +18,12 @@ Endpoints:
   GET  /api/sensors/spray-stats?farm=kampot
   GET  /api/notifications/status
   GET  /api/notifications/history
-  POST /api/notifications/test
-  POST /api/notifications/check-now
+  POST /api/notifications/test        (owner/developer)
+  POST /api/notifications/check-now   (owner/developer)
   GET  /api/notifications/log
   GET  /api/notifications/log/export
   GET  /api/notifications/log/summary
-  GET  /docs   (Swagger UI)
+  GET  /docs   (Swagger UI — local dev only, FLASK_ENV=development)
 
 Run:
   cd backend
@@ -25,8 +33,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from limits import RateLimitItemPerMinute
+from limits.storage import MemoryStorage
+from limits.strategies import FixedWindowRateLimiter
+from starlette.middleware.base import BaseHTTPMiddleware
 import uvicorn
 
 import config
@@ -69,11 +82,19 @@ async def lifespan(_: FastAPI):
 
 # ── FastAPI app ───────────────────────────────────────────────────────────
 
+# Swagger/ReDoc/OpenAPI schema publicly document every endpoint, including
+# ones that only differ from "open" by an auth check — don't hand that map
+# out in production. Still available in local dev (FLASK_ENV=development).
+_docs_enabled = config.FLASK_ENV == "development"
+
 app = FastAPI(
     title="Greenhouse Monitor API",
     version="0.1.0",
     description="Real-time IoT monitoring dashboard for pepper farms",
     lifespan=lifespan,
+    docs_url=  "/docs"        if _docs_enabled else None,
+    redoc_url= "/redoc"       if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
 )
 
 app.add_middleware(
@@ -83,6 +104,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# General per-IP abuse protection on top of auth (which only stops
+# *unauthenticated* access) — an authenticated account hammering the API,
+# or scraping the CSV export, still gets throttled. Login has its own
+# stricter per-username lockout in auth_service.py; this is the broad net.
+#
+# Hand-rolled rather than slowapi's ASGI middleware: slowapi identifies the
+# matched route by walking app.routes and matching each one by hand, which
+# breaks on this FastAPI version — routes added via include_router() show up
+# as an internal `_IncludedRouter` wrapper slowapi doesn't recognize, so it
+# silently treated everything except the one route declared directly on
+# `app` as exempt (verified directly — every request passed, uncapped).
+# This uses the same underlying `limits` library slowapi wraps, just without
+# the route-matching step: one global per-IP counter, no per-route lookup to
+# get wrong.
+_rate_limit    = RateLimitItemPerMinute(120)
+_rate_limiter  = FixedWindowRateLimiter(MemoryStorage())
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        if not _rate_limiter.hit(_rate_limit, client_ip):
+            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+        return await call_next(request)
+
+
+app.add_middleware(RateLimitMiddleware)
 
 app.include_router(sensors_router)
 app.include_router(farms_router)

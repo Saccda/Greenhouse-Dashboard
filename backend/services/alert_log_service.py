@@ -92,7 +92,7 @@ def log_alert(
 
 
 def get_logs(
-    farm_id:    str | None = None,
+    farm_id:    str | list[str] | None = None,
     alert_type: str | None = None,
     event:      str | None = None,
     days:       int        = 7,
@@ -100,12 +100,19 @@ def get_logs(
 ) -> list[dict]:
     """
     Return alert log rows as dicts, newest first.
-    All filters are optional.
+    All filters are optional. farm_id accepts a single farm, a list of farms
+    (e.g. restricting an unscoped query to a caller's allowed farms), or None.
     """
     clauses = [f"created_at >= datetime('now', '-{days} days')"]
     params:  list = []
 
-    if farm_id:
+    if isinstance(farm_id, list):
+        if farm_id:
+            clauses.append(f"farm_id IN ({','.join('?' * len(farm_id))})")
+            params.extend(farm_id)
+        else:
+            clauses.append("1=0")   # scoped to zero farms -> match nothing, not everything
+    elif farm_id:
         clauses.append("farm_id = ?")
         params.append(farm_id)
     if alert_type:
@@ -127,28 +134,41 @@ def get_logs(
     return [dict(r) for r in rows]
 
 
-def get_summary(days: int = 30) -> dict:
+def get_summary(days: int = 30, farm_ids: list[str] | None = None) -> dict:
     """
     Aggregated counts useful for the analytics page.
     Returns counts by alert_type and by event type.
+    farm_ids restricts the aggregation to those farms; None means unrestricted
+    (only pass a caller's own allowed-farms list here, never blindly "all").
     """
+    farm_clause = ""
+    farm_params: list = []
+    if farm_ids is not None:
+        if farm_ids:
+            farm_clause = f"AND farm_id IN ({','.join('?' * len(farm_ids))})"
+            farm_params = list(farm_ids)
+        else:
+            farm_clause = "AND 1=0"   # scoped to zero farms -> match nothing
+
     with _conn() as con:
-        by_type = con.execute("""
+        by_type = con.execute(f"""
             SELECT alert_type, event, COUNT(*) as count
             FROM alert_log
             WHERE created_at >= datetime('now', ?)
               AND event != 'reminder'
+              {farm_clause}
             GROUP BY alert_type, event
             ORDER BY alert_type, event
-        """, (f"-{days} days",)).fetchall()
+        """, (f"-{days} days", *farm_params)).fetchall()
 
-        avg_duration = con.execute("""
+        avg_duration = con.execute(f"""
             SELECT alert_type, ROUND(AVG(duration_min), 1) as avg_min, COUNT(*) as resolved_count
             FROM alert_log
             WHERE event = 'resolved'
               AND created_at >= datetime('now', ?)
+              {farm_clause}
             GROUP BY alert_type
-        """, (f"-{days} days",)).fetchall()
+        """, (f"-{days} days", *farm_params)).fetchall()
 
     return {
         "by_type":     [dict(r) for r in by_type],

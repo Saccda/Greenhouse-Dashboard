@@ -6,17 +6,18 @@
  *  - latest readings + alerts : every 15 s  (sensor data freshness)
  *  - history time-series      : every 30 s  (chart doesn't need sub-30s updates)
  *  - spray stats              : every 30 s
- *  - farms list               : once on mount (static config)
+ *
+ * Farm list/selection is the caller's job (see useFarmSelection) — this
+ * hook only fetches data for whichever farm it's given.
  */
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import useSWR from "swr";
 
-import { swrFetcher, fetchFarms } from "@/lib/api";
+import { swrFetcher } from "@/lib/api";
 import type {
   LatestResponse,
   HistoryResponse,
   SprayStatsResponse,
-  Farm,
   TimeRange,
   Aggregation,
 } from "@/types";
@@ -33,7 +34,6 @@ interface UseDashboardReturn {
   latest:           LatestResponse       | undefined;
   history:          HistoryResponse      | undefined;
   sprayStats:       SprayStatsResponse   | undefined;
-  farms:            Farm[];
   isLoading:        boolean;
   error:            Error | null;
   connectionStatus: "online" | "offline" | "loading";
@@ -48,8 +48,6 @@ export function useDashboard({
   tempWarn = 30,
   humWarn  = 70,
 }: UseDashboardOptions): UseDashboardReturn {
-
-  const [farms, setFarms] = useState<Farm[]>([]);
 
   // ── SWR keys — change triggers automatic refetch ──────────────────────
   const latestKey  = `/api/sensors/latest?farm=${farm}&temp_warn=${tempWarn}&hum_warn=${humWarn}`;
@@ -79,13 +77,6 @@ export function useDashboard({
     revalidateOnFocus: false,
   });
 
-  // ── Load farm list once ───────────────────────────────────────────────
-  useEffect(() => {
-    fetchFarms()
-      .then((r) => setFarms(r.farms))
-      .catch(console.error);
-  }, []);
-
   // ── Derived state ─────────────────────────────────────────────────────
   const error            = latestError ?? historyError ?? null;
   const isLoading        = latestLoading || historyLoading;
@@ -102,7 +93,6 @@ export function useDashboard({
     latest,
     history,
     sprayStats,
-    farms,
     isLoading,
     error,
     connectionStatus,

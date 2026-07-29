@@ -34,12 +34,7 @@ interface ManagedUser {
   display_name: string | null;
 }
 
-function authHeaders(token: string | null): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
 
 function Section({ title, icon: Icon, children, className }: {
   title: string; icon: React.ElementType; children: React.ReactNode; className?: string;
@@ -97,7 +92,7 @@ function InfoRow({ label, value, mono = false, isLink = false }: {
 
 export default function SettingsPage() {
   const { settings, update } = useSettings();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const canWrite = !!user && user.role !== "pending";
   const canManage = !!user && user.role === "owner";
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -137,7 +132,7 @@ export default function SettingsPage() {
   const { data: usersData, error: usersError, mutate: mutateUsers } = useSWR<{ users: ManagedUser[] }>(
     canManage ? "/api/users" : null,
     (path: string) =>
-      fetch(`${API_BASE}${path}`, { headers: authHeaders(token) }).then((r) => {
+      fetch(`${API_BASE}${path}`, { credentials: "include" }).then((r) => {
         if (!r.ok) throw new Error(`${r.status}`);
         return r.json();
       }),
@@ -158,9 +153,10 @@ export default function SettingsPage() {
     setCreateError(null);
     try {
       const res = await fetch(`${API_BASE}/api/users`, {
-        method:  "POST",
-        headers: authHeaders(token),
-        body:    JSON.stringify({ username: newUsername, password: newPassword, role: newRole }),
+        method:      "POST",
+        headers:     JSON_HEADERS,
+        credentials: "include",
+        body:        JSON.stringify({ username: newUsername, password: newPassword, role: newRole }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -179,25 +175,26 @@ export default function SettingsPage() {
 
   const handleUserRoleChange = useCallback(async (username: string, role: string) => {
     await fetch(`${API_BASE}/api/users/${encodeURIComponent(username)}`, {
-      method:  "PATCH",
-      headers: authHeaders(token),
-      body:    JSON.stringify({ role }),
+      method:      "PATCH",
+      headers:     JSON_HEADERS,
+      credentials: "include",
+      body:        JSON.stringify({ role }),
     });
     mutateUsers();
-  }, [token, mutateUsers]);
+  }, [mutateUsers]);
 
   const handleDeleteUser = useCallback(async (username: string) => {
     if (!confirm(`Delete user "${username}"? This can't be undone.`)) return;
     const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(username)}`, {
-      method:  "DELETE",
-      headers: authHeaders(token),
+      method:      "DELETE",
+      credentials: "include",
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
       alert(body?.detail ?? `Failed to delete (${res.status})`);
     }
     mutateUsers();
-  }, [token, mutateUsers]);
+  }, [mutateUsers]);
 
   const [resetTarget, setResetTarget] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
@@ -207,9 +204,10 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!resetTarget) return;
     const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(resetTarget)}`, {
-      method:  "PATCH",
-      headers: authHeaders(token),
-      body:    JSON.stringify({ password: resetPassword }),
+      method:      "PATCH",
+      headers:     JSON_HEADERS,
+      credentials: "include",
+      body:        JSON.stringify({ password: resetPassword }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -224,7 +222,7 @@ export default function SettingsPage() {
   const handleTestTelegram = async () => {
     setTestState("sending");
     try {
-      const r = await fetch(`${API_BASE}/api/notifications/test`, { method: "POST" });
+      const r = await fetch(`${API_BASE}/api/notifications/test`, { method: "POST", credentials: "include" });
       const j = await r.json();
       setTestState(j.success ? "ok" : "fail");
     } catch {
@@ -236,7 +234,7 @@ export default function SettingsPage() {
   const handleCheckNow = async () => {
     setCheckState("running");
     try {
-      await fetch(`${API_BASE}/api/notifications/check-now`, { method: "POST" });
+      await fetch(`${API_BASE}/api/notifications/check-now`, { method: "POST", credentials: "include" });
       await reloadNotif();
     } catch { /* ignore */ }
     setCheckState("done");
@@ -409,10 +407,11 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 onClick={handleTestTelegram}
-                disabled={!notif?.telegram_configured || testState === "sending"}
+                disabled={!canWrite || !notif?.telegram_configured || testState === "sending"}
+                title={!canWrite ? "Requires an approved owner/developer account" : undefined}
                 className={clsx(
                   "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all border",
-                  !notif?.telegram_configured
+                  !canWrite || !notif?.telegram_configured
                     ? "opacity-40 cursor-not-allowed border-surface-border text-slate-500"
                     : testState === "ok"
                     ? "border-brand-green/30 bg-brand-green/10 text-brand-green"
@@ -429,10 +428,13 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={handleCheckNow}
-                disabled={checkState === "running"}
+                disabled={!canWrite || checkState === "running"}
+                title={!canWrite ? "Requires an approved owner/developer account" : undefined}
                 className={clsx(
                   "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all border",
-                  checkState === "done"
+                  !canWrite
+                    ? "opacity-40 cursor-not-allowed border-surface-border text-slate-500"
+                    : checkState === "done"
                     ? "border-brand-green/30 bg-brand-green/10 text-brand-green"
                     : "border-surface-bright text-slate-300 hover:text-slate-100 hover:border-brand-green/40",
                 )}

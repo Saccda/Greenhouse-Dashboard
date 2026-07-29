@@ -4,14 +4,19 @@
 import csv
 import io
 from datetime import datetime
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Depends, Query, Response
 
 import config
+from services import auth_service
 from services import telegram_service as telegram
 from services import alert_checker
 from services import alert_log_service as alert_log
 
-router = APIRouter(prefix="/api/notifications", tags=["notifications"])
+router = APIRouter(
+    prefix="/api/notifications",
+    tags=["notifications"],
+    dependencies=[Depends(auth_service.require_auth)],
+)
 
 
 @router.get("/status")
@@ -27,7 +32,7 @@ def get_history() -> dict:
 
 
 @router.post("/test")
-def send_test() -> dict:
+def send_test(_user: dict = Depends(auth_service.require_write_access)) -> dict:
     """Send a test Telegram message to verify the integration."""
     if not telegram.is_configured():
         return {
@@ -49,13 +54,26 @@ def send_test() -> dict:
 
 
 @router.post("/check-now")
-def trigger_check() -> dict:
+def trigger_check(_user: dict = Depends(auth_service.require_write_access)) -> dict:
     """Manually trigger an immediate alert check (useful for testing thresholds)."""
     try:
         alert_checker.run_all_checks()
         return {"success": True, "detail": "Check completed — see /history for any new alerts"}
     except Exception as exc:
         return {"success": False, "detail": str(exc)}
+
+
+def _farm_filter(user: dict, farm: str | None) -> str | list[str] | None:
+    """
+    Resolve the effective farm filter for a log query: a specific farm (after
+    checking access), or the caller's full allowed-farms list when no farm
+    was requested (so an unscoped query never shows farms outside their
+    access), or None if the caller is genuinely unrestricted.
+    """
+    if farm is not None:
+        auth_service.require_farm_access(user, farm)
+        return farm
+    return user.get("farms")
 
 
 @router.get("/log")
@@ -65,6 +83,7 @@ def get_log(
     event:      str | None = Query(default=None),
     days:       int        = Query(default=7,  ge=1, le=365),
     limit:      int        = Query(default=500, ge=1, le=2000),
+    user:       dict       = Depends(auth_service.require_auth),
 ) -> dict:
     """
     Persistent alert log from SQLite.
@@ -72,7 +91,7 @@ def get_log(
     event (alert|reminder|resolved), and days back.
     """
     rows = alert_log.get_logs(
-        farm_id    = farm,
+        farm_id    = _farm_filter(user, farm),
         alert_type = alert_type,
         event      = event,
         days       = days,
@@ -87,13 +106,14 @@ def export_log(
     alert_type: str | None = Query(default=None, alias="type"),
     event:      str | None = Query(default=None),
     days:       int        = Query(default=7, ge=1, le=365),
+    user:       dict       = Depends(auth_service.require_auth),
 ) -> Response:
     """
     Download the persistent alert log as CSV. Same filters as /log,
     but not paginated — returns every matching row for the period.
     """
     rows = alert_log.get_logs(
-        farm_id    = farm,
+        farm_id    = _farm_filter(user, farm),
         alert_type = alert_type,
         event      = event,
         days       = days,
@@ -132,6 +152,7 @@ def export_log(
 @router.get("/log/summary")
 def get_log_summary(
     days: int = Query(default=30, ge=1, le=365),
+    user: dict = Depends(auth_service.require_auth),
 ) -> dict:
     """Aggregated alert counts and average durations for the analytics page."""
-    return alert_log.get_summary(days=days)
+    return alert_log.get_summary(days=days, farm_ids=user.get("farms"))

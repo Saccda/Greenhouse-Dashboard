@@ -119,6 +119,19 @@ def get_today_spray_stats(df: pd.DataFrame) -> dict[str, Any]:
     }
 
 
+def estimate_water_liters(total_spray_minutes: float, fogger_spec: dict | None) -> float | None:
+    """
+    total_spray_minutes * lines * foggers_per_line * flow_lpm_per_fogger.
+    Assumes every fogger fires whenever the spray relay is on (one relay/pump
+    drives the whole manifold, no per-line control). Returns None when the
+    farm's fogger_spec isn't configured yet (see config.FARMS).
+    """
+    if not fogger_spec:
+        return None
+    lpm = fogger_spec["lines"] * fogger_spec["foggers_per_line"] * fogger_spec["flow_lpm_per_fogger"]
+    return round(total_spray_minutes * lpm, 1)
+
+
 def format_duration(minutes: float) -> str:
     """Human-readable duration string."""
     if minutes < 1:

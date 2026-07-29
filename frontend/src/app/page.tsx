@@ -10,12 +10,14 @@ import {
   MapPin, Clock, Thermometer, Droplets, Cpu,
 } from "lucide-react";
 
-import { swrFetcher, fetchFarms } from "@/lib/api";
+import { swrFetcher } from "@/lib/api";
 import { useTheme } from "@/hooks/useTheme";
-import { useSettings } from "@/hooks/useSettings";
+import { useFarmSelection } from "@/hooks/useFarmSelection";
 import WeatherWidget from "@/components/weather/WeatherWidget";
 import type { LatestResponse, Farm } from "@/types";
 
+// Campus redirects straight to /scada (see useFarmSelection.ts) — it never
+// renders this landing page, so these cards are only ever Kampot/Kep's.
 const SECTIONS = [
   { href: "/overview",   label: "Overview",   sub: "How the system works",  icon: Info            },
   { href: "/dashboard",  label: "Dashboard",  sub: "Live sensor readings",  icon: LayoutDashboard },
@@ -131,15 +133,15 @@ function FarmAnnotation({ farm }: { farm: Farm }) {
 
 export default function HomePage() {
   const { isDark } = useTheme();
-  const { settings } = useSettings();
+  const { farm: selectedFarmId, setFarm: setSelectedFarmId, farms } = useFarmSelection();
 
-  const [query,          setQuery]          = useState("");
-  const [farms,          setFarms]          = useState<Farm[]>([]);
-  const [selectedFarmId, setSelectedFarmId] = useState(settings.defaultFarm);
-  const [imgError,       setImgError]       = useState(false);
+  const [query,    setQuery]    = useState("");
+  const [imgError, setImgError] = useState(false);
 
-  // Compute left column width so 4 rows of aspect-square cards fill the exact height.
+  // Compute left column width so SECTIONS' rows of aspect-square cards fill
+  // the exact height (2 cols — update this if SECTIONS' length changes).
   // The image panel gets whatever remains via flex-1.
+  const CARD_ROWS = Math.ceil(SECTIONS.length / 2);
   const leftPanelRef  = useRef<HTMLDivElement>(null);
   const [leftWidth,      setLeftWidth]      = useState(320);
   const [cardsGridHeight, setCardsGridHeight] = useState(300);
@@ -152,7 +154,7 @@ export default function HomePage() {
       const gap = 12; // gap-3
       // Cards take ~65% of panel height, leaving ~35% for the weather widget
       const cardsH  = Math.floor(h * 0.65);
-      const cardH   = (cardsH - 2 * gap) / 3;
+      const cardH   = (cardsH - (CARD_ROWS - 1) * gap) / CARD_ROWS;
       setLeftWidth(Math.max(150, Math.round(2 * cardH + gap)));
       setCardsGridHeight(cardsH);
     };
@@ -160,10 +162,6 @@ export default function HomePage() {
     ro.observe(el);
     compute();
     return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    fetchFarms().then((r) => setFarms(r.farms)).catch(() => {});
   }, []);
 
   const { data: alertData } = useSWR<AlertLogResponse>(
@@ -351,8 +349,8 @@ export default function HomePage() {
         >
           {/* Navigation cards grid */}
           <div
-            className="grid grid-cols-2 grid-rows-3 gap-3 shrink-0"
-            style={{ height: cardsGridHeight }}
+            className="grid grid-cols-2 gap-3 shrink-0"
+            style={{ height: cardsGridHeight, gridTemplateRows: `repeat(${CARD_ROWS}, 1fr)` }}
           >
             {filtered.map(({ href, label, sub, icon: Icon }) => {
               const isAlertLog = href === "/alert-log";

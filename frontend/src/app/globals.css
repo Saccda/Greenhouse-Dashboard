@@ -184,8 +184,7 @@ html, body {
 .light header { border-bottom-color: #c8dccb; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   HMI / SCADA PROCESS MIMIC — theme tokens
-   Used by ProcessMimic SVG and the Controller HMI bottom panels.
+   HMI theme tokens — used by the Control page's Controller HMI panel.
 ═══════════════════════════════════════════════════════════════════════════ */
 
 :root, .dark {

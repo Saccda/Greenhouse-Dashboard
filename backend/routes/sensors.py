@@ -2,7 +2,7 @@
 /api/sensors  — live readings, history, spray stats, health
 """
 from datetime import datetime
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
 
 import config
 from schemas import (
@@ -11,10 +11,18 @@ from schemas import (
     SprayStatsResponse, SprayStats, SprayEvent,
     HealthResponse,
 )
+from services import auth_service
 from services import influxdb_service as db
 from services import spray_analysis
 
-router = APIRouter(prefix="/api/sensors", tags=["sensors"])
+# Deny-by-default: every route on this router requires a logged-in session
+# unless explicitly overridden — a new endpoint added here is protected
+# automatically instead of relying on remembering to add the dependency.
+router = APIRouter(
+    prefix="/api/sensors",
+    tags=["sensors"],
+    dependencies=[Depends(auth_service.require_auth)],
+)
 
 
 def _measurement(farm_id: str) -> str:
@@ -31,7 +39,9 @@ def get_latest(
     farm:      str   = Query(default=config.DEFAULT_FARM),
     temp_warn: float = Query(default=config.DEFAULT_TEMP_WARN),
     hum_warn:  float = Query(default=config.DEFAULT_HUM_WARN),
+    user:      dict  = Depends(auth_service.require_auth),
 ) -> LatestResponse:
+    auth_service.require_farm_access(user, farm)
     measurement  = _measurement(farm)
     raw_readings = db.get_latest_readings(measurement)
 
@@ -89,7 +99,9 @@ def get_history(
     agg:        str            = Query(default=config.DEFAULT_AGGREGATION),
     start_date: str | None     = Query(default=None, description="YYYY-MM-DD absolute start"),
     end_date:   str | None     = Query(default=None, description="YYYY-MM-DD absolute end"),
+    user:       dict           = Depends(auth_service.require_auth),
 ) -> HistoryResponse:
+    auth_service.require_farm_access(user, farm)
     measurement = _measurement(farm)
     raw_series  = db.get_history(measurement, range, agg, start_date, end_date)
 
@@ -108,7 +120,9 @@ def get_spray_stats(
     farm:       str        = Query(default=config.DEFAULT_FARM),
     start_date: str | None = Query(default=None, description="YYYY-MM-DD absolute start"),
     end_date:   str | None = Query(default=None, description="YYYY-MM-DD absolute end"),
+    user:       dict       = Depends(auth_service.require_auth),
 ) -> SprayStatsResponse:
+    auth_service.require_farm_access(user, farm)
     measurement = _measurement(farm)
 
     if start_date and end_date:
@@ -131,12 +145,15 @@ def get_spray_stats(
         for e in raw_stats.get("spray_events", [])
     ]
 
+    fogger_spec = config.FARMS.get(farm, {}).get("fogger_spec")
+
     stats = SprayStats(
         spray_events=events,
         total_sprays=raw_stats["total_sprays"],
         total_spray_minutes=raw_stats["total_spray_minutes"],
         avg_spray_minutes=raw_stats["avg_spray_minutes"],
         total_spray_display=spray_analysis.format_duration(raw_stats["total_spray_minutes"]),
+        estimated_water_liters=spray_analysis.estimate_water_liters(raw_stats["total_spray_minutes"], fogger_spec),
         data_status=raw_stats["data_status"],
         last_data_time=raw_stats.get("last_data_time"),
     )

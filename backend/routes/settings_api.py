@@ -10,7 +10,11 @@ from pydantic import BaseModel, Field
 from services import auth_service
 from services import settings_service
 
-router = APIRouter(prefix="/api/settings", tags=["settings"])
+router = APIRouter(
+    prefix="/api/settings",
+    tags=["settings"],
+    dependencies=[Depends(auth_service.require_auth)],
+)
 
 
 class ThresholdPayload(BaseModel):

@@ -58,13 +58,14 @@ export interface SprayEvent {
 }
 
 export interface SprayStats {
-  spray_events:         SprayEvent[];
-  total_sprays:          number;
-  total_spray_minutes:   number;
-  avg_spray_minutes:     number;
-  total_spray_display:   string;
-  data_status:           "fresh" | "stale" | "no_data";
-  last_data_time:        string | null;
+  spray_events:            SprayEvent[];
+  total_sprays:             number;
+  total_spray_minutes:      number;
+  avg_spray_minutes:        number;
+  total_spray_display:      string;
+  estimated_water_liters:   number | null;   // null when the farm's fogger layout isn't configured yet
+  data_status:              "fresh" | "stale" | "no_data";
+  last_data_time:           string | null;
 }
 
 export interface SprayStatsResponse {

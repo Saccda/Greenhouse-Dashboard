@@ -13,7 +13,7 @@ import config
 from services import auth_service
 from services import setpoint_service
 
-router = APIRouter(tags=["setpoint"])
+router = APIRouter(tags=["setpoint"], dependencies=[Depends(auth_service.require_auth)])
 
 
 class SetpointRequest(BaseModel):
@@ -24,18 +24,20 @@ class SetpointRequest(BaseModel):
 
 
 @router.get("/api/setpoint")
-def get_setpoints(farm: str) -> dict:
-    """Last-sent setpoint per relay for this farm. Public — viewing stays open."""
+def get_setpoints(farm: str, user: dict = Depends(auth_service.require_auth)) -> dict:
+    """Last-sent setpoint per relay for this farm."""
     if farm not in config.FARMS:
         raise HTTPException(status_code=400, detail=f"Unknown farm '{farm}'")
+    auth_service.require_farm_access(user, farm)
     return setpoint_service.get(farm)
 
 
 @router.post("/api/setpoint")
-async def send_setpoint(body: SetpointRequest, _user: dict = Depends(auth_service.require_write_access)):
+async def send_setpoint(body: SetpointRequest, user: dict = Depends(auth_service.require_write_access)):
     """Proxy a setpoint command to Node-RED, then persist it if the send succeeded."""
     if body.farm not in config.FARMS:
         raise HTTPException(status_code=400, detail=f"Unknown farm '{body.farm}'")
+    auth_service.require_farm_access(user, body.farm)
 
     url = f"{config.NODE_RED_URL}/api/setpoint"
     try:

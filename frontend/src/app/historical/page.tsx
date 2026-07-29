@@ -4,14 +4,14 @@ import useSWR from "swr";
 import { format, subDays, parseISO } from "date-fns";
 import { CalendarDays, CloudDrizzle } from "lucide-react";
 
-import { swrFetcher, fetchFarms } from "@/lib/api";
+import { swrFetcher } from "@/lib/api";
 import Header from "@/components/layout/Header";
 import SensorChart from "@/components/charts/SensorChart";
 import SprayEventsTable from "@/components/dashboard/SprayEventsTable";
 import { DateRangePicker, AggregationDropdown, type RangePreset } from "@/components/historical/DateRangeControls";
-import { useSettings } from "@/hooks/useSettings";
+import { useFarmSelection } from "@/hooks/useFarmSelection";
 import { fmt } from "@/lib/stats";
-import type { HistoryResponse, SprayStatsResponse, Farm, Aggregation } from "@/types";
+import type { HistoryResponse, SprayStatsResponse, Aggregation } from "@/types";
 
 const today    = () => format(new Date(), "yyyy-MM-dd");
 const nDaysAgo = (n: number) => format(subDays(new Date(), n), "yyyy-MM-dd");
@@ -51,16 +51,10 @@ function SprayStat({ label, value }: { label: string; value: string }) {
 }
 
 export default function HistoricalPage() {
-  const { settings } = useSettings();
-  const [farm,  setFarm]  = useState(settings.defaultFarm);
-  const [farms, setFarms] = useState<Farm[]>([]);
+  const { farm, setFarm, farms } = useFarmSelection();
   const [start, setStart] = useState(nDaysAgo(6));
   const [end,   setEnd]   = useState(today());
   const [aggMode, setAggMode] = useState<"auto" | Aggregation>("auto");
-
-  useEffect(() => {
-    fetchFarms().then((r) => setFarms(r.farms)).catch(console.error);
-  }, []);
 
   const computedAgg = useMemo(() => autoAgg(start, end), [start, end]);
   const aggOptions  = useMemo(() => aggOptionsFor(start, end), [start, end]);
@@ -154,7 +148,7 @@ export default function HistoricalPage() {
 
           {/* Summary KPIs */}
           {!sprayLoading && stats && stats.data_status !== "no_data" && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <SprayStat label="Total Sprays"    value={String(stats.total_sprays)} />
               <SprayStat label="Total Duration"  value={
                 stats.total_spray_minutes < 60
@@ -162,6 +156,11 @@ export default function HistoricalPage() {
                   : `${fmt(stats.total_spray_minutes / 60, 1)}h`
               } />
               <SprayStat label="Avg Duration"    value={`${fmt(stats.avg_spray_minutes, 1)}m`} />
+              <SprayStat label="Est. Water Use"  value={
+                stats.estimated_water_liters != null
+                  ? `${fmt(stats.estimated_water_liters, 0)} L`
+                  : "Not configured"
+              } />
             </div>
           )}
 

@@ -18,6 +18,7 @@ import {
   LogIn,
   LogOut,
   Info,
+  Gauge,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTheme } from "@/hooks/useTheme";
@@ -32,6 +33,11 @@ const NAV_ITEMS = [
   { href: "/historical", label: "Historical", icon: History         },
   { href: "/alert-log",  label: "Alert Log",  icon: Bell            },
 ];
+
+// Campus is a dedicated control interface, not a farm-monitoring dashboard —
+// SCADA is its *only* page (see useFarmSelection.ts, which also redirects
+// any other page to /scada while campus is selected).
+const SCADA_ITEM = { href: "/scada", label: "SCADA", icon: Gauge };
 
 function getInitials(name: string): string {
   return (
@@ -48,6 +54,7 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
 
   const initials = getInitials(user?.username || settings.userName || "ME Team");
+  const navItems = settings.defaultFarm === "campus" ? [SCADA_ITEM] : NAV_ITEMS;
 
   useEffect(() => { setMenuOpen(false); }, [pathname, collapsed]);
   useEffect(() => {
@@ -88,7 +95,7 @@ export default function Sidebar() {
 
       {/* ── Navigation ───────────────────────────────────────── */}
       <nav className="flex-1 py-4 flex flex-col gap-1 px-3">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link

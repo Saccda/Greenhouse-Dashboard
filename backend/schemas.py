@@ -67,13 +67,14 @@ class SprayEvent(BaseModel):
 
 
 class SprayStats(BaseModel):
-    spray_events:         list[SprayEvent]
-    total_sprays:          int
-    total_spray_minutes:   float
-    avg_spray_minutes:     float
-    total_spray_display:   str
-    data_status:           str   # "fresh" | "stale" | "no_data"
-    last_data_time:        Optional[str]
+    spray_events:            list[SprayEvent]
+    total_sprays:             int
+    total_spray_minutes:      float
+    avg_spray_minutes:        float
+    total_spray_display:      str
+    estimated_water_liters:   Optional[float]   # null when the farm's fogger_spec isn't configured
+    data_status:              str   # "fresh" | "stale" | "no_data"
+    last_data_time:           Optional[str]
 
 
 class SprayStatsResponse(BaseModel):
