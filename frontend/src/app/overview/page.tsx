@@ -357,6 +357,8 @@ function VideoCard({ src, title }: { src: string; title: string }) {
 const VIDEOS = [
   { src: "/InsideFarm.MOV", title: "Inside the farm" },
   { src: "/OutsideFarm.mp4", title: "Around the farm" },
+  { src: "/InsideFarm_Zoom Out View.MOV", title: "Inside the farm — zoomed out" },
+  { src: "/OutsideFarm_Zoom Out View.MOV", title: "Around the farm — zoomed out" },
 ];
 
 const PID_SRC = "/P&ID System Diagram.png";
