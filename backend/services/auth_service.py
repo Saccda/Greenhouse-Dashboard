@@ -2,14 +2,24 @@
 Password hashing + httpOnly-cookie sessions — stdlib only (hashlib/hmac/secrets).
 
 Token shape:  base64url(json payload) + "." + hex HMAC-SHA256 signature
-Payload:      {"u": username, "r": role, "exp": unix_timestamp}
+Payload:      {"u": username, "exp": unix_timestamp}
+
+The token only proves *identity* (who, and is the session still valid) —
+it deliberately does NOT carry role/farms. require_auth looks those up
+fresh from user_service on every request, so a role change or a farm-access
+edit in Settings takes effect on the account's very next request, not
+"next login." (An earlier version embedded role/farms in the token itself;
+that meant an owner restricting someone's farm access in Settings had no
+effect until that person's session happened to expire or they logged out
+and back in — a real gap, not just a theoretical one. Don't reintroduce it.)
 
 The token itself is carried in an httpOnly cookie (see set_session_cookie /
 clear_session_cookie) — never exposed to JS, so it can't be read by an XSS
 payload or lifted via localStorage inspection. No server-side revocation
 list — "logout" only clears the cookie. Acceptable for a 2-3 person
 internal tool; rotating SECRET_KEY invalidates every outstanding session at
-once if a compromise is ever suspected.
+once if a compromise is ever suspected (or a stale one needs forcing out
+right now — e.g. right after tightening someone's farm access).
 """
 from __future__ import annotations
 
@@ -56,18 +66,16 @@ def _sign(payload_b64: str) -> str:
     return hmac.new(config.SECRET_KEY.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
 
 
-def issue_token(username: str, role: str, farms: list[str] | None = None) -> tuple[str, int]:
+def issue_token(username: str) -> tuple[str, int]:
     """Return (token, expires_at_unix_ts)."""
     expires_at = int(time.time()) + config.AUTH_TOKEN_TTL_DAYS * 86400
-    payload = json.dumps(
-        {"u": username, "r": role, "f": farms, "exp": expires_at}, separators=(",", ":")
-    )
+    payload = json.dumps({"u": username, "exp": expires_at}, separators=(",", ":"))
     payload_b64 = base64.urlsafe_b64encode(payload.encode()).decode()
     return f"{payload_b64}.{_sign(payload_b64)}", expires_at
 
 
 def verify_token(token: str) -> dict | None:
-    """Return {"username", "role", "farms"} if valid and unexpired, else None."""
+    """Return {"username"} if valid and unexpired, else None."""
     try:
         payload_b64, signature = token.split(".", 1)
     except ValueError:
@@ -80,7 +88,7 @@ def verify_token(token: str) -> dict | None:
         return None
     if payload.get("exp", 0) < time.time():
         return None
-    return {"username": payload["u"], "role": payload["r"], "farms": payload.get("f")}
+    return {"username": payload["u"]}
 
 
 def login(username: str, password: str) -> tuple[str, str, list[str] | None, int] | None:
@@ -98,9 +106,8 @@ def login(username: str, password: str) -> tuple[str, str, list[str] | None, int
         return None
 
     _login_attempts.pop(username, None)
-    farms = user.get("farms")
-    token, expires_at = issue_token(user["username"], user["role"], farms)
-    return token, user["role"], farms, expires_at
+    token, expires_at = issue_token(user["username"])
+    return token, user["role"], user.get("farms"), expires_at
 
 
 def set_session_cookie(response: Response, token: str, expires_at: int) -> None:
@@ -147,7 +154,7 @@ def register(username: str, password: str, email: str, display_name: str) -> tup
     user_service.upsert_user(
         username, "pending", salt_hex, hash_hex, email=email, display_name=display_name, farms=[],
     )
-    token, expires_at = issue_token(username, "pending", [])
+    token, expires_at = issue_token(username)
     return token, "pending", [], expires_at
 
 
@@ -161,13 +168,21 @@ async def require_auth(
     public, so a new endpoint is protected automatically. Use
     require_write_access for setpoints/thresholds, or require_admin for
     anything that manages other user accounts.
+
+    Role and farms are looked up fresh here, not trusted from the token —
+    see the module docstring for why that matters.
     """
     if not gh_session:
         raise HTTPException(status_code=401, detail="Not authenticated")
     claims = verify_token(gh_session)
     if claims is None:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
-    return claims
+
+    user = user_service.get_user(claims["username"])
+    if user is None:
+        raise HTTPException(status_code=401, detail="Account no longer exists")
+
+    return {"username": user["username"], "role": user["role"], "farms": user.get("farms")}
 
 
 async def require_write_access(user: dict = Depends(require_auth)) -> dict:
