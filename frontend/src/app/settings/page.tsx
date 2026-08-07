@@ -29,9 +29,66 @@ interface NotifStatus {
 interface ManagedUser {
   username:     string;
   role:         string;
+  farms:        string[] | null;   // null = unrestricted (sees every farm)
   created_at:   string | null;
   email:        string | null;
   display_name: string | null;
+}
+
+function farmsSummary(farms: string[] | null, allFarms: Farm[]): string {
+  if (farms === null) return "All farms";
+  if (farms.length === 0) return "No farms";
+  return farms
+    .map((id) => allFarms.find((f) => f.id === id)?.display_name ?? id)
+    .join(", ");
+}
+
+/** Shared "All farms" vs "specific farms" picker — used in both the Add User
+ *  form and each existing user's edit panel, so the two stay in sync. */
+function FarmAccessPicker({ farms, mode, selected, onModeChange, onToggle }: {
+  farms:    Farm[];
+  mode:     "all" | "specific";
+  selected: string[];
+  onModeChange: (mode: "all" | "specific") => void;
+  onToggle:     (farmId: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-1.5">
+        {(["all", "specific"] as const).map((m) => (
+          <button
+            key={m} type="button" onClick={() => onModeChange(m)}
+            className={clsx(
+              "px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors",
+              mode === m
+                ? "bg-brand-green/15 text-brand-green border-brand-green/40"
+                : "bg-surface-hover border-surface-bright text-slate-400 hover:text-slate-200",
+            )}
+          >
+            {m === "all" ? "All farms" : "Specific farms"}
+          </button>
+        ))}
+      </div>
+      {mode === "specific" && (
+        <div className="flex flex-wrap gap-3 pt-1">
+          {farms.map((f) => (
+            <label key={f.id} className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(f.id)}
+                onChange={() => onToggle(f.id)}
+                className="accent-brand-green"
+              />
+              {f.display_name}
+            </label>
+          ))}
+          {selected.length === 0 && (
+            <span className="text-[11px] text-amber-500">No farms selected — this account will see nothing.</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
@@ -144,6 +201,8 @@ export default function SettingsPage() {
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole,     setNewRole]     = useState("developer");
+  const [newFarmsMode, setNewFarmsMode] = useState<"all" | "specific">("all");
+  const [newFarmsSelected, setNewFarmsSelected] = useState<string[]>([]);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating,    setCreating]    = useState(false);
 
@@ -156,7 +215,12 @@ export default function SettingsPage() {
         method:      "POST",
         headers:     JSON_HEADERS,
         credentials: "include",
-        body:        JSON.stringify({ username: newUsername, password: newPassword, role: newRole }),
+        body:        JSON.stringify({
+          username: newUsername,
+          password: newPassword,
+          role:     newRole,
+          farms:    newFarmsMode === "all" ? null : newFarmsSelected,
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -165,6 +229,8 @@ export default function SettingsPage() {
       setNewUsername("");
       setNewPassword("");
       setNewRole("developer");
+      setNewFarmsMode("all");
+      setNewFarmsSelected([]);
       mutateUsers();
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create user");
@@ -179,6 +245,16 @@ export default function SettingsPage() {
       headers:     JSON_HEADERS,
       credentials: "include",
       body:        JSON.stringify({ role }),
+    });
+    mutateUsers();
+  }, [mutateUsers]);
+
+  const handleUserFarmsChange = useCallback(async (username: string, farms: string[] | null) => {
+    await fetch(`${API_BASE}/api/users/${encodeURIComponent(username)}`, {
+      method:      "PATCH",
+      headers:     JSON_HEADERS,
+      credentials: "include",
+      body:        JSON.stringify({ farms }),
     });
     mutateUsers();
   }, [mutateUsers]);
@@ -199,6 +275,25 @@ export default function SettingsPage() {
   const [resetTarget, setResetTarget] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [resetError, setResetError] = useState<string | null>(null);
+
+  const [farmsEditTarget,   setFarmsEditTarget]   = useState<string | null>(null);
+  const [farmsEditMode,     setFarmsEditMode]     = useState<"all" | "specific">("all");
+  const [farmsEditSelected, setFarmsEditSelected] = useState<string[]>([]);
+  const [farmsSaving,       setFarmsSaving]       = useState(false);
+
+  const openFarmsEditor = (u: ManagedUser) => {
+    setFarmsEditTarget(u.username);
+    setFarmsEditMode(u.farms === null ? "all" : "specific");
+    setFarmsEditSelected(u.farms ?? []);
+  };
+
+  const handleSaveFarms = async () => {
+    if (!farmsEditTarget) return;
+    setFarmsSaving(true);
+    await handleUserFarmsChange(farmsEditTarget, farmsEditMode === "all" ? null : farmsEditSelected);
+    setFarmsSaving(false);
+    setFarmsEditTarget(null);
+  };
 
   const handleResetUserPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -529,6 +624,18 @@ export default function SettingsPage() {
                     >
                       {creating ? "Adding…" : "Add User"}
                     </button>
+
+                    <div className="w-full space-y-1 pt-1">
+                      <label className="text-[11px] text-slate-500">Farm access</label>
+                      <FarmAccessPicker
+                        farms={farms}
+                        mode={newFarmsMode}
+                        selected={newFarmsSelected}
+                        onModeChange={setNewFarmsMode}
+                        onToggle={(id) => setNewFarmsSelected((prev) =>
+                          prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id])}
+                      />
+                    </div>
                   </form>
                   {createError && (
                     <p className="flex items-center gap-1.5 text-xs text-red-400 mt-3">
@@ -608,6 +715,19 @@ export default function SettingsPage() {
                             <option value="pending">Pending (suspend)</option>
                           </select>
                           <button
+                            onClick={() => openFarmsEditor(u)}
+                            title="Edit farm access"
+                            className={clsx(
+                              "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors max-w-[13rem]",
+                              u.farms !== null && u.farms.length === 0
+                                ? "border-amber-500/40 text-amber-500 bg-amber-500/5"
+                                : "border-surface-bright text-slate-400 hover:text-slate-200 hover:bg-surface-hover",
+                            )}
+                          >
+                            <MapPin size={12} className="shrink-0" />
+                            <span className="truncate">{farmsSummary(u.farms, farms)}</span>
+                          </button>
+                          <button
                             onClick={() => { setResetTarget(u.username); setResetPassword(""); setResetError(null); }}
                             title="Reset password"
                             className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-surface-hover"
@@ -657,6 +777,40 @@ export default function SettingsPage() {
                       </button>
                     </form>
                     {resetError && <p className="text-xs text-red-400 mt-2">{resetError}</p>}
+                  </div>
+                )}
+
+                {/* Farm access inline panel */}
+                {farmsEditTarget && (
+                  <div className="bg-brand-green/5 border border-brand-green/30 rounded-lg p-4">
+                    <h3 className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-3">
+                      Farm access — {farmsEditTarget}
+                    </h3>
+                    <FarmAccessPicker
+                      farms={farms}
+                      mode={farmsEditMode}
+                      selected={farmsEditSelected}
+                      onModeChange={setFarmsEditMode}
+                      onToggle={(id) => setFarmsEditSelected((prev) =>
+                        prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id])}
+                    />
+                    <div className="flex items-center gap-3 mt-3">
+                      <button
+                        type="button"
+                        onClick={handleSaveFarms}
+                        disabled={farmsSaving}
+                        className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-green text-black hover:bg-brand-green/90 disabled:opacity-50"
+                      >
+                        {farmsSaving ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFarmsEditTarget(null)}
+                        className="px-4 py-1.5 rounded-md text-sm font-medium text-slate-400 hover:text-slate-200 border border-surface-border"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
 
