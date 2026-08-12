@@ -664,6 +664,21 @@ export default function SettingsPage() {
                             </p>
                           </div>
                           <button
+                            onClick={() => openFarmsEditor(u)}
+                            title="Edit farm access"
+                            className={clsx(
+                              "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors max-w-[13rem]",
+                              // Unrestricted is the concerning state for a not-yet-reviewed
+                              // account — "No farms" is the correct, safe default here.
+                              u.farms === null
+                                ? "border-amber-500/40 text-amber-500 bg-amber-500/5"
+                                : "border-surface-bright text-slate-400 hover:text-slate-200 hover:bg-surface-hover",
+                            )}
+                          >
+                            <MapPin size={12} className="shrink-0" />
+                            <span className="truncate">{farmsSummary(u.farms, farms)}</span>
+                          </button>
+                          <button
                             onClick={() => handleUserRoleChange(u.username, "developer")}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-brand-green text-black hover:bg-brand-green/90"
                           >
