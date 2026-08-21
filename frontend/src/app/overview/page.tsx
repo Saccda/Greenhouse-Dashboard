@@ -9,6 +9,7 @@ import {
   Zap, Sprout, FlaskConical, Camera, Gauge, Rocket, Sparkles,
 } from "lucide-react";
 import { clsx } from "clsx";
+import SystemFlowDiagram from "@/components/hmi/SystemFlowDiagram";
 
 // ─────────────────────────────────────────────────────────────────────────
 // CDIO phase header — used to anchor each section to the Conceive / Design /
@@ -432,8 +433,6 @@ function PidDiagram() {
 }
 
 function ImplementSection() {
-  const [photoDiagramError, setPhotoDiagramError] = useState(false);
-
   return (
     <section className="space-y-4">
       <PhaseHeader
@@ -453,23 +452,12 @@ function ImplementSection() {
         ))}
       </div>
 
-      {!photoDiagramError && (
-        <div className="bg-surface-card border border-surface-border rounded-xl p-4">
-          <p className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            The System, in Three Parts
-          </p>
-          <div className="relative w-full aspect-[1920/1080] bg-white rounded-lg overflow-hidden">
-            <Image
-              src="/Cooling with Spraying System.png"
-              alt="Spraying system, cooling tank, and control system — the three real installed components"
-              fill
-              sizes="90vw"
-              className="object-contain"
-              onError={() => setPhotoDiagramError(true)}
-            />
-          </div>
-        </div>
-      )}
+      <div className="bg-surface-card border border-surface-border rounded-xl p-4">
+        <p className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          The System, in Three Parts
+        </p>
+        <SystemFlowDiagram />
+      </div>
 
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
