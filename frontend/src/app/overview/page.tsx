@@ -9,7 +9,11 @@ import {
   Zap, Sprout, FlaskConical, Camera, Gauge, Rocket, Sparkles,
 } from "lucide-react";
 import { clsx } from "clsx";
+import useSWR from "swr";
 import SystemFlowDiagram from "@/components/hmi/SystemFlowDiagram";
+import { swrFetcher } from "@/lib/api";
+import { useFarmSelection } from "@/hooks/useFarmSelection";
+import type { LatestResponse } from "@/types";
 
 // ─────────────────────────────────────────────────────────────────────────
 // CDIO phase header — used to anchor each section to the Conceive / Design /
@@ -433,6 +437,11 @@ function PidDiagram() {
 }
 
 function ImplementSection() {
+  const { farm } = useFarmSelection();
+  const { data: latest } = useSWR<LatestResponse>(
+    `/api/sensors/latest?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
+  );
+
   return (
     <section className="space-y-4">
       <PhaseHeader
@@ -456,7 +465,7 @@ function ImplementSection() {
         <p className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
           The System, in Three Parts
         </p>
-        <SystemFlowDiagram />
+        <SystemFlowDiagram relays={latest?.relays ?? []} />
       </div>
 
       <div>

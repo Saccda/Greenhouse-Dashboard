@@ -1,7 +1,7 @@
 "use client";
 import type { RelayStatus } from "@/types";
 import {
-  FlowDots, SprayDroplets, PilotLamp, EquipmentFlowDefs,
+  FlowDots, SprayDroplets, PilotLamp, EquipmentFlowDefs, isRelayOn,
   SPRAY_PUMP_PATH, TANK_PUMP_PATH, TANK_CONTROL_PATH,
 } from "./EquipmentFlowParts";
 
@@ -37,8 +37,8 @@ function ReadoutCard({ temp, hum }: { temp?: number; hum?: number }) {
 }
 
 export default function EquipmentMimic({ relays, temp, hum }: Props) {
-  const r1On = relays.find(r => r.key === "relay1")?.state === "ON";
-  const r3On = relays.find(r => r.key === "relay3")?.state === "ON";
+  const r1On = isRelayOn(relays, "relay1");
+  const r3On = isRelayOn(relays, "relay3");
 
   return (
     <div className="relative w-full rounded-xl overflow-hidden border p-3"

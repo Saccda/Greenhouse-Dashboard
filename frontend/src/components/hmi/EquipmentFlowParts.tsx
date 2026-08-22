@@ -1,6 +1,14 @@
+import type { RelayStatus } from "@/types";
+
 // Shared building blocks for the animated equipment-flow overlay used by both
-// EquipmentMimic (live Control page) and SystemFlowDiagram (static Overview page).
+// EquipmentMimic (Control page) and SystemFlowDiagram (Overview page) — both
+// gate the animation on the same live relay1/relay3 state so "system is on"
+// means the same thing in both places.
 // Kept here so the two stay visually identical without duplicating SVG/animation logic.
+
+export function isRelayOn(relays: RelayStatus[], key: string): boolean {
+  return relays.find(r => r.key === key)?.state === "ON";
+}
 
 /** Centerlines traced from the source SVG's own pipe geometry (path rectangles resolved
  *  through their transform stack, 1440x810 space scaled x4/3) so beads travel exactly along
