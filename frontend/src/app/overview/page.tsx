@@ -441,6 +441,9 @@ function ImplementSection() {
   const { data: latest } = useSWR<LatestResponse>(
     `/api/sensors/latest?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
   );
+  const isOnline = latest?.is_online ?? false;
+  const temp = !isOnline ? undefined : latest?.readings?.temperature?.value;
+  const hum  = !isOnline ? undefined : latest?.readings?.humidity?.value;
 
   return (
     <section className="space-y-4">
@@ -465,7 +468,7 @@ function ImplementSection() {
         <p className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
           The System, in Three Parts
         </p>
-        <SystemFlowDiagram relays={latest?.relays ?? []} />
+        <SystemFlowDiagram relays={latest?.relays ?? []} temp={temp} hum={hum} />
       </div>
 
       <div>

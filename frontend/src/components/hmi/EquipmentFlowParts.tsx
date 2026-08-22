@@ -77,6 +77,32 @@ export function PilotLamp({ cx, cy, r = 20, on, label }: { cx: number; cy: numbe
   );
 }
 
+/** Temperature/humidity readout card, positioned over the spraying-system photo. */
+export function ReadoutCard({ temp, hum }: { temp?: number; hum?: number }) {
+  const tempHigh = (temp ?? 0) > 35;
+  const tempWarn = (temp ?? 0) > 30 && !tempHigh;
+  const tempColor = tempHigh ? "#ef4444" : tempWarn ? "#eab308" : "#f97316";
+  const humColor = (hum ?? 0) > 85 ? "#ef4444" : "#38bdf8";
+  return (
+    <g>
+      <rect x="250" y="392" width="240" height="98" rx="10" fill="white" stroke="#d7e0ea" strokeWidth="2" />
+      <line x1="266" y1="441" x2="474" y2="441" stroke="#eef1f5" strokeWidth="1.5" />
+
+      <circle cx="272" cy="418" r="5" fill={tempColor} />
+      <text x="286" y="423" fontSize="14" fontWeight="600" letterSpacing="0.5" fontFamily="'Segoe UI',system-ui,sans-serif" fill="#5b6b7c">TEMPERATURE</text>
+      <text x="478" y="425" fontSize="23" fontWeight="700" textAnchor="end" fontFamily="'Segoe UI',system-ui,sans-serif" fill={tempColor}>
+        {temp != null ? `${temp.toFixed(1)}°` : "--"}
+      </text>
+
+      <circle cx="272" cy="466" r="5" fill={humColor} />
+      <text x="286" y="471" fontSize="14" fontWeight="600" letterSpacing="0.5" fontFamily="'Segoe UI',system-ui,sans-serif" fill="#5b6b7c">HUMIDITY</text>
+      <text x="478" y="473" fontSize="23" fontWeight="700" textAnchor="end" fontFamily="'Segoe UI',system-ui,sans-serif" fill={humColor}>
+        {hum != null ? `${Math.round(hum)}%` : "--"}
+      </text>
+    </g>
+  );
+}
+
 /** Shared <defs> — gradients for the flow beads/droplets/lamps, plus the pulse/drip keyframes. */
 export function EquipmentFlowDefs() {
   return (
