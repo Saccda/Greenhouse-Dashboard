@@ -219,7 +219,7 @@ export default function AnalyticsPage() {
             />
             <KPICard
               title="Est. Water Use"
-              value={sprayStats_?.estimated_water_liters != null ? fmt(sprayStats_.estimated_water_liters, 0) : "N/A"}
+              value={sprayStats_?.estimated_water_liters != null ? fmt(sprayStats_.estimated_water_liters, 0) : "Not configured"}
               unit={sprayStats_?.estimated_water_liters != null ? "L" : undefined}
               icon={CloudDrizzle}
               subtitle="Based on the farm's fogger spec"
