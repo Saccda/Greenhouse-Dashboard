@@ -118,6 +118,7 @@ def get_history(
 @router.get("/spray-stats", response_model=SprayStatsResponse)
 def get_spray_stats(
     farm:       str        = Query(default=config.DEFAULT_FARM),
+    range:      str | None = Query(default=None, description="Relative range, e.g. -7d — omit for today's stats"),
     start_date: str | None = Query(default=None, description="YYYY-MM-DD absolute start"),
     end_date:   str | None = Query(default=None, description="YYYY-MM-DD absolute end"),
     user:       dict       = Depends(auth_service.require_auth),
@@ -128,6 +129,11 @@ def get_spray_stats(
     if start_date and end_date:
         # Date-range query: pull raw relay3 for the whole window, analyse all events
         raw_df    = db.get_relay3_raw(measurement, start_date=start_date, end_date=end_date)
+        raw_stats = spray_analysis.analyze_spray_events(raw_df)
+    elif range:
+        # Relative-range query (mirrors /history's `range` param) — analyse every event
+        # in the window, not just today's, so 7d/30d selections aren't silently clipped.
+        raw_df    = db.get_relay3_raw(measurement, time_range=range)
         raw_stats = spray_analysis.analyze_spray_events(raw_df)
     else:
         # Default: today's events from the last 24 h of raw data

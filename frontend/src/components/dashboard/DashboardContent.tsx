@@ -23,7 +23,7 @@ import SensorChart      from "@/components/charts/SensorChart";
 import { RelayPanel }   from "@/components/hmi/RelayIndicator";
 import AlertPanel       from "@/components/dashboard/AlertPanel";
 import SprayEventsTable from "@/components/dashboard/SprayEventsTable";
-import type { TimeRange, Aggregation } from "@/types";
+import { TIME_RANGE_OPTIONS, type TimeRange, type Aggregation } from "@/types";
 
 export default function DashboardContent() {
   const { settings }                  = useSettings();
@@ -50,6 +50,8 @@ export default function DashboardContent() {
   const humidity = !isOffline ? latest?.readings?.humidity?.value    : undefined;
 
   const sprayStats_ = sprayStats?.stats;
+  const rangeLabel  = TIME_RANGE_OPTIONS.find((o) => o.value === timeRange)?.label ?? timeRange;
+  const isMultiDay  = timeRange === "-7d" || timeRange === "-30d";
 
   // ── Status (ok / warn / danger) ───────────────────────────────────
   const tempStatus: "ok" | "warn" | "danger" | undefined =
@@ -131,10 +133,10 @@ export default function DashboardContent() {
             status={humStatus}
           />
           <KPICard
-            title="Sprays Today"
+            title="Sprays"
             value={sprayStats_?.total_sprays ?? "—"}
             icon={Droplet}
-            subtitle="Automated irrigation events fired"
+            subtitle={`Automated irrigation events — last ${rangeLabel}`}
             isLoading={isLoading && !sprayStats}
           />
           <KPICard
@@ -153,7 +155,7 @@ export default function DashboardContent() {
             title="Total Spray"
             value={sprayStats_?.total_spray_display ?? "—"}
             icon={Clock}
-            subtitle="Total irrigation time logged today"
+            subtitle={`Total irrigation time — last ${rangeLabel}`}
             isLoading={isLoading && !sprayStats}
           />
         </section>
@@ -211,7 +213,7 @@ export default function DashboardContent() {
           <div className="bg-surface-card border border-surface-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Spray Events (Today)
+                Spray Events ({rangeLabel})
               </h2>
               {sprayStats_?.data_status === "stale" && (
                 <span className="text-[10px] text-status-warning badge-warning px-2 py-0.5 rounded-full">
@@ -222,6 +224,8 @@ export default function DashboardContent() {
             <SprayEventsTable
               stats={sprayStats_}
               isLoading={isLoading && !sprayStats}
+              showDate={isMultiDay}
+              emptyText={`No spray events in the last ${rangeLabel}`}
             />
           </div>
 

@@ -6,7 +6,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { format, parseISO } from "date-fns";
-import { Thermometer, Droplets, Activity } from "lucide-react";
+import { Thermometer, Droplets, Activity, Droplet, Timer, Clock, CloudDrizzle } from "lucide-react";
 import { clsx } from "clsx";
 
 import { swrFetcher } from "@/lib/api";
@@ -14,7 +14,7 @@ import { calcStats, fmt } from "@/lib/stats";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
 import Header from "@/components/layout/Header";
 import KPICard from "@/components/ui/KPICard";
-import type { HistoryResponse, TimeRange, Aggregation } from "@/types";
+import type { HistoryResponse, SprayStatsResponse, TimeRange, Aggregation } from "@/types";
 
 // ── Period options ────────────────────────────────────────────────────────
 const PERIODS = [
@@ -52,6 +52,13 @@ export default function AnalyticsPage() {
     swrFetcher,
     { refreshInterval: 60_000, revalidateOnFocus: false },
   );
+
+  const { data: sprayStats, isLoading: sprayLoading } = useSWR<SprayStatsResponse>(
+    `/api/sensors/spray-stats?farm=${farm}&range=${period.range}`,
+    swrFetcher,
+    { refreshInterval: 60_000, revalidateOnFocus: false },
+  );
+  const sprayStats_ = sprayStats?.stats;
 
   const tempValues = history?.series?.temperature?.map((p) => p.value) ?? [];
   const humValues  = history?.series?.humidity?.map((p) => p.value)    ?? [];
@@ -178,6 +185,45 @@ export default function AnalyticsPage() {
               icon={Activity}
               subtitle="Variability"
               isLoading={loading}
+            />
+          </div>
+        </section>
+
+        {/* Spray stats */}
+        <section>
+          <h2 className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            <CloudDrizzle size={13} className="text-cyan-400" /> Spray Statistics
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <KPICard
+              title="Total Sprays"
+              value={sprayStats_?.total_sprays ?? "—"}
+              icon={Droplet}
+              subtitle={`Irrigation events — ${period.label}`}
+              isLoading={sprayLoading && !sprayStats}
+            />
+            <KPICard
+              title="Avg Duration"
+              value={sprayStats_?.avg_spray_minutes != null ? fmt(sprayStats_.avg_spray_minutes, 1) : "—"}
+              unit="min"
+              icon={Timer}
+              subtitle="Average time per spray cycle"
+              isLoading={sprayLoading && !sprayStats}
+            />
+            <KPICard
+              title="Total Duration"
+              value={sprayStats_?.total_spray_display ?? "—"}
+              icon={Clock}
+              subtitle={`Total irrigation time — ${period.label}`}
+              isLoading={sprayLoading && !sprayStats}
+            />
+            <KPICard
+              title="Est. Water Use"
+              value={sprayStats_?.estimated_water_liters != null ? fmt(sprayStats_.estimated_water_liters, 0) : "N/A"}
+              unit={sprayStats_?.estimated_water_liters != null ? "L" : undefined}
+              icon={CloudDrizzle}
+              subtitle="Based on the farm's fogger spec"
+              isLoading={sprayLoading && !sprayStats}
             />
           </div>
         </section>

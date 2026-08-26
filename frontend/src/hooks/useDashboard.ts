@@ -52,7 +52,7 @@ export function useDashboard({
   // ── SWR keys — change triggers automatic refetch ──────────────────────
   const latestKey  = `/api/sensors/latest?farm=${farm}&temp_warn=${tempWarn}&hum_warn=${humWarn}`;
   const historyKey = `/api/sensors/history?farm=${farm}&range=${timeRange}&agg=${aggregation}`;
-  const sprayKey   = `/api/sensors/spray-stats?farm=${farm}`;
+  const sprayKey   = `/api/sensors/spray-stats?farm=${farm}&range=${timeRange}`;
 
   const {
     data: latest, error: latestError,
