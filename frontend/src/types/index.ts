@@ -9,13 +9,14 @@ export interface FieldReading {
 export type LatestReadings = Record<string, FieldReading>;
 
 export interface RelayStatus {
-  key:         string;           // "relay1" | "relay2" | "relay3"
-  label:       string;           // e.g. "Cooling System"
-  icon:        string;           // lucide icon name
-  description: string;           // short subtitle shown in the HMI card
-  state:       "ON" | "OFF" | "UNKNOWN";
-  value:       number | null;
-  timestamp:   string | null;
+  key:          string;           // "relay1" | "relay2" | "relay3" | "CH1".."CH8" (campus)
+  label:        string;           // e.g. "Cooling System"
+  icon:         string;           // lucide icon name
+  description:  string;           // short subtitle shown in the HMI card
+  state:        "ON" | "OFF" | "UNKNOWN";
+  value:        number | null;
+  timestamp:    string | null;
+  controllable: boolean;          // true → UI offers a direct on/off toggle (campus channels)
 }
 
 export interface Alert {

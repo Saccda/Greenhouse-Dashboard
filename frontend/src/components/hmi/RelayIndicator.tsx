@@ -21,15 +21,29 @@ const ICON_MAP: Record<string, LucideIcon> = {
 interface RelayIndicatorProps {
   relay:      RelayStatus;
   className?: string;
+  /** Present + relay.controllable → card becomes a clickable toggle (campus channels). */
+  onToggle?:  (relay: RelayStatus) => void;
+  pending?:   boolean;
 }
 
-export default function RelayIndicator({ relay, className }: RelayIndicatorProps) {
-  const isOn      = relay.state === "ON";
-  const isUnknown = relay.state === "UNKNOWN";
-  const Icon      = ICON_MAP[relay.icon] ?? Zap;
+export default function RelayIndicator({ relay, className, onToggle, pending = false }: RelayIndicatorProps) {
+  const isOn        = relay.state === "ON";
+  const isUnknown   = relay.state === "UNKNOWN";
+  const Icon        = ICON_MAP[relay.icon] ?? Zap;
+  const isClickable = relay.controllable && !!onToggle;
 
   return (
     <div
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      aria-pressed={isClickable ? isOn : undefined}
+      aria-disabled={isClickable ? pending : undefined}
+      onClick={isClickable && !pending ? () => onToggle!(relay) : undefined}
+      onKeyDown={
+        isClickable && !pending
+          ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle!(relay); } }
+          : undefined
+      }
       className={clsx(
         "flex flex-col items-center gap-3 p-4 rounded-xl",
         "bg-surface-card border",
@@ -39,6 +53,8 @@ export default function RelayIndicator({ relay, className }: RelayIndicatorProps
           ? "border-status-warning/30"
           : "border-surface-border",
         "transition-all duration-300",
+        isClickable && !pending && "cursor-pointer hover:border-brand-green/40",
+        pending && "opacity-60 cursor-wait",
         className,
       )}
     >
@@ -99,6 +115,12 @@ export default function RelayIndicator({ relay, className }: RelayIndicatorProps
           {relay.key}
         </span>
       </div>
+
+      {isClickable && (
+        <p className="text-[9px] text-slate-600 uppercase tracking-widest">
+          {pending ? "Sending…" : "Tap to toggle"}
+        </p>
+      )}
     </div>
   );
 }
@@ -106,14 +128,16 @@ export default function RelayIndicator({ relay, className }: RelayIndicatorProps
 // ── Panel: renders all relays side-by-side ────────────────────────────────
 
 interface RelayPanelProps {
-  relays:     RelayStatus[];
-  isLoading?: boolean;
+  relays:      RelayStatus[];
+  isLoading?:  boolean;
+  onToggle?:   (relay: RelayStatus) => void;
+  pendingKeys?: Set<string>;
 }
 
-export function RelayPanel({ relays, isLoading = false }: RelayPanelProps) {
+export function RelayPanel({ relays, isLoading = false, onToggle, pendingKeys }: RelayPanelProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {[0, 1, 2].map((i) => (
           <div key={i} className="h-40 rounded-xl bg-surface-hover animate-pulse" />
         ))}
@@ -130,9 +154,14 @@ export function RelayPanel({ relays, isLoading = false }: RelayPanelProps) {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {relays.map((relay) => (
-        <RelayIndicator key={relay.key} relay={relay} />
+        <RelayIndicator
+          key={relay.key}
+          relay={relay}
+          onToggle={onToggle}
+          pending={pendingKeys?.has(relay.key)}
+        />
       ))}
     </div>
   );

@@ -33,6 +33,45 @@ POSTGRES_URL = os.getenv("POSTGRES_URL", "")
 NODE_RED_URL = os.getenv("NODE_RED_URL", "http://localhost:1880")
 
 # ---------------------------------------------------------------------------
+# MQTT — campus ingestion bridge (scripts/campus_mqtt_bridge.py)
+#
+# Bypasses Node-RED for the PP Campus rig only — Kampot/Kep keep streaming
+# through Node-RED unchanged. Same HiveMQ Cloud broker Node-RED already uses;
+# MQTT brokers support multiple independent subscribers per topic, so this
+# doesn't conflict with anything else reading the same feed.
+# ---------------------------------------------------------------------------
+MQTT_BROKER_HOST  = os.getenv("MQTT_BROKER_HOST", "")
+MQTT_BROKER_PORT  = int(os.getenv("MQTT_BROKER_PORT", "8883"))  # TLS port (HiveMQ Cloud default)
+MQTT_USERNAME     = os.getenv("MQTT_USERNAME", "")
+MQTT_PASSWORD     = os.getenv("MQTT_PASSWORD", "")
+CAMPUS_MQTT_TOPIC = os.getenv("CAMPUS_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/infor/status")
+
+# Command topic the controller subscribes to for direct manual relay control —
+# publish {"CH1": 1} to turn CH1 on, etc. (see routes/campus.py). Distinct from
+# Kampot/Kep's low/high threshold model (routes/setpoint.py, proxied through
+# Node-RED) — campus's controller takes direct on/off commands instead.
+CAMPUS_RELAY_COMMAND_TOPIC = os.getenv(
+    "CAMPUS_RELAY_COMMAND_TOPIC", "RUPP_CAMPUS_1/phnom_penh/relays/command"
+)
+
+# Campus *also* runs its own auto threshold-setpoint model (separate from the
+# direct relay command above) — three zones, two temperature (1, 2) and one
+# humidity (3). The controller expects the complete 6-value object on every
+# publish, not a partial per-zone update, so routes/campus.py always sends
+# all six together.
+CAMPUS_SETPOINT_TOPIC = os.getenv(
+    "CAMPUS_SETPOINT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/relays/setpoints"
+)
+
+# Example values straight from the firmware's own topic comment — used as the
+# UI's pre-fill defaults before anything has ever actually been sent.
+CAMPUS_SETPOINT_DEFAULTS: dict[str, float] = {
+    "temp_low1":  23.0, "temp_high1": 24.5,
+    "temp_low2":  25.0, "temp_high2": 26.0,
+    "hum_low3":   40.0, "hum_high3":  60.0,
+}
+
+# ---------------------------------------------------------------------------
 # Telegram notifications
 # ---------------------------------------------------------------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -108,9 +147,8 @@ FARMS: dict[str, dict] = {
     },
     "campus": {
         "display_name": "PP Campus",
-        # TODO: placeholder — the campus cooling/spray rig isn't streaming to
-        # InfluxDB yet. Confirm the real measurement name (and MQTT setpoint
-        # topic in frontend/src/app/control/page.tsx) once that pipeline exists.
+        # Dev/testing rig at RUPP — streams via scripts/campus_mqtt_bridge.py
+        # (bypasses Node-RED), not the InfluxDB pipeline Kampot/Kep use.
         "measurement":  "CampusData",
         "location":     "Phnom Penh",
         "fogger_spec":  None,
@@ -130,22 +168,57 @@ DATA_STALE_MINUTES   = 15     # readings older than this → system considered o
 # Broadcast interval for SocketIO live updates (seconds)
 BROADCAST_INTERVAL = 30
 
-# Relay labels shown in the HMI panel.
-# description: short tooltip / subtitle visible in the UI
-RELAY_LABELS: dict[str, dict] = {
+# ---------------------------------------------------------------------------
+# Per-farm relay/channel maps — each farm's hardware exposes a different set
+# of switchable outputs, so this is keyed per farm rather than a single global
+# map. Kampot/Kep are 3 semantically-labelled relays on a fixed threshold
+# control model (see routes/setpoint.py); campus is 8 generic channels on a
+# direct on/off command model (see routes/campus.py) since its controller and
+# purpose (hardware/software R&D rig) aren't fixed yet.
+#
+# "controllable" gates whether the UI offers a direct toggle for that channel
+# (RelayIndicator) — Kampot/Kep's relays are display-only here since they're
+# actually driven by the threshold setpoints sent via SetpointPanel, not a
+# direct switch.
+# ---------------------------------------------------------------------------
+_STANDARD_RELAYS: dict[str, dict] = {
     "relay1": {
-        "label":       "Cooling System",
-        "icon":        "snowflake",
-        "description": "Tank cooling — active when ON",
+        "label":        "Cooling System",
+        "icon":         "snowflake",
+        "description":  "Tank cooling — active when ON",
+        "controllable": False,
     },
     "relay2": {
-        "label":       "Standby",
-        "icon":        "zap",
-        "description": "Not assigned",
+        "label":        "Standby",
+        "icon":         "zap",
+        "description":  "Not assigned",
+        "controllable": False,
     },
     "relay3": {
-        "label":       "Spray Pump",
-        "icon":        "cloud-drizzle",
-        "description": "Farm irrigation — spraying when ON",
+        "label":        "Spray Pump",
+        "icon":         "cloud-drizzle",
+        "description":  "Farm irrigation — spraying when ON",
+        "controllable": False,
     },
+}
+
+FARM_CHANNELS: dict[str, dict[str, dict]] = {
+    "kampot": _STANDARD_RELAYS,
+    "kep":    _STANDARD_RELAYS,
+    "campus": {
+        f"CH{i}": {
+            "label":        f"Channel {i}",
+            "icon":         "zap",
+            "description":  "Not yet assigned",
+            "controllable": True,
+        }
+        for i in range(1, 9)
+    },
+}
+
+# Influx fields to query per farm — derived from FARM_CHANNELS so the channel
+# list only has to be maintained in one place.
+FARM_FIELDS: dict[str, list[str]] = {
+    farm_id: ["temperature", "humidity", *channels.keys()]
+    for farm_id, channels in FARM_CHANNELS.items()
 }

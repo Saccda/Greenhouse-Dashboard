@@ -23,6 +23,7 @@ class RelayStatus(BaseModel):
     state:       str          # "ON" | "OFF" | "UNKNOWN"
     value:       Optional[float]
     timestamp:   Optional[str]
+    controllable: bool = False   # true → UI offers a direct on/off toggle for this channel
 
 
 class Alert(BaseModel):

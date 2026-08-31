@@ -28,6 +28,8 @@ def get_setpoints(farm: str, user: dict = Depends(auth_service.require_auth)) ->
     """Last-sent setpoint per relay for this farm."""
     if farm not in config.FARMS:
         raise HTTPException(status_code=400, detail=f"Unknown farm '{farm}'")
+    if farm == "campus":
+        raise HTTPException(status_code=400, detail="Campus uses /api/campus/setpoint, not this endpoint")
     auth_service.require_farm_access(user, farm)
     return setpoint_service.get(farm)
 
@@ -37,6 +39,12 @@ async def send_setpoint(body: SetpointRequest, user: dict = Depends(auth_service
     """Proxy a setpoint command to Node-RED, then persist it if the send succeeded."""
     if body.farm not in config.FARMS:
         raise HTTPException(status_code=400, detail=f"Unknown farm '{body.farm}'")
+    if body.farm == "campus":
+        # Campus bypasses Node-RED and uses a different 6-value setpoint shape
+        # entirely (see routes/campus.py) — never let this proxy reach it, and
+        # never let it write into the same setpoints.json "campus" key that
+        # routes/campus.py owns.
+        raise HTTPException(status_code=400, detail="Campus uses /api/campus/setpoint, not this endpoint")
     auth_service.require_farm_access(user, body.farm)
 
     url = f"{config.NODE_RED_URL}/api/setpoint"

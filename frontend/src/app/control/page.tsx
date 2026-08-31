@@ -14,8 +14,9 @@ import Header from "@/components/layout/Header";
 import { RelayPanel } from "@/components/hmi/RelayIndicator";
 import EquipmentMimic from "@/components/hmi/EquipmentMimic";
 import SetpointPanel from "@/components/hmi/SetpointPanel";
+import CampusSetpointPanel from "@/components/hmi/CampusSetpointPanel";
 import Sparkline from "@/components/charts/Sparkline";
-import type { LatestResponse } from "@/types";
+import type { LatestResponse, RelayStatus } from "@/types";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ export default function ControlPage() {
 
   const [tempHistory, setTempHistory] = useState<number[]>([]);
   const [humHistory,  setHumHistory]  = useState<number[]>([]);
+  const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch(`${API_BASE}/api/settings`, { credentials: "include" })
@@ -75,9 +77,10 @@ export default function ControlPage() {
   const temp      = !isOnline ? undefined : latest?.readings?.temperature?.value;
   const hum       = !isOnline ? undefined : latest?.readings?.humidity?.value;
   const relays    = latest?.relays ?? [];
-  const mqttTopic = farm === "kampot" ? "soge/product/set"
-                  : farm === "kep"    ? "kep/reaksafarm/set_data"
-                  : "campus/set_data (TBD — not wired up yet)";
+  // Kampot/Kep only — this whole section is hidden for campus (see below),
+  // whose control model is a direct MQTT channel command, not a Node-RED-
+  // proxied setpoint topic (see routes/campus.py).
+  const mqttTopic = farm === "kampot" ? "soge/product/set" : "kep/reaksafarm/set_data";
 
   useEffect(() => {
     if (temp != null) setTempHistory(prev => [...prev.slice(-29), temp]);
@@ -98,6 +101,30 @@ export default function ControlPage() {
     if (result === "unauthorized") { logout(); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  };
+
+  // Direct channel toggle — currently only campus's channels are `controllable`
+  // (RelayIndicator gates on that flag), but this is farm-agnostic so it just
+  // works if any other farm's hardware ever gains direct-command support too.
+  const handleToggleRelay = async (relay: RelayStatus) => {
+    if (pendingKeys.has(relay.key)) return;
+    setPendingKeys((prev) => new Set(prev).add(relay.key));
+    try {
+      const res = await fetch(`${API_BASE}/api/campus/relay-command`, {
+        method:      "POST",
+        headers:     { "Content-Type": "application/json" },
+        credentials: "include",
+        body:        JSON.stringify({ channel: relay.key, state: relay.state === "ON" ? 0 : 1 }),
+      });
+      if (res.status === 401) { logout(); return; }
+      if (!res.ok) throw new Error(await res.text());
+      mutate();
+    } catch {
+      // Command failed to send — the panel just keeps showing the last known
+      // state; the user can retry the tap.
+    } finally {
+      setPendingKeys((prev) => { const next = new Set(prev); next.delete(relay.key); return next; });
+    }
   };
 
   return (
@@ -128,7 +155,11 @@ export default function ControlPage() {
               ))}
             </div>
           ) : (
-            <RelayPanel relays={latest?.relays ?? []} />
+            <RelayPanel
+              relays={latest?.relays ?? []}
+              onToggle={canWrite ? handleToggleRelay : undefined}
+              pendingKeys={pendingKeys}
+            />
           )}
           {latest?.timestamp && (
             <p className="text-[11px] text-slate-600 mt-2">
@@ -186,7 +217,12 @@ export default function ControlPage() {
           </div>
         </section>
 
-        {/* ── Section 3: Controller HMI (SCADA-style) ─────────────────── */}
+        {/* ── Section 3: Controller HMI (SCADA-style) — Kampot/Kep only.
+             Campus's hardware/control model (direct channel toggles, no
+             equipment photo yet) doesn't fit this threshold-setpoint,
+             photo-diagram layout — its control surface is the toggleable
+             Live Relay Status panel above instead. ──────────────────── */}
+        {farm !== "campus" && (
         <section>
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
             <Cpu size={13} /> Controller HMI
@@ -323,6 +359,17 @@ export default function ControlPage() {
 
           </div>
         </section>
+        )}
+
+        {/* ── Section 4: Campus auto setpoints — campus only ──────────── */}
+        {farm === "campus" && (
+        <section>
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Cpu size={13} /> Auto Setpoints
+          </h2>
+          <CampusSetpointPanel canWrite={canWrite} />
+        </section>
+        )}
 
         </div>
       </main>

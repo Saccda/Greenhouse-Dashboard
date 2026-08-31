@@ -77,9 +77,18 @@ def health_check() -> bool:
         return False
 
 
-def get_latest_readings(measurement: str) -> dict:
+def _field_filter(fields: list[str]) -> str:
+    """Build a Flux `r._field == "x" or r._field == "y" or ...` clause."""
+    return " or\n       ".join(f'r._field == "{f}"' for f in fields)
+
+
+def get_latest_readings(measurement: str, fields: list[str]) -> dict:
     """
     Return the most recent value for each field in the measurement.
+
+    `fields` is the farm's own field list (config.FARM_FIELDS[farm]) — Kampot/
+    Kep query temperature/humidity/relay1-3, campus queries temperature/
+    humidity/CH1-8, etc.
 
     Returns a dict:
       {
@@ -96,12 +105,7 @@ def get_latest_readings(measurement: str) -> dict:
 from(bucket: "{bucket}")
   |> range(start: -6h)
   |> filter(fn: (r) => r._measurement == "{measurement}")
-  |> filter(fn: (r) =>
-       r._field == "temperature" or
-       r._field == "humidity"    or
-       r._field == "relay1"      or
-       r._field == "relay2"      or
-       r._field == "relay3")
+  |> filter(fn: (r) => {_field_filter(fields)})
   |> last()
 '''
     try:
@@ -147,6 +151,7 @@ def _tz_offset() -> str:
 
 def get_history(
     measurement: str,
+    fields:      list[str],
     time_range:  str = "-1h",
     aggregation: str = "1m",
     start_date:  str | None = None,   # YYYY-MM-DD absolute start
@@ -154,6 +159,8 @@ def get_history(
 ) -> dict:
     """
     Return time-series data suitable for charting.
+
+    `fields` is the farm's own field list (config.FARM_FIELDS[farm]).
 
     Returns a dict of  { field: [{"time": iso_str, "value": float}, ...] }
     """
@@ -169,12 +176,7 @@ def get_history(
 from(bucket: "{bucket}")
   |> {range_clause}
   |> filter(fn: (r) => r._measurement == "{measurement}")
-  |> filter(fn: (r) =>
-       r._field == "temperature" or
-       r._field == "humidity"    or
-       r._field == "relay1"      or
-       r._field == "relay2"      or
-       r._field == "relay3")
+  |> filter(fn: (r) => {_field_filter(fields)})
   |> aggregateWindow(every: {aggregation}, fn: mean, createEmpty: false)
 '''
     try:

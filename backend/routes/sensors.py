@@ -43,7 +43,7 @@ def get_latest(
 ) -> LatestResponse:
     auth_service.require_farm_access(user, farm)
     measurement  = _measurement(farm)
-    raw_readings = db.get_latest_readings(measurement)
+    raw_readings = db.get_latest_readings(measurement, config.FARM_FIELDS[farm])
 
     # Pop the staleness metadata — must not be treated as a field reading
     online_meta  = raw_readings.pop("_online", {"is_online": False, "data_age_minutes": None, "last_seen": None})
@@ -72,8 +72,9 @@ def get_latest(
             ),
             value=raw_readings.get(relay_key, {}).get("value") if is_online else None,
             timestamp=raw_readings.get(relay_key, {}).get("timestamp"),
+            controllable=meta.get("controllable", False),
         )
-        for relay_key, meta in config.RELAY_LABELS.items()
+        for relay_key, meta in config.FARM_CHANNELS.get(farm, {}).items()
     ]
 
     alerts = [Alert(**a) for a in raw_alerts]
@@ -103,7 +104,7 @@ def get_history(
 ) -> HistoryResponse:
     auth_service.require_farm_access(user, farm)
     measurement = _measurement(farm)
-    raw_series  = db.get_history(measurement, range, agg, start_date, end_date)
+    raw_series  = db.get_history(measurement, config.FARM_FIELDS[farm], range, agg, start_date, end_date)
 
     series = {
         field: [TimePoint(time=p["time"], value=p["value"]) for p in points]

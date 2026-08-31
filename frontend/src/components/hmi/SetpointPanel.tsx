@@ -1,8 +1,8 @@
 "use client";
 /**
  * SetpointPanel — relay target + low/high setpoint control, POSTs to
- * /api/setpoint. Extracted out of /control so /scada can reuse the exact
- * same control surface as its primary element instead of duplicating it.
+ * /api/setpoint. Kampot/Kep only — campus's controller takes direct on/off
+ * commands instead (see routes/campus.py, RelayPanel's toggle support).
  */
 import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";

@@ -281,7 +281,7 @@ def _check_farm(farm_id: str) -> None:
     now_str     = datetime.now(config.TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        readings = db.get_latest_readings(measurement)
+        readings = db.get_latest_readings(measurement, config.FARM_FIELDS[farm_id])
     except Exception as exc:
         print(f"[AlertChecker] Could not fetch readings for {farm_id}: {exc}")
         return

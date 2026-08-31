@@ -16,8 +16,6 @@ import { useFarmSelection } from "@/hooks/useFarmSelection";
 import WeatherWidget from "@/components/weather/WeatherWidget";
 import type { LatestResponse, Farm } from "@/types";
 
-// Campus redirects straight to /scada (see useFarmSelection.ts) — it never
-// renders this landing page, so these cards are only ever Kampot/Kep's.
 const SECTIONS = [
   { href: "/overview",   label: "Overview",   sub: "How the system works",  icon: Info            },
   { href: "/dashboard",  label: "Dashboard",  sub: "Live sensor readings",  icon: LayoutDashboard },
