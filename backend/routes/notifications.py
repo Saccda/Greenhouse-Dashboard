@@ -151,8 +151,11 @@ def export_log(
 
 @router.get("/log/summary")
 def get_log_summary(
-    days: int = Query(default=30, ge=1, le=365),
-    user: dict = Depends(auth_service.require_auth),
+    farm: str | None = Query(default=None),
+    days: int        = Query(default=30, ge=1, le=365),
+    user: dict       = Depends(auth_service.require_auth),
 ) -> dict:
-    """Aggregated alert counts and average durations for the analytics page."""
-    return alert_log.get_summary(days=days, farm_ids=user.get("farms"))
+    """Aggregated alert counts and average durations for the alert log page."""
+    resolved = _farm_filter(user, farm)
+    farm_ids = [resolved] if isinstance(resolved, str) else resolved
+    return alert_log.get_summary(days=days, farm_ids=farm_ids)

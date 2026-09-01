@@ -70,8 +70,15 @@ def _write_point(payload: dict) -> None:
 
 def _on_connect(client: mqtt.Client, userdata, flags, reason_code, properties=None) -> None:
     if reason_code == 0:
-        print(f"[campus-mqtt-bridge] connected to {config.MQTT_BROKER_HOST}, subscribing to {config.CAMPUS_MQTT_TOPIC}")
-        client.subscribe(config.CAMPUS_MQTT_TOPIC)
+        # session_present (flags["session present"]) tells us whether the broker
+        # actually remembered us from before — if the last run ended with a
+        # clean disconnect (or this is the very first run), it won't, and this
+        # subscribe is required again even with clean_session=False.
+        print(
+            f"[campus-mqtt-bridge] connected to {config.MQTT_BROKER_HOST} "
+            f"(session_present={flags.session_present}), subscribing to {config.CAMPUS_MQTT_TOPIC}"
+        )
+        client.subscribe(config.CAMPUS_MQTT_TOPIC, qos=1)
     else:
         print(f"[campus-mqtt-bridge] connect failed: {reason_code}")
 
@@ -97,7 +104,19 @@ def main() -> None:
     if not config.MQTT_BROKER_HOST:
         raise SystemExit("MQTT_BROKER_HOST is not set — fill in backend/.env first (see .env.example)")
 
-    client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+    # Fixed client_id + clean_session=False: lets the broker hold a *persistent
+    # session* for this specific bridge. Combined with the QoS-1 subscribe in
+    # _on_connect, this means if the bridge itself is briefly offline (restart,
+    # deploy, a network blip) while the ESP32 keeps publishing, the broker
+    # queues those messages and delivers them the moment the bridge reconnects
+    # — instead of silently losing whatever was published during that gap.
+    # (This only protects against *the bridge's* downtime, not the ESP32's own
+    # connectivity — nothing can recover a message the device never sent.)
+    client = mqtt.Client(
+        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+        client_id="campus-mqtt-bridge",
+        clean_session=False,
+    )
     if config.MQTT_USERNAME:
         client.username_pw_set(config.MQTT_USERNAME, config.MQTT_PASSWORD)
     client.tls_set()  # HiveMQ Cloud requires TLS on the 8883 port

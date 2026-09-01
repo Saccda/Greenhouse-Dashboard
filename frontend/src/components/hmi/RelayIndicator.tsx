@@ -137,7 +137,7 @@ interface RelayPanelProps {
 export function RelayPanel({ relays, isLoading = false, onToggle, pendingKeys }: RelayPanelProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         {[0, 1, 2].map((i) => (
           <div key={i} className="h-40 rounded-xl bg-surface-hover animate-pulse" />
         ))}
@@ -154,7 +154,7 @@ export function RelayPanel({ relays, isLoading = false, onToggle, pendingKeys }:
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
       {relays.map((relay) => (
         <RelayIndicator
           key={relay.key}

@@ -8,6 +8,7 @@ import { format, parseISO } from "date-fns";
 
 import { API_BASE, swrFetcher } from "@/lib/api";
 import KPICard from "@/components/ui/KPICard";
+import { useFarmSelection } from "@/hooks/useFarmSelection";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ function SummaryCards({ summary }: { summary: SummaryResponse | undefined }) {
 // ── Main page ─────────────────────────────────────────────────────────────
 
 export default function AlertLogPage() {
+  const { farm, setFarm, farms } = useFarmSelection();
   const [days,      setDays]      = useState(7);
   const [typeFilter, setTypeFilter] = useState("");
   const [eventFilter, setEventFilter] = useState("");
@@ -120,7 +122,7 @@ export default function AlertLogPage() {
     localStorage.setItem("gh_last_alert_view", new Date().toISOString());
   }, []);
 
-  const params = new URLSearchParams({ days: String(days) });
+  const params = new URLSearchParams({ days: String(days), farm });
   if (typeFilter)  params.set("type",  typeFilter);
   if (eventFilter) params.set("event", eventFilter);
 
@@ -131,7 +133,7 @@ export default function AlertLogPage() {
   );
 
   const { data: summary } = useSWR<SummaryResponse>(
-    "/api/notifications/log/summary?days=30",
+    `/api/notifications/log/summary?days=30&farm=${farm}`,
     swrFetcher,
     { refreshInterval: 300_000 },
   );
@@ -172,6 +174,19 @@ export default function AlertLogPage() {
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <Filter size={12} /> Filters:
           </div>
+
+          {/* Farm */}
+          {farms.length > 1 && (
+            <select
+              value={farm}
+              onChange={(e) => setFarm(e.target.value)}
+              className="bg-surface-card border border-surface-border text-slate-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green/40"
+            >
+              {farms.map((f) => (
+                <option key={f.id} value={f.id}>{f.display_name}</option>
+              ))}
+            </select>
+          )}
 
           {/* Days */}
           <div className="flex items-center gap-1 bg-surface-card border border-surface-border rounded-lg p-0.5">
