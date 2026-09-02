@@ -6,6 +6,7 @@ import {
   CloudDrizzle,
   Zap,
   Snowflake,
+  Thermometer,
   type LucideIcon,
 } from "lucide-react";
 import type { RelayStatus } from "@/types";
@@ -16,6 +17,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "cloud-drizzle": CloudDrizzle,
   zap:             Zap,
   snowflake:       Snowflake,
+  thermometer:     Thermometer,
 };
 
 interface RelayIndicatorProps {

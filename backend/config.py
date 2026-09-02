@@ -214,13 +214,41 @@ FARM_CHANNELS: dict[str, dict[str, dict]] = {
     "kampot": _STANDARD_RELAYS,
     "kep":    _STANDARD_RELAYS,
     "campus": {
-        f"CH{i}": {
-            "label":        f"Channel {i}",
-            "icon":         "zap",
-            "description":  "Not yet assigned",
+        "CH1": {
+            "label":        "System Enable",
+            "icon":         "thermometer",
+            "description":  "System ON when temperature exceeds 32°C",
             "controllable": True,
-        }
-        for i in range(1, 9)
+        },
+        "CH2": {
+            "label":        "Spraying System",
+            "icon":         "cloud-drizzle",
+            "description":  "Spraying — active when ON",
+            "controllable": True,
+        },
+        "CH3": {
+            "label":        "Humidity Control",
+            "icon":         "droplets",
+            # TODO: confirm the actual trigger condition with the team —
+            # known to be humidity-related, threshold not given yet.
+            "description":  "Humidity-related — trigger condition not yet confirmed",
+            "controllable": True,
+        },
+        "CH4": {
+            "label":        "Cooling System",
+            "icon":         "snowflake",
+            "description":  "Cooling tank — active when ON",
+            "controllable": True,
+        },
+        **{
+            f"CH{i}": {
+                "label":        f"Channel {i}",
+                "icon":         "zap",
+                "description":  "Not yet assigned",
+                "controllable": True,
+            }
+            for i in range(5, 9)
+        },
     },
 }
 
