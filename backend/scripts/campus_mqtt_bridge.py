@@ -54,10 +54,22 @@ def _write_point(payload: dict) -> None:
         point = point.tag("device_id", str(device_id))
 
     written_any = False
-    for payload_key, influx_field in [*RENAMED_FIELDS, *LITERAL_FIELDS]:
+    # Explicit type casts matter: InfluxDB locks a field's type from its first-
+    # ever write and rejects any later write where the same field arrives as a
+    # different type. json.loads() gives an int for a whole-number JSON literal
+    # (e.g. the ESP32 sending "Humidity": 72) and a float for "72.3" — without
+    # forcing a consistent type here, the very next reading that happens to
+    # round to a whole number silently poisons the schema for every future
+    # decimal reading (this is exactly what happened the first time this ran).
+    for payload_key, influx_field in RENAMED_FIELDS:
         value = payload.get(payload_key)
         if value is not None:
-            point = point.field(influx_field, value)
+            point = point.field(influx_field, float(value))
+            written_any = True
+    for payload_key, influx_field in LITERAL_FIELDS:
+        value = payload.get(payload_key)
+        if value is not None:
+            point = point.field(influx_field, int(value))
             written_any = True
 
     if not written_any:

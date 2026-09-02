@@ -149,7 +149,15 @@ FARMS: dict[str, dict] = {
         "display_name": "PP Campus",
         # Dev/testing rig at RUPP — streams via scripts/campus_mqtt_bridge.py
         # (bypasses Node-RED), not the InfluxDB pipeline Kampot/Kep use.
-        "measurement":  "CampusData",
+        # NOTE: was "CampusData" — renamed because an early write (before
+        # campus_mqtt_bridge.py cast temperature/humidity to float) sent a
+        # whole-number humidity reading as an integer, which permanently
+        # locked that measurement's humidity column to integer type in
+        # InfluxDB (schema-on-write, no ALTER-column-type available). Every
+        # later float reading was then rejected outright. The old
+        # "CampusData" measurement is harmless leftover cruft in the bucket
+        # now — nothing reads it — but don't reuse that name.
+        "measurement":  "PPCampusData",
         "location":     "Phnom Penh",
         "fogger_spec":  None,
     },
