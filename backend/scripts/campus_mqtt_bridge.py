@@ -79,6 +79,9 @@ def _write_point(payload: dict) -> None:
     with InfluxDBClient(url=config.INFLUXDB_URL, token=config.INFLUXDB_TOKEN, org=config.INFLUXDB_ORG) as client:
         client.write_api(write_options=SYNCHRONOUS).write(bucket=config.INFLUXDB_BUCKET, record=point)
 
+    summary = ", ".join(f"{k}={v}" for k, v in payload.items() if k != "ID")
+    print(f"[campus-mqtt-bridge] wrote point ({MEASUREMENT}): {summary}")
+
 
 def _on_connect(client: mqtt.Client, userdata, flags, reason_code, properties=None) -> None:
     if reason_code == 0:
