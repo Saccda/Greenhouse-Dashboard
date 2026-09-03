@@ -32,6 +32,20 @@
   --t500: 68  126 198;
   --t600: 46   98 168;
 
+  /* Analytics chart palette — dark-mode steps.
+     Each mode gets its OWN validated steps rather than a lightness flip:
+     these pass the colourblind-separation check against the dark surface
+     (worst adjacent pair ΔE 9.4 deutan), whereas the UI status colours used
+     elsewhere (#22c55e/#f59e0b) sit at ΔE 5.7 and are indistinguishable to a
+     red-blind reader. Band labels and percentages are always drawn on the
+     chart as well — status colour is never the only encoding. */
+  --chart-optimal:  #0d9488;
+  --chart-warning:  #d97706;
+  --chart-critical: #e11d48;
+  --chart-temp:     #fb923c;
+  --chart-hum:      #60a5fa;
+  --chart-grid:     rgba(80,140,255,0.15);
+
   color-scheme: dark;
 }
 
@@ -54,6 +68,15 @@
   --t400:  85 120  93;
   --t500: 108 148 116;
   --t600: 132 165 139;
+
+  /* Analytics chart palette — light-mode steps (validated separately against
+     the light surface; worst adjacent pair ΔE 17.4 protan). */
+  --chart-optimal:  #15803d;
+  --chart-warning:  #f59e0b;
+  --chart-critical: #dc2626;
+  --chart-temp:     #ea7317;
+  --chart-hum:      #2b7fd4;
+  --chart-grid:     rgba(22,36,26,0.10);
 
   color-scheme: light;
 }

@@ -252,6 +252,44 @@ FARM_CHANNELS: dict[str, dict[str, dict]] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Analytics bands — used by the Analytics page's time-in-range analysis.
+#
+# THESE ARE OPERATOR-SET AGRONOMIC TARGETS, NOT MEASURED CONSTANTS. They decide
+# what counts as "optimal" vs "stressed" for the crop, so they are the first
+# thing to review with an agronomist before quoting any time-in-range figure.
+# Bands are half-open [min, max): min=None means "no lower bound", max=None
+# means "no upper bound". They must be ordered and must not overlap.
+#
+# Defaults below reflect what the dashboard already assumed elsewhere (the
+# Dashboard's own "Target relative humidity 60-80%" subtitle) and general
+# black-pepper guidance; adjust per farm once real agronomic targets are set.
+# ---------------------------------------------------------------------------
+ANALYTICS_BANDS: dict[str, list[dict]] = {
+    "temperature": [
+        {"label": "Cold",        "status": "critical", "min": None, "max": 20.0},
+        {"label": "Optimal",     "status": "optimal",  "min": 20.0, "max": 30.0},
+        {"label": "Warm",        "status": "warning",  "min": 30.0, "max": 35.0},
+        {"label": "Heat stress", "status": "critical", "min": 35.0, "max": None},
+    ],
+    "humidity": [
+        {"label": "Too dry",     "status": "critical", "min": None, "max": 50.0},
+        {"label": "Dry",         "status": "warning",  "min": 50.0, "max": 60.0},
+        {"label": "Optimal",     "status": "optimal",  "min": 60.0, "max": 80.0},
+        {"label": "Humid",       "status": "warning",  "min": 80.0, "max": 90.0},
+        {"label": "Disease risk","status": "critical", "min": 90.0, "max": None},
+    ],
+}
+
+# Nominal seconds between readings, used to estimate how much of a period the
+# sensor actually covered. Kampot/Kep publish roughly every 30 s.
+EXPECTED_SAMPLE_INTERVAL_S = int(os.getenv("EXPECTED_SAMPLE_INTERVAL_S", "30"))
+
+# A run of readings above a threshold is treated as broken (not one continuous
+# episode) once the gap between consecutive readings exceeds this. Prevents an
+# overnight shutdown from being reported as one 16-hour heat episode.
+EXCEEDANCE_MAX_GAP_S = int(os.getenv("EXCEEDANCE_MAX_GAP_S", "300"))
+
 # Influx fields to query per farm — derived from FARM_CHANNELS so the channel
 # list only has to be maintained in one place.
 FARM_FIELDS: dict[str, list[str]] = {

@@ -226,6 +226,46 @@ from(bucket: "{bucket}")
         return pd.DataFrame(columns=["time", "field", "value"])
 
 
+def get_raw_fields(
+    measurement: str,
+    fields:      list[str],
+    time_range:  str = "-7d",
+    start_date:  str | None = None,   # YYYY-MM-DD absolute start
+    end_date:    str | None = None,   # YYYY-MM-DD absolute end
+) -> pd.DataFrame:
+    """
+    Return RAW (un-aggregated) readings for the given fields.
+
+    Deliberately not aggregated: get_history()'s aggregateWindow(mean) is right
+    for charting, but it destroys the very things the analytics service needs —
+    the shape of the distribution, the true min/max, exceedance counts, and the
+    exact transitions that delimit spray events. A 30-day pull at Kampot's ~30 s
+    cadence is ~86k rows, which pandas handles comfortably server-side; only the
+    computed summaries are ever sent to the browser.
+
+    Returns a tidy DataFrame with columns [time, field, value].
+    """
+    bucket = config.INFLUXDB_BUCKET
+
+    if start_date and end_date:
+        tz = _tz_offset()
+        range_clause = f"range(start: {start_date}T00:00:00{tz}, stop: {end_date}T23:59:59{tz})"
+    else:
+        range_clause = f"range(start: {time_range})"
+
+    flux = f'''
+from(bucket: "{bucket}")
+  |> {range_clause}
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => {_field_filter(fields)})
+'''
+    try:
+        return _run_query(flux)
+    except Exception as e:
+        print(f"[InfluxDB] get_raw_fields failed: {e}")
+        return pd.DataFrame(columns=["time", "field", "value"])
+
+
 def get_temp_at_range_start(measurement: str, window_minutes: float) -> float | None:
     """
     Return the FIRST temperature reading within the last `window_minutes` minutes.

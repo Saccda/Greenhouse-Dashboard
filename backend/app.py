@@ -17,6 +17,7 @@ Endpoints:
   GET  /api/sensors/history?farm=kampot&range=-24h&agg=15m
   GET  /api/sensors/spray-stats?farm=kampot
   POST /api/campus/relay-command      (owner/developer — direct MQTT channel toggle)
+  GET  /api/analytics/summary?farm=kampot&range=-7d
   GET  /api/notifications/status
   GET  /api/notifications/history
   POST /api/notifications/test        (owner/developer)
@@ -50,6 +51,7 @@ from routes.notifications import router as notifications_router
 from routes.settings_api  import router as settings_router
 from routes.setpoint      import router as setpoint_router
 from routes.campus        import router as campus_router
+from routes.analytics     import router as analytics_router
 from routes.auth          import router as auth_router
 from routes.users         import router as users_router
 from schemas              import HealthResponse
@@ -141,6 +143,7 @@ app.include_router(notifications_router)
 app.include_router(settings_router)
 app.include_router(setpoint_router)
 app.include_router(campus_router)
+app.include_router(analytics_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 
