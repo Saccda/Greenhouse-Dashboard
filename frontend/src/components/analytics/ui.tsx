@@ -121,7 +121,7 @@ export function StatCard({
 }) {
   return (
     <div className={clsx(
-      "group relative flex flex-col rounded-2xl p-5 overflow-hidden h-full",
+      "group relative flex flex-col rounded-2xl px-5 py-4 overflow-hidden h-full",
       "bg-surface-card border border-surface-border transition-all duration-300",
     )}>
       {/* Hover wash, as on the Dashboard cards */}
@@ -152,25 +152,27 @@ export function StatCard({
           )}
         </div>
 
-        {/* Value + badge — fixed height, so the numbers line up across the row */}
-        <div className="h-[5.5rem] flex flex-col items-center justify-center gap-2">
-          <div className="flex items-baseline justify-center gap-2">
-            <span className={clsx(
-              "text-5xl font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
-              "group-hover:text-white transition-colors duration-300",
-              TONE_VALUE[tone],
-            )}>
-              {value}
+        {/*
+         * Value and badge share ONE baseline row. Stacking the badge beneath
+         * the number cost ~34px of card height to say something that reads
+         * perfectly well beside it.
+         */}
+        <div className="h-[3.75rem] flex items-baseline justify-center gap-2.5">
+          <span className={clsx(
+            "text-[42px] font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
+            "group-hover:text-white transition-colors duration-300",
+            TONE_VALUE[tone],
+          )}>
+            {value}
+          </span>
+          {unit && (
+            <span className="text-lg font-bold leading-none text-slate-500 group-hover:text-white/60 transition-colors duration-300">
+              {unit}
             </span>
-            {unit && (
-              <span className="text-xl font-bold leading-none text-slate-500 group-hover:text-white/60 transition-colors duration-300">
-                {unit}
-              </span>
-            )}
-          </div>
+          )}
           {badge && (
             <span className={clsx(
-              "text-xs font-bold px-3 py-1 rounded-full transition-all duration-300",
+              "text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap transition-all duration-300",
               TONE_BADGE[tone],
             )}>
               {badge}
@@ -186,7 +188,7 @@ export function StatCard({
          * also lands at the same y. A one-line description simply leaves the
          * second line empty rather than pulling the rule up.
          */}
-        <p className="text-[15px] leading-relaxed text-slate-300 group-hover:text-white/85 transition-colors duration-300 min-h-[3.25rem] mt-3">
+        <p className="text-[15px] leading-snug text-slate-300 group-hover:text-white/85 transition-colors duration-300 min-h-[2.75rem] mt-1">
           {facts}
         </p>
 
@@ -199,7 +201,7 @@ export function StatCard({
          * and lets a longer note simply run on downward.
          */}
         {note && (
-          <p className="text-sm leading-relaxed text-slate-500 pt-3 mt-3 border-t border-surface-border/70 group-hover:text-white/60 group-hover:border-white/20 transition-colors duration-300">
+          <p className="text-sm leading-snug text-slate-500 pt-2.5 mt-2.5 border-t border-surface-border/70 group-hover:text-white/60 group-hover:border-white/20 transition-colors duration-300">
             {note}
           </p>
         )}
