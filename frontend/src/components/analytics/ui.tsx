@@ -42,6 +42,18 @@ const TONE_ACCENT: Record<Tone, string> = {
   bad:     "bg-red-500",
 };
 
+/**
+ * Verdict text under the value. Plain coloured type rather than a pill: the
+ * words themselves carry the meaning, so the pill's background was chrome
+ * around a label that already reads fine on its own.
+ */
+const TONE_VERDICT: Record<Tone, string> = {
+  neutral: "text-slate-400 group-hover:text-white/75",
+  good:    "text-brand-green group-hover:text-white",
+  warn:    "text-amber-500 group-hover:text-white",
+  bad:     "text-red-400 group-hover:text-white",
+};
+
 const TONE_BADGE: Record<Tone, string> = {
   neutral: "bg-sky-400/15 text-sky-400 group-hover:bg-white group-hover:text-sky-600",
   good:    "bg-brand-green/15 text-brand-green group-hover:bg-white group-hover:text-green-700",
@@ -153,30 +165,41 @@ export function StatCard({
         </div>
 
         {/*
-         * Value and badge share ONE baseline row. Stacking the badge beneath
-         * the number cost ~34px of card height to say something that reads
-         * perfectly well beside it.
+         * Value and verdict, LEFT-aligned and stacked.
+         *
+         * Everything else in the card — label, description, note — is
+         * left-aligned, so a centred value left the verdict with nowhere
+         * natural to sit: beside the number it read as an afterthought, and
+         * beneath it as a floating pill. Sharing the card's single left edge
+         * puts the verdict directly under the figure it interprets, which is
+         * also how it would be said aloud ("four percent — well below target"),
+         * and gives the whole card one vertical rhythm to scan.
+         *
+         * Fixed height so the values line up across the row regardless of
+         * whether a card has a verdict.
          */}
-        <div className="h-[3.75rem] flex items-baseline justify-center gap-2.5">
-          <span className={clsx(
-            "text-[42px] font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
-            "group-hover:text-white transition-colors duration-300",
-            TONE_VALUE[tone],
-          )}>
-            {value}
-          </span>
-          {unit && (
-            <span className="text-lg font-bold leading-none text-slate-500 group-hover:text-white/60 transition-colors duration-300">
-              {unit}
-            </span>
-          )}
-          {badge && (
+        <div className="h-[4.25rem] flex flex-col justify-center">
+          <div className="flex items-baseline gap-1.5">
             <span className={clsx(
-              "text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap transition-all duration-300",
-              TONE_BADGE[tone],
+              "text-[42px] font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
+              "group-hover:text-white transition-colors duration-300",
+              TONE_VALUE[tone],
+            )}>
+              {value}
+            </span>
+            {unit && (
+              <span className="text-lg font-bold leading-none text-slate-500 group-hover:text-white/60 transition-colors duration-300">
+                {unit}
+              </span>
+            )}
+          </div>
+          {badge && (
+            <p className={clsx(
+              "text-[13px] font-bold leading-none mt-1.5 transition-colors duration-300",
+              TONE_VERDICT[tone],
             )}>
               {badge}
-            </span>
+            </p>
           )}
         </div>
 
