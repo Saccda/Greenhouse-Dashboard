@@ -130,7 +130,7 @@ export default function DiurnalChart({ diurnal, threshold, unit, color }: Props)
         from {minDays === maxDays ? `${minDays} days` : `${minDays}–${maxDays} days`} of readings per hour).
         A wide band means that hour is unpredictable; a narrow one means it behaves the same way daily.
       </p>
-      <p className="text-[11px] text-slate-600 leading-relaxed">
+      <p className="text-xs text-slate-500 leading-relaxed">
         The band is calculated across <strong>days</strong>, not across individual readings — readings
         30 seconds apart are nearly identical, and treating them as independent would have made this
         band about 12× too narrow. Hours with no data are left out rather than drawn through.

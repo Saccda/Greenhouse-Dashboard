@@ -27,10 +27,10 @@ const VERDICT_STYLE: Record<EffectVerdict, { cls: string; Icon: typeof Info }> =
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-surface-hover border border-surface-border rounded-lg px-3 py-2.5">
-      <p className="text-[10px] uppercase tracking-widest text-slate-500">{label}</p>
-      <p className="text-lg font-bold font-mono-num text-slate-200 mt-0.5">{value}</p>
-      {hint && <p className="text-[10px] text-slate-600 mt-0.5 leading-tight">{hint}</p>}
+    <div className="bg-surface-hover ring-1 ring-surface-border rounded-xl px-3.5 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[22px] font-bold font-mono-num tabular-nums text-slate-100 mt-1 leading-none">{value}</p>
+      {hint && <p className="text-xs text-slate-500 mt-2 leading-snug">{hint}</p>}
     </div>
   );
 }
@@ -107,7 +107,7 @@ export default function SprayEffectPanel({
       {/* Water efficiency — only meaningful when cooling was actually measured */}
       {water && (
         <div className="rounded-lg border border-surface-border bg-surface-hover p-3">
-          <p className="text-[10px] uppercase tracking-widest text-slate-500">Water cost of cooling</p>
+          <p className="text-[11px] uppercase tracking-widest text-slate-500">Water cost of cooling</p>
           {water.liters_per_degree != null ? (
             <p className="text-sm text-slate-300 mt-1">
               <strong className="font-mono-num text-slate-100">
@@ -166,12 +166,12 @@ export default function SprayEffectPanel({
 
       {/* Confounds — part of the result, not a disclaimer */}
       <div className="rounded-lg border border-surface-border bg-surface-card p-3">
-        <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1.5">
+        <p className="text-[11px] uppercase tracking-widest text-slate-500 mb-1.5">
           Why this is association, not proof
         </p>
         <ul className="space-y-1">
           {effect.confounds.map((c) => (
-            <li key={c} className="text-[11px] text-slate-500 leading-relaxed flex gap-2">
+            <li key={c} className="text-xs text-slate-500 leading-relaxed flex gap-2">
               <span className="text-slate-700 shrink-0">•</span>
               <span>{c}</span>
             </li>

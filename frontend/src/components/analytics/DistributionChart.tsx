@@ -136,7 +136,7 @@ export default function DistributionChart({ histogram, describe, threshold, unit
         threshold={threshold}
       />
 
-      <p className="text-[11px] text-slate-600 leading-relaxed pt-1">
+      <p className="text-xs text-slate-500 leading-relaxed pt-1">
         Shaded area marks readings above the {threshold}{unit} threshold.
         Bars are binned by the Freedman–Diaconis rule ({histogram.bin_width.toFixed(2)}{unit} wide),
         which scales with spread and sample size so a few extremes can&apos;t distort the shape.
@@ -211,7 +211,7 @@ function BoxPlotStrip({
         ] as const).map(([k, v], i) => (
           <span key={k} className="inline-flex items-baseline gap-1">
             {i > 0 && <span className="text-slate-700 mr-1">·</span>}
-            <dt className="text-[10px] uppercase tracking-wider text-slate-500">{k}</dt>
+            <dt className="text-[11px] uppercase tracking-wider text-slate-500">{k}</dt>
             <dd className={clsx(
               "font-mono-num tabular-nums",
               k === "median" ? "text-sm text-slate-100 font-bold" : "text-xs text-slate-300",
@@ -222,7 +222,7 @@ function BoxPlotStrip({
           </span>
         ))}
       </dl>
-      <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">
+      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
         The bar spans the middle half of readings (p25–p75); the line through it is the median.
         Whiskers reach the 5th and 95th percentiles — on the worst 5% of readings it was above{" "}
         <span className="font-mono-num text-slate-400">{describe.p95.toFixed(1)}{unit}</span>.

@@ -21,6 +21,7 @@ import useSWR from "swr";
 import { clsx } from "clsx";
 import {
   Activity, Thermometer, Droplets, BarChart3, Clock, CloudDrizzle, AlertCircle,
+  Target, TrendingUp, Timer,
 } from "lucide-react";
 
 import { swrFetcher } from "@/lib/api";
@@ -28,6 +29,7 @@ import { useFarmSelection } from "@/hooks/useFarmSelection";
 import Header from "@/components/layout/Header";
 import CoverageNotice from "@/components/analytics/CoverageNotice";
 import TimeInRangeBar from "@/components/analytics/TimeInRangeBar";
+import { Panel, CardHeader, StatCard, MetricTile, CardFooterNote } from "@/components/analytics/ui";
 import DistributionChart from "@/components/analytics/DistributionChart";
 import DiurnalChart from "@/components/analytics/DiurnalChart";
 import SprayEffectPanel from "@/components/analytics/SprayEffectPanel";
@@ -45,60 +47,23 @@ const PARAMS = [
   { key: "humidity"    as const, label: "Humidity",    unit: "%",  icon: Droplets,    color: "var(--chart-hum)"  },
 ];
 
+/** Section heading — a numbered step with a one-line explanation of its job. */
 function SectionTitle({ n, title, subtitle, icon: Icon }: {
   n: string; title: string; subtitle: string; icon: typeof Activity;
 }) {
   return (
-    <div className="mb-3">
-      <h2 className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-        <span className="text-slate-600 font-mono-num">{n}</span>
-        <Icon size={13} /> {title}
-      </h2>
-      <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{subtitle}</p>
+    <div className="mb-4 flex items-start gap-3">
+      <span className="shrink-0 grid place-items-center w-8 h-8 rounded-xl bg-surface-hover ring-1 ring-surface-border text-slate-400">
+        <Icon size={15} strokeWidth={2} />
+      </span>
+      <div className="min-w-0">
+        <h2 className="flex items-baseline gap-2 text-base font-semibold text-slate-100 leading-tight">
+          <span className="text-xs font-mono-num text-slate-500">{n}</span>
+          {title}
+        </h2>
+        <p className="text-sm text-slate-500 mt-1.5 leading-relaxed max-w-3xl">{subtitle}</p>
+      </div>
     </div>
-  );
-}
-
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={clsx("bg-surface-card border border-surface-border rounded-xl p-4", className)}>
-      {children}
-    </div>
-  );
-}
-
-/**
- * Hero number — the figure, then the plain fact behind it.
- *
- * `facts` are declarative ("13 episodes, 24.7 h total") and belong to the
- * reading. `note` is the "why this metric matters" line, deliberately smaller
- * and separated: it explains our choice of measure, which is useful once and
- * then just noise on every future visit.
- */
-function HeroStat({ value, unit, label, facts, note, tone = "neutral" }: {
-  value: string; unit?: string; label: string;
-  facts: string; note?: string;
-  tone?: "neutral" | "warn" | "good";
-}) {
-  return (
-    <Card className="flex flex-col">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
-      <p className="mt-2 flex items-baseline gap-1.5">
-        <span className={clsx(
-          "text-4xl font-extrabold font-mono-num tabular-nums leading-none",
-          tone === "warn" ? "text-amber-500" : tone === "good" ? "text-brand-green" : "text-slate-100",
-        )}>
-          {value}
-        </span>
-        {unit && <span className="text-base font-semibold text-slate-400">{unit}</span>}
-      </p>
-      <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">{facts}</p>
-      {note && (
-        <p className="text-[11px] text-slate-600 mt-auto pt-2.5 leading-relaxed border-t border-surface-border/60">
-          {note}
-        </p>
-      )}
-    </Card>
   );
 }
 
@@ -119,36 +84,46 @@ function ParameterHealth({ p, unit, label }: { p: ParameterAnalytics; unit: stri
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <HeroStat
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          icon={Target}
           label="Time in target range"
           value={optimalPct.toFixed(0)} unit="%"
           tone={optimalPct >= 70 ? "good" : "warn"}
+          badge={optimalPct >= 70 ? "Healthy" : optimalPct >= 30 ? "Below target" : "Well below target"}
           facts={`${optimalBand?.count.toLocaleString() ?? "—"} of ${tir.n.toLocaleString()} readings sat in the ${optimalRangeText} target band.`}
+          note="The target band is an operator-set agronomic goal, not a measured value — confirm it suits this crop before acting on this figure."
         />
-        <HeroStat
+        <StatCard
+          icon={TrendingUp}
           label={`Above ${ex.threshold}${unit}`}
           value={(ex.probability * 100).toFixed(0)} unit="%"
           tone={ex.probability > 0.3 ? "warn" : "good"}
+          badge={ex.probability > 0.7 ? "Almost always" : ex.probability > 0.3 ? "Frequent" : "Occasional"}
           facts={`${ex.count_above.toLocaleString()} of ${ex.n.toLocaleString()} readings were over the ${ex.threshold}${unit} alert threshold.`}
           note="Share of monitored readings — see the coverage note above."
         />
-        <HeroStat
+        <StatCard
+          icon={Timer}
           label="Longest hot stretch"
           value={longestH >= 1 ? longestH.toFixed(1) : ex.longest_episode_minutes.toFixed(0)}
           unit={longestH >= 1 ? "hours" : "min"}
           tone={longestH >= 2 ? "warn" : "neutral"}
-          facts={`Longest single stretch above ${ex.threshold}${unit} without dropping back. ${ex.episodes} such stretch${ex.episodes === 1 ? "" : "es"} in total, adding up to ${totalH >= 1 ? `${totalH.toFixed(1)} hours` : `${ex.total_minutes_above.toFixed(0)} min`}.`}
+          badge={`${ex.episodes} stretch${ex.episodes === 1 ? "" : "es"}`}
+          facts={`Longest single stretch above ${ex.threshold}${unit} without dropping back — ${totalH >= 1 ? `${totalH.toFixed(1)} hours` : `${ex.total_minutes_above.toFixed(0)} min`} above threshold in total.`}
           note="Shown separately from the percentage because one long stretch is harder on the crop than the same hours split into short spikes."
         />
       </div>
 
-      <Card>
-        <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-3">
-          Where the readings sat
-        </p>
-        <TimeInRangeBar bands={tir.bands} unit={unit} />
-      </Card>
+      <Panel className="p-5">
+        <CardHeader
+          title="Where the readings sat"
+          subtitle={`Share of ${tir.n.toLocaleString()} readings in each band`}
+        />
+        <div className="mt-4">
+          <TimeInRangeBar bands={tir.bands} unit={unit} />
+        </div>
+      </Panel>
     </div>
   );
 }
@@ -179,7 +154,7 @@ export default function AnalyticsPage() {
 
           {/* Range selector */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] text-slate-500 uppercase tracking-wider mr-1">Period:</span>
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider mr-1">Period:</span>
             {RANGES.map((r) => (
               <button
                 key={r.value}
@@ -205,10 +180,10 @@ export default function AnalyticsPage() {
           )}
 
           {error && (
-            <Card className="flex items-center gap-3 border-red-500/30 bg-red-500/10">
-              <AlertCircle size={16} className="text-red-400 shrink-0" />
+            <Panel className="flex items-center gap-3 p-5 border-red-500/30 bg-red-500/10">
+              <AlertCircle size={18} className="text-red-400 shrink-0" />
               <p className="text-sm text-red-300">Could not load analytics for this period.</p>
-            </Card>
+            </Panel>
           )}
 
           {data && (
@@ -245,44 +220,35 @@ export default function AnalyticsPage() {
                     const p = data.parameters[key];
                     if (!p.histogram || !p.describe) {
                       return (
-                        <Card key={key}>
-                          <p className="text-sm text-slate-600">Not enough {label.toLowerCase()} data.</p>
-                        </Card>
+                        <Panel key={key} className="p-5">
+                          <CardHeader icon={Icon} title={label} />
+                          <p className="text-sm text-slate-500 mt-4">Not enough {label.toLowerCase()} data in this period.</p>
+                        </Panel>
                       );
                     }
                     const d = p.describe;
+                    const skewed = Math.abs(d.skewness ?? 0) > 0.3;
                     return (
-                      <Card key={key}>
-                        <p className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
-                          <Icon size={13} /> {label}
-                        </p>
+                      <Panel key={key} className="p-5">
+                        <CardHeader
+                          icon={Icon}
+                          title={label}
+                          subtitle={`${d.n.toLocaleString()} readings`}
+                          badge={skewed ? "Skewed" : "Symmetric"}
+                          badgeTone={skewed ? "warn" : "neutral"}
+                        />
 
-                        {/* Headline statistics get real weight — they are the
-                            finding; the chart below is the supporting evidence.
-                            Median is emphasised over mean when the distribution
+                        {/* Headline statistics carry real weight — they are the
+                            finding; the chart below is supporting evidence. The
+                            median is flagged over the mean when the distribution
                             is skewed enough for the two to disagree. */}
-                        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-                          {([
-                            ["Mean", `${d.mean.toFixed(1)}${unit}`, Math.abs(d.skewness ?? 0) <= 0.3],
-                            ["Median", `${d.median.toFixed(1)}${unit}`, Math.abs(d.skewness ?? 0) > 0.3],
-                            ["Std dev", `± ${d.sd.toFixed(2)}`, false],
-                            ["Range", `${d.min.toFixed(1)}–${d.max.toFixed(1)}`, false],
-                          ] as const).map(([k, v, emphasised]) => (
-                            <div
-                              key={k}
-                              className={clsx(
-                                "rounded-lg px-2.5 py-2 border",
-                                emphasised
-                                  ? "bg-surface-hover border-brand-green/30"
-                                  : "bg-surface-hover border-surface-border",
-                              )}
-                            >
-                              <dt className="text-[10px] uppercase tracking-widest text-slate-500">{k}</dt>
-                              <dd className="text-lg font-bold font-mono-num tabular-nums text-slate-100 mt-0.5 leading-none">
-                                {v}
-                              </dd>
-                            </div>
-                          ))}
+                        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-5">
+                          <MetricTile label="Mean" value={`${d.mean.toFixed(1)}${unit}`}
+                            emphasis={!skewed} emphasisLabel="typical" />
+                          <MetricTile label="Median" value={`${d.median.toFixed(1)}${unit}`}
+                            emphasis={skewed} emphasisLabel="use this" />
+                          <MetricTile label="Std dev" value={`± ${d.sd.toFixed(2)}`} />
+                          <MetricTile label="Range" value={`${d.min.toFixed(1)}–${d.max.toFixed(1)}`} />
                         </dl>
 
                         <DistributionChart
@@ -292,14 +258,17 @@ export default function AnalyticsPage() {
                           unit={unit}
                           color={color}
                         />
-                        {d.skewness != null && Math.abs(d.skewness) > 0.3 && (
-                          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                            Skew of {d.skewness.toFixed(2)} means the distribution leans{" "}
-                            {d.skewness > 0 ? "right — occasional high spikes stretch further than the lows" : "left — occasional low readings stretch further than the highs"}.
-                            The median ({d.median.toFixed(1)}{unit}) is the more reliable summary here than the mean ({d.mean.toFixed(1)}{unit}).
-                          </p>
+                        {d.skewness != null && skewed && (
+                          <CardFooterNote>
+                            The spread leans{" "}
+                            {d.skewness > 0 ? "right — occasional high spikes stretch further than the lows" : "left — occasional low readings stretch further than the highs"}{" "}
+                            (skew {d.skewness.toFixed(2)}), so the median{" "}
+                            <span className="font-mono-num text-slate-400">{d.median.toFixed(1)}{unit}</span>{" "}
+                            describes a typical reading better than the mean{" "}
+                            <span className="font-mono-num text-slate-400">{d.mean.toFixed(1)}{unit}</span>.
+                          </CardFooterNote>
                         )}
-                      </Card>
+                      </Panel>
                     );
                   })}
                 </div>
@@ -315,34 +284,33 @@ export default function AnalyticsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {PARAMS.map(({ key, label, unit, color, icon: Icon }) => {
                     const p = data.parameters[key];
+                    const peak = p.diurnal?.peak_hour;
                     return (
-                      <Card key={key}>
-                        <p className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                          <Icon size={13} /> {label} by hour
-                        </p>
-                        {p.diurnal?.peak_hour != null && (
-                          <p className="text-[11px] text-slate-500 mb-3">
-                            Peaks around{" "}
-                            <strong className="text-slate-300 font-mono-num">
-                              {String(p.diurnal.peak_hour).padStart(2, "0")}:00
-                            </strong>{" "}
-                            at{" "}
-                            <strong className="text-slate-300 font-mono-num">
-                              {p.diurnal.peak_mean?.toFixed(1)}{unit}
-                            </strong>
-                          </p>
-                        )}
-                        {p.diurnal ? (
-                          <DiurnalChart
-                            diurnal={p.diurnal}
-                            threshold={data.thresholds[key]}
-                            unit={unit}
-                            color={color}
-                          />
-                        ) : (
-                          <p className="text-sm text-slate-600 py-6 text-center">No hourly data.</p>
-                        )}
-                      </Card>
+                      <Panel key={key} className="p-5">
+                        <CardHeader
+                          icon={Icon}
+                          title={`${label} by hour`}
+                          subtitle={
+                            peak != null
+                              ? `Peaks around ${String(peak).padStart(2, "0")}:00 at ${p.diurnal?.peak_mean?.toFixed(1)}${unit}`
+                              : "Average shape of the day"
+                          }
+                          badge={peak != null ? `Peak ${String(peak).padStart(2, "0")}:00` : undefined}
+                          badgeTone="warn"
+                        />
+                        <div className="mt-4">
+                          {p.diurnal ? (
+                            <DiurnalChart
+                              diurnal={p.diurnal}
+                              threshold={data.thresholds[key]}
+                              unit={unit}
+                              color={color}
+                            />
+                          ) : (
+                            <p className="text-sm text-slate-500 py-8 text-center">No hourly data in this period.</p>
+                          )}
+                        </div>
+                      </Panel>
                     );
                   })}
                 </div>
@@ -355,13 +323,13 @@ export default function AnalyticsPage() {
                   title="System Effectiveness"
                   subtitle="Whether spraying produced a measurable temperature change, how confident that estimate is, and what it costs in water. Each spray is compared against its own immediately-preceding baseline."
                 />
-                <Card>
+                <Panel className="p-5">
                   <SprayEffectPanel effect={data.spray.effect} water={data.spray.water_efficiency} />
-                </Card>
+                </Panel>
               </section>
 
-              <p className="text-[11px] text-slate-600 text-center pb-2">
-                Generated {new Date(data.generated_at).toLocaleString()} · farm {data.farm} · period {data.range_days}d ·
+              <p className="text-xs text-slate-500 text-center pb-2">
+                Generated {new Date(data.generated_at).toLocaleString()} · farm {data.farm} · period {data.range_days} days ·
                 methodology documented in ANALYTICS_METHODOLOGY.md
               </p>
             </>
