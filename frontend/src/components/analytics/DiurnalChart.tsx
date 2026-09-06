@@ -64,26 +64,30 @@ export default function DiurnalChart({ diurnal, threshold, unit, color }: Props)
   }
 
   const minDays = Math.min(...data.map((d) => d.days));
+  const maxDays = Math.max(...data.map((d) => d.days));
 
   return (
     <div className="space-y-3">
-      <ResponsiveContainer width="100%" height={240}>
-        <ComposedChart data={data} margin={{ top: 8, right: 14, bottom: 4, left: 0 }}>
+      {/* 24px top margin leaves room for the threshold label; without it the
+          label is clipped by the plot area's edge. */}
+      <ResponsiveContainer width="100%" height={250}>
+        <ComposedChart data={data} margin={{ top: 24, right: 16, bottom: 4, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
           <XAxis
             dataKey="hour"
             tickFormatter={(h) => `${String(h).padStart(2, "0")}`}
-            tick={{ fill: "#6b7280", fontSize: 11 }}
+            tick={{ fill: "#8b9eb3", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            label={{ value: "hour of day", position: "insideBottomRight", offset: -2, fill: "#6b7280", fontSize: 10 }}
+            height={28}
+            label={{ value: "hour of day", position: "insideBottomRight", offset: 0, fill: "#8b9eb3", fontSize: 11 }}
           />
           <YAxis
             domain={["auto", "auto"]}
-            tick={{ fill: "#6b7280", fontSize: 11 }}
+            tick={{ fill: "#8b9eb3", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            width={44}
+            width={48}
             tickFormatter={(v) => `${v}${unit}`}
           />
           <Tooltip content={<DiurnalTooltip unit={unit} />} />
@@ -109,19 +113,27 @@ export default function DiurnalChart({ diurnal, threshold, unit, color }: Props)
           <ReferenceLine
             y={threshold}
             stroke="var(--chart-critical)"
+            strokeWidth={1.5}
             strokeDasharray="4 3"
-            label={{ value: `threshold ${threshold}${unit}`, position: "right", fill: "#9ca3af", fontSize: 10 }}
+            label={{
+              value: `threshold ${threshold}${unit}`,
+              position: "insideTopLeft", offset: 6,
+              fill: "var(--chart-critical)", fontSize: 11, fontWeight: 600,
+            }}
           />
         </ComposedChart>
       </ResponsiveContainer>
 
+      <p className="text-xs text-slate-400 leading-relaxed">
+        The line is each hour&apos;s average; the shaded band shows how much that hour
+        swings from one day to the next ({(diurnal.confidence * 100).toFixed(0)}% confidence,
+        from {minDays === maxDays ? `${minDays} days` : `${minDays}–${maxDays} days`} of readings per hour).
+        A wide band means that hour is unpredictable; a narrow one means it behaves the same way daily.
+      </p>
       <p className="text-[11px] text-slate-600 leading-relaxed">
-        Line is the mean for each hour; shaded band is the{" "}
-        {(diurnal.confidence * 100).toFixed(0)}% confidence interval computed <strong>across days</strong>{" "}
-        (n = {minDays}
-        {minDays === 1 ? " day" : "–" + Math.max(...data.map((d) => d.days)) + " days"} per hour), so it
-        reflects genuine day-to-day variation rather than the illusory precision of treating
-        every 30-second reading as independent. Hours with no data are omitted, not interpolated.
+        The band is calculated across <strong>days</strong>, not across individual readings — readings
+        30 seconds apart are nearly identical, and treating them as independent would have made this
+        band about 12× too narrow. Hours with no data are left out rather than drawn through.
       </p>
     </div>
   );

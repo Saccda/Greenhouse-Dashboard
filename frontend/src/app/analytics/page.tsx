@@ -67,24 +67,37 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   );
 }
 
-/** Hero number — one figure, its meaning spelled out beneath it. */
-function HeroStat({ value, unit, label, detail, tone = "neutral" }: {
-  value: string; unit?: string; label: string; detail: string;
+/**
+ * Hero number — the figure, then the plain fact behind it.
+ *
+ * `facts` are declarative ("13 episodes, 24.7 h total") and belong to the
+ * reading. `note` is the "why this metric matters" line, deliberately smaller
+ * and separated: it explains our choice of measure, which is useful once and
+ * then just noise on every future visit.
+ */
+function HeroStat({ value, unit, label, facts, note, tone = "neutral" }: {
+  value: string; unit?: string; label: string;
+  facts: string; note?: string;
   tone?: "neutral" | "warn" | "good";
 }) {
   return (
-    <Card>
-      <p className="text-[10px] uppercase tracking-widest text-slate-500">{label}</p>
-      <p className="mt-1.5 flex items-baseline gap-1.5">
+    <Card className="flex flex-col">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="mt-2 flex items-baseline gap-1.5">
         <span className={clsx(
-          "text-3xl font-extrabold font-mono-num tabular-nums",
+          "text-4xl font-extrabold font-mono-num tabular-nums leading-none",
           tone === "warn" ? "text-amber-500" : tone === "good" ? "text-brand-green" : "text-slate-100",
         )}>
           {value}
         </span>
-        {unit && <span className="text-sm font-semibold text-slate-500">{unit}</span>}
+        {unit && <span className="text-base font-semibold text-slate-400">{unit}</span>}
       </p>
-      <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">{detail}</p>
+      <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">{facts}</p>
+      {note && (
+        <p className="text-[11px] text-slate-600 mt-auto pt-2.5 leading-relaxed border-t border-surface-border/60">
+          {note}
+        </p>
+      )}
     </Card>
   );
 }
@@ -96,28 +109,37 @@ function ParameterHealth({ p, unit, label }: { p: ParameterAnalytics; unit: stri
 
   const optimalPct = tir.optimal_fraction * 100;
   const longestH = ex.longest_episode_minutes / 60;
+  const totalH = ex.total_minutes_above / 60;
+  const optimalBand = tir.bands.find((b) => b.status === "optimal");
+  const optimalRangeText =
+    optimalBand == null ? "target"
+    : optimalBand.min !== null && optimalBand.max !== null ? `${optimalBand.min}–${optimalBand.max}${unit}`
+    : optimalBand.max !== null ? `under ${optimalBand.max}${unit}`
+    : `over ${optimalBand.min}${unit}`;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <HeroStat
-          label="Time in optimal range"
+          label="Time in target range"
           value={optimalPct.toFixed(0)} unit="%"
           tone={optimalPct >= 70 ? "good" : "warn"}
-          detail={`Of monitored readings, ${tir.bands.find(b => b.status === "optimal")?.label ?? "optimal"} band.`}
+          facts={`${optimalBand?.count.toLocaleString() ?? "—"} of ${tir.n.toLocaleString()} readings sat in the ${optimalRangeText} target band.`}
         />
         <HeroStat
-          label={`Chance above ${ex.threshold}${unit}`}
+          label={`Above ${ex.threshold}${unit}`}
           value={(ex.probability * 100).toFixed(0)} unit="%"
           tone={ex.probability > 0.3 ? "warn" : "good"}
-          detail={`P(${label.toLowerCase()} > ${ex.threshold}${unit}) during monitored hours — ${ex.count_above.toLocaleString()} of ${ex.n.toLocaleString()} readings.`}
+          facts={`${ex.count_above.toLocaleString()} of ${ex.n.toLocaleString()} readings were over the ${ex.threshold}${unit} alert threshold.`}
+          note="Share of monitored readings — see the coverage note above."
         />
         <HeroStat
-          label="Longest unbroken spell"
+          label="Longest hot stretch"
           value={longestH >= 1 ? longestH.toFixed(1) : ex.longest_episode_minutes.toFixed(0)}
-          unit={longestH >= 1 ? "h" : "min"}
+          unit={longestH >= 1 ? "hours" : "min"}
           tone={longestH >= 2 ? "warn" : "neutral"}
-          detail={`Across ${ex.episodes} separate episode${ex.episodes === 1 ? "" : "s"} above threshold. Sustained exposure stresses the crop far more than the same total split into brief spikes.`}
+          facts={`Longest single stretch above ${ex.threshold}${unit} without dropping back. ${ex.episodes} such stretch${ex.episodes === 1 ? "" : "es"} in total, adding up to ${totalH >= 1 ? `${totalH.toFixed(1)} hours` : `${ex.total_minutes_above.toFixed(0)} min`}.`}
+          note="Shown separately from the percentage because one long stretch is harder on the crop than the same hours split into short spikes."
         />
       </div>
 
@@ -231,13 +253,38 @@ export default function AnalyticsPage() {
                     const d = p.describe;
                     return (
                       <Card key={key}>
-                        <p className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                        <p className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
                           <Icon size={13} /> {label}
                         </p>
-                        <p className="text-[11px] text-slate-600 mb-3 font-mono-num">
-                          mean {d.mean.toFixed(2)}{unit} · median {d.median.toFixed(2)}{unit} · SD {d.sd.toFixed(2)} · IQR {d.iqr.toFixed(2)}
-                          {d.skewness != null && <> · skew {d.skewness > 0 ? "+" : ""}{d.skewness.toFixed(2)}</>}
-                        </p>
+
+                        {/* Headline statistics get real weight — they are the
+                            finding; the chart below is the supporting evidence.
+                            Median is emphasised over mean when the distribution
+                            is skewed enough for the two to disagree. */}
+                        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                          {([
+                            ["Mean", `${d.mean.toFixed(1)}${unit}`, Math.abs(d.skewness ?? 0) <= 0.3],
+                            ["Median", `${d.median.toFixed(1)}${unit}`, Math.abs(d.skewness ?? 0) > 0.3],
+                            ["Std dev", `± ${d.sd.toFixed(2)}`, false],
+                            ["Range", `${d.min.toFixed(1)}–${d.max.toFixed(1)}`, false],
+                          ] as const).map(([k, v, emphasised]) => (
+                            <div
+                              key={k}
+                              className={clsx(
+                                "rounded-lg px-2.5 py-2 border",
+                                emphasised
+                                  ? "bg-surface-hover border-brand-green/30"
+                                  : "bg-surface-hover border-surface-border",
+                              )}
+                            >
+                              <dt className="text-[10px] uppercase tracking-widest text-slate-500">{k}</dt>
+                              <dd className="text-lg font-bold font-mono-num tabular-nums text-slate-100 mt-0.5 leading-none">
+                                {v}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+
                         <DistributionChart
                           histogram={p.histogram}
                           describe={d}
