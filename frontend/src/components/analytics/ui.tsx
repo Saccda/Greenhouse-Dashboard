@@ -42,18 +42,6 @@ const TONE_ACCENT: Record<Tone, string> = {
   bad:     "bg-red-500",
 };
 
-/**
- * Verdict text under the value. Plain coloured type rather than a pill: the
- * words themselves carry the meaning, so the pill's background was chrome
- * around a label that already reads fine on its own.
- */
-const TONE_VERDICT: Record<Tone, string> = {
-  neutral: "text-slate-400 group-hover:text-white/75",
-  good:    "text-brand-green group-hover:text-white",
-  warn:    "text-amber-500 group-hover:text-white",
-  bad:     "text-red-400 group-hover:text-white",
-};
-
 const TONE_BADGE: Record<Tone, string> = {
   neutral: "bg-sky-400/15 text-sky-400 group-hover:bg-white group-hover:text-sky-600",
   good:    "bg-brand-green/15 text-brand-green group-hover:bg-white group-hover:text-green-700",
@@ -133,7 +121,7 @@ export function StatCard({
 }) {
   return (
     <div className={clsx(
-      "group relative flex flex-col rounded-2xl px-5 py-4 overflow-hidden h-full",
+      "group relative flex flex-col rounded-2xl p-5 overflow-hidden h-full",
       "bg-surface-card border border-surface-border transition-all duration-300",
     )}>
       {/* Hover wash, as on the Dashboard cards */}
@@ -164,42 +152,29 @@ export function StatCard({
           )}
         </div>
 
-        {/*
-         * Value and verdict, LEFT-aligned and stacked.
-         *
-         * Everything else in the card — label, description, note — is
-         * left-aligned, so a centred value left the verdict with nowhere
-         * natural to sit: beside the number it read as an afterthought, and
-         * beneath it as a floating pill. Sharing the card's single left edge
-         * puts the verdict directly under the figure it interprets, which is
-         * also how it would be said aloud ("four percent — well below target"),
-         * and gives the whole card one vertical rhythm to scan.
-         *
-         * Fixed height so the values line up across the row regardless of
-         * whether a card has a verdict.
-         */}
-        <div className="h-[4.25rem] flex flex-col justify-center">
-          <div className="flex items-baseline gap-1.5">
+        {/* Value + badge — fixed height, so the numbers line up across the row */}
+        <div className="h-[5.5rem] flex flex-col items-center justify-center gap-2">
+          <div className="flex items-baseline justify-center gap-2">
             <span className={clsx(
-              "text-[42px] font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
+              "text-5xl font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
               "group-hover:text-white transition-colors duration-300",
               TONE_VALUE[tone],
             )}>
               {value}
             </span>
             {unit && (
-              <span className="text-lg font-bold leading-none text-slate-500 group-hover:text-white/60 transition-colors duration-300">
+              <span className="text-xl font-bold leading-none text-slate-500 group-hover:text-white/60 transition-colors duration-300">
                 {unit}
               </span>
             )}
           </div>
           {badge && (
-            <p className={clsx(
-              "text-[13px] font-bold leading-none mt-1.5 transition-colors duration-300",
-              TONE_VERDICT[tone],
+            <span className={clsx(
+              "text-xs font-bold px-3 py-1 rounded-full transition-all duration-300",
+              TONE_BADGE[tone],
             )}>
               {badge}
-            </p>
+            </span>
           )}
         </div>
 
@@ -211,7 +186,7 @@ export function StatCard({
          * also lands at the same y. A one-line description simply leaves the
          * second line empty rather than pulling the rule up.
          */}
-        <p className="text-[15px] leading-snug text-slate-300 group-hover:text-white/85 transition-colors duration-300 min-h-[2.75rem] mt-1">
+        <p className="text-[15px] leading-relaxed text-slate-300 group-hover:text-white/85 transition-colors duration-300 min-h-[3.25rem] mt-3">
           {facts}
         </p>
 
@@ -224,7 +199,7 @@ export function StatCard({
          * and lets a longer note simply run on downward.
          */}
         {note && (
-          <p className="text-sm leading-snug text-slate-500 pt-2.5 mt-2.5 border-t border-surface-border/70 group-hover:text-white/60 group-hover:border-white/20 transition-colors duration-300">
+          <p className="text-sm leading-relaxed text-slate-500 pt-3 mt-3 border-t border-surface-border/70 group-hover:text-white/60 group-hover:border-white/20 transition-colors duration-300">
             {note}
           </p>
         )}
