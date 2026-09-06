@@ -25,12 +25,20 @@ export interface Describe {
   min:      number;
   max:      number;
   p05:      number;
-  p25:      number;
+  p25:      number;   // Q1
   median:   number;
-  p75:      number;
+  p75:      number;   // Q3
   p95:      number;
   iqr:      number;
   skewness: number | null;
+  /** Tukey box-plot anatomy: fences at Q1/Q3 ± 1.5·IQR. */
+  lower_fence:   number;
+  upper_fence:   number;
+  /** Most extreme readings still inside the fences — where the whiskers stop. */
+  whisker_low:   number;
+  whisker_high:  number;
+  outliers_low:  number;
+  outliers_high: number;
 }
 
 export interface HistogramBin {

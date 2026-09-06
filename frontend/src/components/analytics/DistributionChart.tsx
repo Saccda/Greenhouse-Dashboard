@@ -32,7 +32,10 @@ import type { Histogram, Describe } from "@/types/analytics";
 // box plot underneath can be inset to match the plot area exactly.
 const PLOT_LEFT = 48;
 const PLOT_RIGHT = 16;
-const CHART_MARGIN = { top: 28, right: PLOT_RIGHT, bottom: 4, left: 0 };
+// 48px of head-room so the threshold and median labels can sit on two separate
+// rows. They routinely land on almost the same value (humidity's median 69.5
+// against a 70% threshold), and on one row they overprinted each other.
+const CHART_MARGIN = { top: 48, right: PLOT_RIGHT, bottom: 4, left: 0 };
 
 interface Props {
   histogram: Histogram;
@@ -103,7 +106,10 @@ export default function DistributionChart({ histogram, describe, threshold, unit
 
           <Bar dataKey="count" radius={[3, 3, 0, 0]} fill={color} isAnimationActive={false} />
 
-          {/* Labels sit in the 28px top margin, so they can't be clipped. */}
+          {/* Two rows of labels: threshold on the upper row, median on the
+              lower one. Fixed rows rather than collision detection, because
+              these two lines can sit at practically the same x and any
+              same-row arrangement would overprint. */}
           <ReferenceLine
             x={threshold}
             stroke="var(--chart-critical)"
@@ -111,8 +117,8 @@ export default function DistributionChart({ histogram, describe, threshold, unit
             strokeDasharray="4 3"
             label={{
               value: `threshold ${threshold}${unit}`,
-              position: "top", offset: 8,
-              fill: "var(--chart-critical)", fontSize: 11, fontWeight: 600,
+              position: "top", offset: 26,
+              fill: "var(--chart-critical)", fontSize: 12, fontWeight: 600,
             }}
           />
           <ReferenceLine
@@ -120,9 +126,9 @@ export default function DistributionChart({ histogram, describe, threshold, unit
             stroke="#94a3b8"
             strokeWidth={1.5}
             label={{
-              value: `median ${describe.median.toFixed(1)}`,
-              position: "top", offset: 8,
-              fill: "#94a3b8", fontSize: 11,
+              value: `median ${describe.median.toFixed(1)}${unit}`,
+              position: "top", offset: 6,
+              fill: "#94a3b8", fontSize: 12,
             }}
           />
         </BarChart>
@@ -133,7 +139,6 @@ export default function DistributionChart({ histogram, describe, threshold, unit
         domain={[domainLo, domainHi]}
         unit={unit}
         color={color}
-        threshold={threshold}
       />
 
       <p className="text-xs text-slate-500 leading-relaxed pt-1">
@@ -146,86 +151,152 @@ export default function DistributionChart({ histogram, describe, threshold, unit
 }
 
 /**
- * Box-plot strip: p05 — p25 — median — p75 — p95, drawn on the histogram's own
- * x-scale and inset to its plot area so the two line up vertically.
+ * A proper Tukey box plot, drawn on the histogram's own x-scale and inset to
+ * its plot area so the two line up vertically.
  *
- * Values outside the histogram's bin-midpoint domain are clamped rather than
- * overflowing the strip — p05/p95 can fall slightly beyond the first/last bin
- * midpoint by construction.
+ * Anatomy, all labelled at its true position rather than in a separate list:
+ *   whisker ends  most extreme readings still inside the 1.5·IQR fences
+ *   box           Q1 → Q3 (the middle half of readings)
+ *   centre line   median
+ *   outlier zone  readings beyond a fence, shown as a tinted end-stub with a
+ *                 count, since we hold summary statistics rather than the raw
+ *                 points needed to plot them individually
+ *
+ * Labels alternate between two rows — Q1/Q3 on the lower row, whiskers and the
+ * median on the upper one — so neighbouring landmarks can never overprint each
+ * other however tightly the distribution is packed.
  */
 function BoxPlotStrip({
-  describe, domain, unit, color, threshold,
+  describe, domain, unit, color,
 }: {
   describe: Describe;
   domain: [number, number];
   unit: string;
   color: string;
-  threshold: number;
 }) {
   const [lo, hi] = domain;
   const span = hi - lo || 1;
   const pos = (v: number) => Math.min(100, Math.max(0, ((v - lo) / span) * 100));
 
+  const hasLowOutliers = describe.outliers_low > 0;
+  const hasHighOutliers = describe.outliers_high > 0;
+
+  // Upper row: whisker ends + median. Lower row: the quartiles. Alternating
+  // guarantees adjacent landmarks never share a row.
+  const upper = [
+    { key: "min-in", label: "Min", value: describe.whisker_low },
+    { key: "median", label: "Median", value: describe.median, strong: true },
+    { key: "max-in", label: "Max", value: describe.whisker_high },
+  ];
+  const lower = [
+    { key: "q1", label: "Q1", value: describe.p25 },
+    { key: "q3", label: "Q3", value: describe.p75 },
+  ];
+
+  const Tick = ({ label, value, strong }: { label: string; value: number; strong?: boolean }) => (
+    <div
+      className="absolute -translate-x-1/2 text-center whitespace-nowrap"
+      style={{ left: `${pos(value)}%` }}
+    >
+      <span className="block text-[11px] uppercase tracking-wide text-slate-500 leading-none">{label}</span>
+      <span className={clsx(
+        "block font-mono-num tabular-nums leading-tight mt-0.5",
+        strong ? "text-sm font-bold text-slate-100" : "text-xs text-slate-300",
+      )}>
+        {value.toFixed(1)}{unit}
+      </span>
+    </div>
+  );
+
   return (
     <div>
       <div style={{ marginLeft: PLOT_LEFT, marginRight: PLOT_RIGHT }}>
-        <div className="relative h-9" role="img"
-          aria-label={`Spread: p05 ${describe.p05.toFixed(1)}, p25 ${describe.p25.toFixed(1)}, median ${describe.median.toFixed(1)}, p75 ${describe.p75.toFixed(1)}, p95 ${describe.p95.toFixed(1)} ${unit}`}>
-          {/* p05–p95 whisker */}
+        <div
+          className="relative h-11"
+          role="img"
+          aria-label={
+            `Box plot: whiskers ${describe.whisker_low.toFixed(1)} to ${describe.whisker_high.toFixed(1)}${unit}, ` +
+            `Q1 ${describe.p25.toFixed(1)}, median ${describe.median.toFixed(1)}, Q3 ${describe.p75.toFixed(1)}${unit}, ` +
+            `${describe.outliers_low + describe.outliers_high} outliers`
+          }
+        >
+          {/* Outlier stubs — readings beyond a fence live out here */}
+          {hasLowOutliers && (
+            <div className="absolute top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-amber-500/50"
+              style={{ left: 0, width: `${pos(describe.whisker_low)}%` }} />
+          )}
+          {hasHighOutliers && (
+            <div className="absolute top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-amber-500/50"
+              style={{ left: `${pos(describe.whisker_high)}%`, right: 0 }} />
+          )}
+
+          {/* Whisker spanning the non-outlier range */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 h-[2px] bg-slate-500"
-            style={{ left: `${pos(describe.p05)}%`, width: `${pos(describe.p95) - pos(describe.p05)}%` }}
+            className="absolute top-1/2 -translate-y-1/2 h-[2px] bg-slate-400"
+            style={{
+              left: `${pos(describe.whisker_low)}%`,
+              width: `${pos(describe.whisker_high) - pos(describe.whisker_low)}%`,
+            }}
           />
-          {/* whisker end caps — make the p05/p95 positions readable */}
-          {[describe.p05, describe.p95].map((v, i) => (
-            <div key={i} className="absolute top-1/2 -translate-y-1/2 h-3 w-[2px] bg-slate-500"
+          {[describe.whisker_low, describe.whisker_high].map((v) => (
+            <div key={v} className="absolute top-1/2 -translate-y-1/2 h-3.5 w-[2px] bg-slate-400"
               style={{ left: `${pos(v)}%` }} />
           ))}
-          {/* IQR box — where the middle half of readings sat */}
+
+          {/* Interquartile box */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 h-6 rounded"
+            className="absolute top-1/2 -translate-y-1/2 h-7 rounded-md ring-1 ring-black/10"
             style={{
               left: `${pos(describe.p25)}%`,
               width: `${pos(describe.p75) - pos(describe.p25)}%`,
               backgroundColor: color,
-              opacity: 0.55,
+              opacity: 0.5,
             }}
           />
-          {/* median */}
+          {/* Median */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 h-7 w-[2px] bg-slate-100"
+            className="absolute top-1/2 -translate-y-1/2 h-8 w-[2.5px] bg-slate-100 rounded-full"
             style={{ left: `${pos(describe.median)}%` }}
           />
         </div>
+
+        {/* Direct labels, staggered across two rows */}
+        <div className="relative h-8 mt-1">
+          {upper.map((t) => (
+            <Tick key={t.key} label={t.label} value={t.value} strong={t.strong} />
+          ))}
+        </div>
+        <div className="relative h-8">
+          {lower.map((t) => (
+            <Tick key={t.key} label={t.label} value={t.value} />
+          ))}
+        </div>
       </div>
 
-      {/* Percentiles as an INLINE list, deliberately not a 5-column grid.
-          A grid beneath the strip reads as an axis, and evenly-spaced columns
-          would point at positions the marks don't actually occupy (p05 sits
-          ~40% across, not at the far left). An inline run carries no positional
-          claim at all. */}
-      <dl className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 mt-2 pl-1">
-        {([
-          ["p05", describe.p05], ["p25", describe.p25], ["median", describe.median],
-          ["p75", describe.p75], ["p95", describe.p95],
-        ] as const).map(([k, v], i) => (
-          <span key={k} className="inline-flex items-baseline gap-1">
-            {i > 0 && <span className="text-slate-700 mr-1">·</span>}
-            <dt className="text-[11px] uppercase tracking-wider text-slate-500">{k}</dt>
-            <dd className={clsx(
-              "font-mono-num tabular-nums",
-              k === "median" ? "text-sm text-slate-100 font-bold" : "text-xs text-slate-300",
-              v > threshold && k !== "median" && "text-amber-500",
-            )}>
-              {v.toFixed(1)}{unit}
-            </dd>
-          </span>
-        ))}
-      </dl>
-      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-        The bar spans the middle half of readings (p25–p75); the line through it is the median.
-        Whiskers reach the 5th and 95th percentiles — on the worst 5% of readings it was above{" "}
-        <span className="font-mono-num text-slate-400">{describe.p95.toFixed(1)}{unit}</span>.
+      <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+        The box holds the middle half of readings (Q1&nbsp;{describe.p25.toFixed(1)}{unit} to
+        Q3&nbsp;{describe.p75.toFixed(1)}{unit}); the line inside it is the median. Whiskers reach the
+        furthest readings within 1.5&nbsp;×&nbsp;IQR of the box.
+        {(hasLowOutliers || hasHighOutliers) ? (
+          <>
+            {" "}The amber stub{hasLowOutliers && hasHighOutliers ? "s mark" : " marks"}{" "}
+            <span className="text-amber-500 font-semibold">
+              {(describe.outliers_low + describe.outliers_high).toLocaleString()} outlier
+              {describe.outliers_low + describe.outliers_high === 1 ? "" : "s"}
+            </span>{" "}
+            beyond that range
+            {hasLowOutliers && ` (${describe.outliers_low.toLocaleString()} below ${describe.lower_fence.toFixed(1)}${unit}`}
+            {hasLowOutliers && hasHighOutliers && ", "}
+            {!hasLowOutliers && hasHighOutliers && " ("}
+            {hasHighOutliers && `${describe.outliers_high.toLocaleString()} above ${describe.upper_fence.toFixed(1)}${unit}`}
+            {(hasLowOutliers || hasHighOutliers) && ")"}, reaching{" "}
+            <span className="font-mono-num text-slate-400">
+              {describe.min.toFixed(1)}–{describe.max.toFixed(1)}{unit}
+            </span> in total.
+          </>
+        ) : (
+          <> No readings fell outside those fences.</>
+        )}
       </p>
     </div>
   );

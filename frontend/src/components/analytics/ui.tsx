@@ -121,7 +121,7 @@ export function StatCard({
 }) {
   return (
     <div className={clsx(
-      "group relative flex flex-col rounded-2xl p-5 overflow-hidden min-h-[15rem]",
+      "group relative flex flex-col rounded-2xl p-5 overflow-hidden h-full",
       "bg-surface-card border border-surface-border transition-all duration-300",
     )}>
       {/* Hover wash, as on the Dashboard cards */}
@@ -133,10 +133,17 @@ export function StatCard({
         TONE_ACCENT[tone],
       )} />
 
+      {/*
+       * Every zone below has a FIXED height rather than flexing to its content.
+       * Cards in a row otherwise centre their value at different heights and
+       * put their divider in a different place, because the description lines
+       * wrap differently — so the row reads as misaligned even though each card
+       * is individually fine.
+       */}
       <div className="relative z-10 flex flex-col h-full">
-        {/* Top: title + icon */}
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-base font-semibold leading-tight text-slate-200 group-hover:text-white transition-colors duration-300">
+        {/* Title + icon — one line, fixed */}
+        <div className="flex items-start justify-between gap-3 h-6">
+          <p className="text-base font-semibold leading-tight text-slate-200 group-hover:text-white transition-colors duration-300 truncate">
             {label}
           </p>
           {Icon && (
@@ -145,8 +152,8 @@ export function StatCard({
           )}
         </div>
 
-        {/* Centre: the number, and a badge that states the reading in words */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-5">
+        {/* Value + badge — fixed height, so the numbers line up across the row */}
+        <div className="h-[6.5rem] flex flex-col items-center justify-center gap-2.5">
           <div className="flex items-baseline justify-center gap-2">
             <span className={clsx(
               "text-5xl font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
@@ -171,10 +178,12 @@ export function StatCard({
           )}
         </div>
 
-        {/* Bottom: the plain-words reading, then the caveat below a divider */}
-        <p className="text-[15px] leading-relaxed text-slate-300 group-hover:text-white/85 transition-colors duration-300">
+        {/* Description — fixed height for up to three lines, so the divider
+            below it lands at the same y in every card of the row. */}
+        <p className="text-[15px] leading-relaxed text-slate-300 group-hover:text-white/85 transition-colors duration-300 min-h-[4.5rem]">
           {facts}
         </p>
+
         {note && (
           <p className="text-sm leading-relaxed text-slate-500 mt-auto pt-3.5 border-t border-surface-border/70 group-hover:text-white/60 group-hover:border-white/20 transition-colors duration-300">
             {note}
@@ -195,14 +204,12 @@ export function MetricTile({
 }: {
   label: string; value: string; emphasis?: boolean; emphasisLabel?: string;
 }) {
+  // Every tile keeps the SAME border and background. Emphasis is carried by the
+  // word-tag alone — a different edge colour on one tile of four reads as an
+  // inconsistency to be explained rather than as a deliberate highlight.
   return (
-    <div className={clsx(
-      "rounded-xl px-4 py-3.5 ring-1 transition-colors",
-      emphasis
-        ? "bg-brand-green/[0.07] ring-brand-green/30"
-        : "bg-surface-hover ring-surface-border",
-    )}>
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="rounded-xl px-4 py-3.5 ring-1 ring-surface-border bg-surface-hover transition-colors">
+      <div className="flex items-center gap-2 flex-wrap h-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
         {emphasis && emphasisLabel && (
           <span className="text-[11px] font-bold text-brand-green uppercase tracking-wide">

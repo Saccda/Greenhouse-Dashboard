@@ -149,6 +149,19 @@ def describe(df: pd.DataFrame, field: str) -> dict | None:
         m3 = sum((v - mean) ** 3 for v in vals) / n
         skew = m3 / (sd ** 3)
 
+    # Tukey box-plot anatomy. The fences are Q1/Q3 ± 1.5·IQR; the whiskers stop
+    # at the most extreme reading still INSIDE the fences (not at the fence
+    # itself), and anything beyond counts as an outlier. This is the textbook
+    # construction, and it is what makes the strip on the Analytics page an
+    # actual box plot rather than a percentile bar.
+    lower_fence = p[0.25] - 1.5 * iqr
+    upper_fence = p[0.75] + 1.5 * iqr
+    inside = [v for v in vals if lower_fence <= v <= upper_fence]
+    whisker_low = inside[0] if inside else vals[0]
+    whisker_high = inside[-1] if inside else vals[-1]
+    outliers_low = sum(1 for v in vals if v < lower_fence)
+    outliers_high = sum(1 for v in vals if v > upper_fence)
+
     return {
         "n":      n,
         "mean":   mean,
@@ -162,6 +175,13 @@ def describe(df: pd.DataFrame, field: str) -> dict | None:
         "p95":    p[0.95],
         "iqr":    iqr,
         "skewness": skew,
+        # Box-plot anatomy
+        "lower_fence":   lower_fence,
+        "upper_fence":   upper_fence,
+        "whisker_low":   whisker_low,
+        "whisker_high":  whisker_high,
+        "outliers_low":  outliers_low,
+        "outliers_high": outliers_high,
     }
 
 
