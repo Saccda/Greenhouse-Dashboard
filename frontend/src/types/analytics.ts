@@ -31,14 +31,22 @@ export interface Describe {
   p95:      number;
   iqr:      number;
   skewness: number | null;
-  /** Tukey box-plot anatomy: fences at Q1/Q3 ± 1.5·IQR. */
-  lower_fence:   number;
-  upper_fence:   number;
-  /** Most extreme readings still inside the fences — where the whiskers stop. */
-  whisker_low:   number;
-  whisker_high:  number;
-  outliers_low:  number;
-  outliers_high: number;
+  /*
+   * Tukey box-plot anatomy: fences at Q1/Q3 ± 1.5·IQR, whiskers at the most
+   * extreme reading still inside them, plus outlier counts beyond.
+   *
+   * OPTIONAL ON PURPOSE. The frontend ships to Vercel the moment a commit
+   * lands, while the backend only updates when the lab desktop is pulled and
+   * restarted, so a new page routinely talks to an older API for a while.
+   * Marking these optional makes the compiler force a fallback at every use
+   * instead of letting that normal skew crash the page at runtime.
+   */
+  lower_fence?:   number;
+  upper_fence?:   number;
+  whisker_low?:   number;
+  whisker_high?:  number;
+  outliers_low?:  number;
+  outliers_high?: number;
 }
 
 export interface HistogramBin {

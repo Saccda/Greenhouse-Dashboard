@@ -178,15 +178,31 @@ function BoxPlotStrip({
   const span = hi - lo || 1;
   const pos = (v: number) => Math.min(100, Math.max(0, ((v - lo) / span) * 100));
 
-  const hasLowOutliers = describe.outliers_low > 0;
-  const hasHighOutliers = describe.outliers_high > 0;
+  /*
+   * Tolerate an older backend.
+   *
+   * The frontend deploys to Vercel the moment a commit lands, while the
+   * backend only updates when the lab desktop is pulled and restarted — so a
+   * new page routinely talks to an older API for a while. Reading these fields
+   * unconditionally turned that normal skew into a page-wide crash. Falling
+   * back to the p05/p95 whiskers gives a slightly coarser box plot instead of
+   * a blank screen, and the outlier stubs simply don't render.
+   */
+  const whiskerLow = describe.whisker_low ?? describe.p05;
+  const whiskerHigh = describe.whisker_high ?? describe.p95;
+  const outliersLow = describe.outliers_low ?? 0;
+  const outliersHigh = describe.outliers_high ?? 0;
+  const hasFences = describe.lower_fence != null && describe.upper_fence != null;
+
+  const hasLowOutliers = outliersLow > 0;
+  const hasHighOutliers = outliersHigh > 0;
 
   // Upper row: whisker ends + median. Lower row: the quartiles. Alternating
   // guarantees adjacent landmarks never share a row.
   const upper = [
-    { key: "min-in", label: "Min", value: describe.whisker_low },
+    { key: "min-in", label: "Min", value: whiskerLow },
     { key: "median", label: "Median", value: describe.median, strong: true },
-    { key: "max-in", label: "Max", value: describe.whisker_high },
+    { key: "max-in", label: "Max", value: whiskerHigh },
   ];
   const lower = [
     { key: "q1", label: "Q1", value: describe.p25 },
@@ -215,30 +231,30 @@ function BoxPlotStrip({
           className="relative h-11"
           role="img"
           aria-label={
-            `Box plot: whiskers ${describe.whisker_low.toFixed(1)} to ${describe.whisker_high.toFixed(1)}${unit}, ` +
+            `Box plot: whiskers ${whiskerLow.toFixed(1)} to ${whiskerHigh.toFixed(1)}${unit}, ` +
             `Q1 ${describe.p25.toFixed(1)}, median ${describe.median.toFixed(1)}, Q3 ${describe.p75.toFixed(1)}${unit}, ` +
-            `${describe.outliers_low + describe.outliers_high} outliers`
+            `${outliersLow + outliersHigh} outliers`
           }
         >
           {/* Outlier stubs — readings beyond a fence live out here */}
           {hasLowOutliers && (
             <div className="absolute top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-amber-500/50"
-              style={{ left: 0, width: `${pos(describe.whisker_low)}%` }} />
+              style={{ left: 0, width: `${pos(whiskerLow)}%` }} />
           )}
           {hasHighOutliers && (
             <div className="absolute top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-amber-500/50"
-              style={{ left: `${pos(describe.whisker_high)}%`, right: 0 }} />
+              style={{ left: `${pos(whiskerHigh)}%`, right: 0 }} />
           )}
 
           {/* Whisker spanning the non-outlier range */}
           <div
             className="absolute top-1/2 -translate-y-1/2 h-[2px] bg-slate-400"
             style={{
-              left: `${pos(describe.whisker_low)}%`,
-              width: `${pos(describe.whisker_high) - pos(describe.whisker_low)}%`,
+              left: `${pos(whiskerLow)}%`,
+              width: `${pos(whiskerHigh) - pos(whiskerLow)}%`,
             }}
           />
-          {[describe.whisker_low, describe.whisker_high].map((v) => (
+          {[whiskerLow, whiskerHigh].map((v) => (
             <div key={v} className="absolute top-1/2 -translate-y-1/2 h-3.5 w-[2px] bg-slate-400"
               style={{ left: `${pos(v)}%` }} />
           ))}
@@ -275,20 +291,21 @@ function BoxPlotStrip({
 
       <p className="text-sm text-slate-500 mt-2 leading-relaxed">
         The box holds the middle half of readings (Q1&nbsp;{describe.p25.toFixed(1)}{unit} to
-        Q3&nbsp;{describe.p75.toFixed(1)}{unit}); the line inside it is the median. Whiskers reach the
-        furthest readings within 1.5&nbsp;×&nbsp;IQR of the box.
+        Q3&nbsp;{describe.p75.toFixed(1)}{unit}); the line inside it is the median. {hasFences
+          ? " Whiskers reach the furthest readings within 1.5 × IQR of the box."
+          : " Whiskers reach the 5th and 95th percentiles."}
         {(hasLowOutliers || hasHighOutliers) ? (
           <>
             {" "}The amber stub{hasLowOutliers && hasHighOutliers ? "s mark" : " marks"}{" "}
             <span className="text-amber-500 font-semibold">
-              {(describe.outliers_low + describe.outliers_high).toLocaleString()} outlier
-              {describe.outliers_low + describe.outliers_high === 1 ? "" : "s"}
+              {(outliersLow + outliersHigh).toLocaleString()} outlier
+              {outliersLow + outliersHigh === 1 ? "" : "s"}
             </span>{" "}
             beyond that range
-            {hasLowOutliers && ` (${describe.outliers_low.toLocaleString()} below ${describe.lower_fence.toFixed(1)}${unit}`}
+            {hasLowOutliers && ` (${outliersLow.toLocaleString()} below ${(describe.lower_fence ?? 0).toFixed(1)}${unit}`}
             {hasLowOutliers && hasHighOutliers && ", "}
             {!hasLowOutliers && hasHighOutliers && " ("}
-            {hasHighOutliers && `${describe.outliers_high.toLocaleString()} above ${describe.upper_fence.toFixed(1)}${unit}`}
+            {hasHighOutliers && `${outliersHigh.toLocaleString()} above ${(describe.upper_fence ?? 0).toFixed(1)}${unit}`}
             {(hasLowOutliers || hasHighOutliers) && ")"}, reaching{" "}
             <span className="font-mono-num text-slate-400">
               {describe.min.toFixed(1)}–{describe.max.toFixed(1)}{unit}
