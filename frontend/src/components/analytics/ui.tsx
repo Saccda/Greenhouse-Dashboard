@@ -153,7 +153,7 @@ export function StatCard({
         </div>
 
         {/* Value + badge — fixed height, so the numbers line up across the row */}
-        <div className="h-[6.5rem] flex flex-col items-center justify-center gap-2.5">
+        <div className="h-[5.5rem] flex flex-col items-center justify-center gap-2">
           <div className="flex items-baseline justify-center gap-2">
             <span className={clsx(
               "text-5xl font-extrabold font-mono-num tabular-nums tracking-tight leading-none",
@@ -178,14 +178,28 @@ export function StatCard({
           )}
         </div>
 
-        {/* Description — fixed height for up to three lines, so the divider
-            below it lands at the same y in every card of the row. */}
-        <p className="text-[15px] leading-relaxed text-slate-300 group-hover:text-white/85 transition-colors duration-300 min-h-[4.5rem]">
+        {/*
+         * Description block, fixed at two lines' worth of height.
+         *
+         * Its first line therefore starts at the same y in every card of the
+         * row, and — because the block does not grow — the divider beneath it
+         * also lands at the same y. A one-line description simply leaves the
+         * second line empty rather than pulling the rule up.
+         */}
+        <p className="text-[15px] leading-relaxed text-slate-300 group-hover:text-white/85 transition-colors duration-300 min-h-[3.25rem] mt-3">
           {facts}
         </p>
 
+        {/*
+         * The note is NOT pinned with mt-auto. Doing that made the divider's
+         * position depend on how many lines the note wrapped to, so a card
+         * with a one-line note put its rule ~28px lower than its neighbours.
+         * Anchoring it directly under the fixed description block instead
+         * keeps every rule — and every note's first line — on the same y,
+         * and lets a longer note simply run on downward.
+         */}
         {note && (
-          <p className="text-sm leading-relaxed text-slate-500 mt-auto pt-3.5 border-t border-surface-border/70 group-hover:text-white/60 group-hover:border-white/20 transition-colors duration-300">
+          <p className="text-sm leading-relaxed text-slate-500 pt-3 mt-3 border-t border-surface-border/70 group-hover:text-white/60 group-hover:border-white/20 transition-colors duration-300">
             {note}
           </p>
         )}
