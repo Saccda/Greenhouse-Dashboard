@@ -77,7 +77,7 @@ function MonthGrid({
               className={clsx(
                 "h-7 w-7 mx-auto text-xs rounded-full flex items-center justify-center transition-colors",
                 future && "text-slate-700 cursor-not-allowed",
-                !future && (isStart || isEnd) && "bg-brand-green text-black font-bold",
+                !future && (isStart || isEnd) && "bg-brand-blue text-white font-bold",
                 !future && !isStart && !isEnd && (inCommitted || inPreview) && "bg-brand-green/15 text-brand-green",
                 !future && !isStart && !isEnd && !inCommitted && !inPreview && "text-slate-300 hover:bg-surface-hover",
                 isToday && !isStart && !isEnd && "ring-1 ring-brand-green/50",

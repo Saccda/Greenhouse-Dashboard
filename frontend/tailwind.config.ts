@@ -24,6 +24,12 @@ const config: Config = {
           teal:  "#0d9488",
           cyan:  "#06b6d4",
           lime:  "#84cc16",
+          // Solid brand fill for buttons and active states, derived from the
+          // ME logo's blue (hue 240°) and darkened until a white label clears
+          // 8.4:1. Same value in both themes because the contrast that matters
+          // is against the label sitting on it, not against the page.
+          // Theme-aware TEXT uses var(--brand-ink) instead — see globals.css.
+          blue:  "#3333cc",
         },
         status: {
           active:  "#4ade80",

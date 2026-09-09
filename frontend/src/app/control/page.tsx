@@ -194,7 +194,7 @@ export default function ControlPage() {
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     saved
                       ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
-                      : "bg-brand-green text-black hover:bg-brand-green/90",
+                      : "bg-brand-blue text-white hover:bg-brand-blue/90",
                   )}
                 >
                   <Save size={14} />

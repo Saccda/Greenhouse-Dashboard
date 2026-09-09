@@ -108,7 +108,7 @@ function AuthForm() {
           disabled={busy}
           className={clsx(
             "w-full py-3 rounded-full text-sm font-semibold transition-all",
-            "bg-brand-green text-black hover:bg-brand-green/90 disabled:opacity-50",
+            "bg-brand-blue text-white hover:bg-brand-blue/90 disabled:opacity-50",
           )}
         >
           {busy
