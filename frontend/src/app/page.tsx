@@ -434,8 +434,8 @@ export default function HomePage() {
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-800 to-slate-900">
               <div className="text-7xl select-none" style={{ opacity: 0.12 }}>🌿</div>
               <div className="text-center space-y-2">
-                <p className="text-slate-400 text-sm font-medium">Add your farm photo to display here</p>
-                <code className="text-slate-500 text-xs bg-slate-800 px-4 py-2 rounded-lg block">
+                <p className="text-white/75 text-sm font-medium">Add your farm photo to display here</p>
+                <code className="text-white/60 text-xs bg-white/10 px-4 py-2 rounded-lg block">
                   frontend/public/farm.jpg
                 </code>
               </div>

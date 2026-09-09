@@ -74,9 +74,13 @@ export default function KPICard({
     <div
       className={clsx(
         "group relative flex flex-col rounded-2xl p-5 overflow-hidden min-h-[10rem]",
-        "bg-surface-card border border-surface-border",
-        "transition-all duration-300",
-        isStale && "opacity-50",
+        "bg-surface-card transition-all duration-300",
+        // A stale card previously dimmed to opacity-50, which fought itself:
+        // the thing being faded out was the "No signal from sensor" message
+        // explaining WHY there's nothing to read. The state is now carried by
+        // an amber border and the warning-coloured subtitle below instead, so
+        // it still reads as degraded without hiding its own explanation.
+        isStale ? "border border-amber-500/40" : "border border-surface-border",
         className,
       )}
     >
@@ -133,9 +137,14 @@ export default function KPICard({
           )}
         </div>
 
-        {/* Bottom: subtitle */}
+        {/* Bottom: subtitle. When the card is stale this line carries the
+            reason ("No signal from sensor"), so it gets the warning ink
+            rather than the most muted step in the scale. */}
         {subtitle && (
-          <p className="text-xs leading-snug text-slate-600 group-hover:text-white/60 transition-colors duration-300">
+          <p className={clsx(
+            "text-xs leading-snug transition-colors duration-300 group-hover:text-white/60",
+            isStale ? "text-[color:var(--warn-ink)] font-medium" : "text-slate-500",
+          )}>
             {subtitle}
           </p>
         )}

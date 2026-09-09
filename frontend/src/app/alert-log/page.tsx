@@ -284,7 +284,7 @@ export default function AlertLogPage() {
                     <td className="px-4 py-2.5">
                       <Badge
                         text={row.event.charAt(0).toUpperCase() + row.event.slice(1)}
-                        cls={EVENT_STYLE[row.event] ?? "bg-slate-700 text-slate-300 border-slate-600"}
+                        cls={EVENT_STYLE[row.event] ?? "bg-surface-hover text-slate-300 border-surface-border"}
                       />
                     </td>
                     <td className="px-4 py-2.5 font-mono-num text-slate-300 text-right">

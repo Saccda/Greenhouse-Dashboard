@@ -343,12 +343,15 @@ function VideoCard({ src, title }: { src: string; title: string }) {
             onError={handleError}
           />
         ) : (
+          // Fixed light-on-dark text, not slate-*: this well stays dark in
+          // both themes (it holds video), but globals.css would flip the
+          // slate-* steps to their dark-on-light values in light mode.
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900 px-4 text-center">
-            <Video size={28} className="text-slate-600" />
-            <p className="text-slate-500 text-sm">
+            <Video size={28} className="text-white/40" />
+            <p className="text-white/70 text-sm">
               {failure === "unsupported" ? "This browser can't play this file" : "Video not uploaded yet"}
             </p>
-            <code className="text-slate-600 text-xs bg-slate-800 px-2.5 py-1 rounded">
+            <code className="text-white/60 text-xs bg-white/10 px-2.5 py-1 rounded">
               frontend/public{src}
             </code>
           </div>
@@ -383,9 +386,9 @@ function PidDiagram() {
   if (error) {
     return (
       <div className="bg-surface-card border border-surface-border rounded-xl p-10 flex flex-col items-center justify-center gap-2 text-center">
-        <ImageOff size={28} className="text-slate-600" />
-        <p className="text-slate-500 text-sm">P&amp;ID diagram not uploaded yet</p>
-        <code className="text-slate-600 text-xs bg-slate-800 px-2.5 py-1 rounded">
+        <ImageOff size={28} className="text-slate-500" />
+        <p className="text-slate-400 text-sm">P&amp;ID diagram not uploaded yet</p>
+        <code className="text-slate-400 text-xs bg-surface-hover border border-surface-border px-2.5 py-1 rounded">
           frontend/public{PID_SRC}
         </code>
       </div>
