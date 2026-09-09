@@ -74,13 +74,17 @@ export default function KPICard({
     <div
       className={clsx(
         "group relative flex flex-col rounded-2xl p-5 overflow-hidden min-h-[10rem]",
-        "bg-surface-card transition-all duration-300",
+        "bg-surface-card border border-surface-border transition-all duration-300",
         // A stale card previously dimmed to opacity-50, which fought itself:
         // the thing being faded out was the "No signal from sensor" message
-        // explaining WHY there's nothing to read. The state is now carried by
-        // an amber border and the warning-coloured subtitle below instead, so
-        // it still reads as degraded without hiding its own explanation.
-        isStale ? "border border-amber-500/40" : "border border-surface-border",
+        // explaining WHY there's nothing to read.
+        //
+        // Staleness is now carried by the amber pulse dot and the
+        // warning-coloured subtitle only. An amber BORDER was tried too, but
+        // in a row of five cards where just two are stale it made the row look
+        // mismatched rather than informative — the border is structural here,
+        // so varying it per card breaks the grid's visual rhythm for a state
+        // two other cues already communicate.
         className,
       )}
     >
