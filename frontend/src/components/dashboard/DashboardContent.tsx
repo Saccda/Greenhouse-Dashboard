@@ -79,14 +79,25 @@ export default function DashboardContent() {
         onRefresh={refresh}
       />
 
-      {/* Offline banner — shown when sensor data is stale */}
+      {/*
+       * Offline banner — shown when sensor data is stale.
+       *
+       * Colours matter here: this previously paired bg-slate-800/60 with
+       * text-slate-400. globals.css remaps the slate-* TEXT utilities per
+       * theme but not the slate-* BACKGROUND ones, so in light mode the text
+       * switched to its dark-on-light step while the background stayed dark
+       * grey — leaving the warning almost unreadable exactly when it matters
+       * most. Amber tint + theme-aware text keeps it legible in both themes,
+       * and matches how every other warning in the app is styled.
+       */}
       {isOffline && (
-        <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-800/60 border-b border-slate-700/50 text-sm text-slate-400">
-          <WifiOff size={14} className="shrink-0 text-slate-500" />
+        <div className="flex items-center gap-3 px-5 py-3 bg-amber-500/10 border-b border-amber-500/30 text-sm text-slate-200">
+          <WifiOff size={16} className="shrink-0 text-[color:var(--warn-ink)]" />
           <span>
-            System offline — sensor data is not being received.
+            <strong className="font-semibold text-[color:var(--warn-ink)]">System offline</strong>
+            {" — sensor data is not being received."}
             {latest?.data_age_minutes != null && (
-              <> Last data was <strong className="text-slate-300">{latest.data_age_minutes.toFixed(0)} min ago</strong></>
+              <> Last reading was <strong className="font-semibold text-[color:var(--warn-ink)]">{latest.data_age_minutes.toFixed(0)} min ago</strong></>
             )}
             {latest?.last_seen && (
               <> (at {format(parseISO(latest.last_seen), "HH:mm")})</>

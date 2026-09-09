@@ -356,13 +356,17 @@ export default function SettingsPage() {
           <Settings size={16} className="text-slate-400" />
           <h1 className="text-sm font-semibold text-slate-200">Settings</h1>
         </div>
+        {/* The offline step avoids bg-slate-800: globals.css remaps slate-*
+            text per theme but not slate-* backgrounds, so that pairing put
+            light-mode text on a dark-mode background and washed the label
+            out. An amber tint reads correctly in both themes. */}
         <span className={clsx(
           "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium",
-          health ? "bg-brand-green/10 text-brand-green" : "bg-slate-800 text-slate-500",
+          health ? "bg-brand-green/10 text-brand-green" : "bg-amber-500/10 text-[color:var(--warn-ink)]",
         )}>
           <span className={clsx(
             "w-1.5 h-1.5 rounded-full",
-            health ? "bg-brand-green animate-pulse" : "bg-slate-600",
+            health ? "bg-brand-green animate-pulse" : "bg-amber-500 animate-pulse",
           )} />
           {health ? "Backend online" : "Connecting…"}
         </span>

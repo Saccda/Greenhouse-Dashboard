@@ -46,6 +46,11 @@
   --chart-hum:      #60a5fa;
   --chart-grid:     rgba(80,140,255,0.15);
 
+  /* Warning TEXT sitting on a bg-amber-500/10 surface. Needs its own step per
+     theme because the tinted surface inverts between them: amber-500 measures
+     7.6:1 on the dark tint but only 1.8:1 on the light one. */
+  --warn-ink: #f59e0b;
+
   color-scheme: dark;
 }
 
@@ -77,6 +82,10 @@
   --chart-temp:     #ea7317;
   --chart-hum:      #2b7fd4;
   --chart-grid:     rgba(22,36,26,0.10);
+
+  /* Darker step so warning text clears 4.5:1 on the pale amber surface
+     (6.1:1 here, against 1.8:1 for the dark theme's amber-500). */
+  --warn-ink: #92400e;
 
   color-scheme: light;
 }
