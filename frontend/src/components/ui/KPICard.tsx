@@ -89,7 +89,7 @@ export default function KPICard({
       )}
     >
       {/* Hover gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-blue to-[#20208a] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-sky-500 to-sky-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       {/* ── Status left border ── */}
       {status && (
@@ -112,7 +112,7 @@ export default function KPICard({
           <Icon
             size={20}
             strokeWidth={1.5}
-            className="shrink-0 text-[color:var(--brand-ink)] group-hover:text-white/70 transition-colors duration-300"
+            className="shrink-0 text-sky-400 group-hover:text-white/70 transition-colors duration-300"
           />
         </div>
 
@@ -123,7 +123,7 @@ export default function KPICard({
           ) : (
             <>
               <div className="flex items-baseline justify-center gap-2">
-                <span className="text-5xl font-extrabold tabular-nums tracking-tight leading-none text-[color:var(--brand-ink)] group-hover:text-white transition-colors duration-300">
+                <span className="text-5xl font-extrabold tabular-nums tracking-tight leading-none text-sky-400 group-hover:text-white transition-colors duration-300">
                   {displayValue}
                 </span>
                 {unit && (
@@ -133,7 +133,7 @@ export default function KPICard({
                 )}
               </div>
               {badge && (
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-brand-blue/15 text-[color:var(--brand-ink)] group-hover:bg-white group-hover:text-brand-blue transition-all duration-300">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-400/15 text-sky-400 group-hover:bg-white group-hover:text-sky-600 transition-all duration-300">
                   {badge}
                 </span>
               )}

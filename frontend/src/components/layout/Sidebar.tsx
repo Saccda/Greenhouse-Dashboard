@@ -99,7 +99,7 @@ export default function Sidebar() {
                 "flex items-center rounded-xl transition-all duration-150",
                 collapsed ? "justify-center p-3" : "gap-3 px-4 py-2.5",
                 active
-                  ? "bg-brand-blue text-white font-semibold shadow-md shadow-brand-blue/25"
+                  ? "bg-sky-600 text-white font-semibold shadow-md shadow-sky-200"
                   : "text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-800",
               )}
             >
@@ -156,7 +156,7 @@ export default function Sidebar() {
               collapsed ? "justify-center p-3" : "px-3 py-3.5 gap-3",
             )}
           >
-            <div className="w-8 h-8 rounded-full bg-brand-blue flex items-center justify-center shrink-0 text-white font-bold text-[11px]">
+            <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center shrink-0 text-white font-bold text-[11px]">
               {initials}
             </div>
             {!collapsed && (

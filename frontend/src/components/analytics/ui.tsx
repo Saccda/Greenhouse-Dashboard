@@ -26,9 +26,9 @@ import type { LucideIcon } from "lucide-react";
 
 export type Tone = "neutral" | "good" | "warn" | "bad";
 
-/** Value colour. Neutral is the brand accent, matching KPICard. */
+/** Value colour. Neutral matches KPICard's sky accent so the pages agree. */
 const TONE_VALUE: Record<Tone, string> = {
-  neutral: "text-[color:var(--brand-ink)]",
+  neutral: "text-sky-400",
   good:    "text-brand-green",
   warn:    "text-amber-500",
   bad:     "text-red-400",
@@ -36,14 +36,14 @@ const TONE_VALUE: Record<Tone, string> = {
 
 /** Left-edge accent, mirroring KPICard's status border. */
 const TONE_ACCENT: Record<Tone, string> = {
-  neutral: "bg-brand-blue/70",
+  neutral: "bg-sky-400/70",
   good:    "bg-green-400",
   warn:    "bg-amber-400",
   bad:     "bg-red-500",
 };
 
 const TONE_BADGE: Record<Tone, string> = {
-  neutral: "bg-brand-blue/15 text-[color:var(--brand-ink)] group-hover:bg-white group-hover:text-brand-blue",
+  neutral: "bg-sky-400/15 text-sky-400 group-hover:bg-white group-hover:text-sky-600",
   good:    "bg-brand-green/15 text-brand-green group-hover:bg-white group-hover:text-green-700",
   warn:    "bg-amber-500/15 text-amber-500 group-hover:bg-white group-hover:text-amber-700",
   bad:     "bg-red-500/15 text-red-400 group-hover:bg-white group-hover:text-red-700",
@@ -94,7 +94,7 @@ export function CardHeader({
             {badge}
           </span>
         )}
-        {Icon && <Icon size={20} strokeWidth={1.5} className="shrink-0 text-[color:var(--brand-ink)]" />}
+        {Icon && <Icon size={20} strokeWidth={1.5} className="shrink-0 text-sky-400" />}
       </div>
     </div>
   );
@@ -125,7 +125,7 @@ export function StatCard({
       "bg-surface-card border border-surface-border transition-all duration-300",
     )}>
       {/* Hover wash, as on the Dashboard cards */}
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-blue to-[#20208a] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-sky-500 to-sky-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       {/* Status accent down the left edge */}
       <div className={clsx(
@@ -148,7 +148,7 @@ export function StatCard({
           </p>
           {Icon && (
             <Icon size={20} strokeWidth={1.5}
-              className="shrink-0 text-[color:var(--brand-ink)] group-hover:text-white/70 transition-colors duration-300" />
+              className="shrink-0 text-sky-400 group-hover:text-white/70 transition-colors duration-300" />
           )}
         </div>
 

@@ -51,15 +51,6 @@
      7.6:1 on the dark tint but only 1.8:1 on the light one. */
   --warn-ink: #f59e0b;
 
-  /* Brand accent, derived from the ME logo's blue (#0909d4, hue 240°).
-     The hue is what carries the brand; the lightness is tuned per theme
-     because the raw logo blue scores 1.81:1 on this navy surface — the
-     interface needs its own steps even though the logo keeps its exact
-     colour. Deliberately blue only: the logo's red and green are reserved
-     here for danger and healthy status, and reusing them as brand accents
-     would make those signals ambiguous. */
-  --brand-ink: #9797f7;   /* 7.04:1 on the dark surface */
-
   color-scheme: dark;
 }
 
@@ -95,9 +86,6 @@
   /* Darker step so warning text clears 4.5:1 on the pale amber surface
      (6.1:1 here, against 1.8:1 for the dark theme's amber-500). */
   --warn-ink: #92400e;
-
-  /* Same logo hue, stepped dark for the light surface (5.87:1). */
-  --brand-ink: #4949df;
 
   color-scheme: light;
 }

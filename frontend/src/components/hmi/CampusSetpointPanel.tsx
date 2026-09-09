@@ -161,7 +161,7 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
               ? "bg-red-500/15 text-red-600 border-red-500/30"
               : spStatus === "sending" || hasInvalidZone
               ? "bg-surface-hover border-surface-border text-slate-400 cursor-not-allowed"
-              : "bg-brand-blue text-white hover:bg-brand-blue/90 border-transparent",
+              : "bg-brand-green text-black hover:bg-brand-green/90 border-transparent",
           )}
         >
           {spStatus === "sent"          ? "✓  Sent to Controller"

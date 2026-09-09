@@ -419,7 +419,7 @@ export default function SettingsPage() {
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     saved
                       ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
-                      : "bg-brand-blue text-white hover:bg-brand-blue/90",
+                      : "bg-brand-green text-black hover:bg-brand-green/90",
                   )}
                 >
                   {saved && <Check size={14} />}
@@ -624,7 +624,7 @@ export default function SettingsPage() {
                     <button
                       type="submit"
                       disabled={creating}
-                      className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-blue text-white hover:bg-brand-blue/90 disabled:opacity-50"
+                      className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-green text-black hover:bg-brand-green/90 disabled:opacity-50"
                     >
                       {creating ? "Adding…" : "Add User"}
                     </button>
@@ -684,7 +684,7 @@ export default function SettingsPage() {
                           </button>
                           <button
                             onClick={() => handleUserRoleChange(u.username, "developer")}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-brand-blue text-white hover:bg-brand-blue/90"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-brand-green text-black hover:bg-brand-green/90"
                           >
                             <UserCheck size={13} /> Approve as Developer
                           </button>
@@ -784,7 +784,7 @@ export default function SettingsPage() {
                           className="w-48 bg-surface-hover border border-surface-bright text-slate-200 text-sm rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green/50"
                         />
                       </div>
-                      <button type="submit" className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-blue text-white hover:bg-brand-blue/90">
+                      <button type="submit" className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-green text-black hover:bg-brand-green/90">
                         Set Password
                       </button>
                       <button
@@ -818,7 +818,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={handleSaveFarms}
                         disabled={farmsSaving}
-                        className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-blue text-white hover:bg-brand-blue/90 disabled:opacity-50"
+                        className="px-4 py-1.5 rounded-md text-sm font-medium bg-brand-green text-black hover:bg-brand-green/90 disabled:opacity-50"
                       >
                         {farmsSaving ? "Saving…" : "Save"}
                       </button>
