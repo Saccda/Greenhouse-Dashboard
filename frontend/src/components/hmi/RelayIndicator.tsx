@@ -47,13 +47,18 @@ export default function RelayIndicator({ relay, className, onToggle, pending = f
           : undefined
       }
       className={clsx(
-        "flex flex-col items-center gap-3 p-4 rounded-xl",
-        "bg-surface-card border",
+        "flex flex-col items-center gap-3 p-4 rounded-xl border",
+        // An ON or UNKNOWN card sits at card level; an OFF card drops to the
+        // page background so it visibly recedes on its own. Previously OFF
+        // only changed the LED, so a row where EVERY relay is off (Kampot's
+        // usual state) looked uniformly "normal" — the dimming was only
+        // apparent on campus, where a lit channel sat beside the dark ones.
+        // Both surface tokens are remapped per theme in globals.css.
         isOn
-          ? "border-status-active/30 shadow-[0_0_20px_rgba(74,222,128,0.08)]"
+          ? "bg-surface-card border-status-active/30 shadow-[0_0_20px_rgba(74,222,128,0.08)]"
           : isUnknown
-          ? "border-status-warning/30"
-          : "border-surface-border",
+          ? "bg-surface-card border-status-warning/30"
+          : "bg-surface-base border-surface-border",
         "transition-all duration-300",
         isClickable && !pending && "cursor-pointer hover:border-brand-green/40",
         pending && "opacity-60 cursor-wait",
@@ -73,9 +78,14 @@ export default function RelayIndicator({ relay, className, onToggle, pending = f
               ? "bg-status-active/15 border-status-active text-status-active led-active"
               : isUnknown
               ? "bg-status-warning/15 border-status-warning text-status-warning led-unknown"
-              : "bg-surface-hover border-slate-700 text-slate-600",
+              : "bg-surface-card border-surface-border text-slate-600",
           )}
-          style={{ color: isOn ? "#4ade80" : isUnknown ? "#fbbf24" : "#6b7280" }}
+          // currentColor drives the ON glow and the expanding ring, so those
+          // two states pin it explicitly. OFF deliberately does NOT — it falls
+          // through to text-slate-600, which globals.css remaps per theme.
+          // (border-slate-700 / bg-slate-700 have no light-mode override, so
+          // they used to paint a hard dark ring on a white card.)
+          style={isOn ? { color: "#4ade80" } : isUnknown ? { color: "#fbbf24" } : undefined}
         >
           <Icon size={20} />
         </div>
@@ -110,7 +120,7 @@ export default function RelayIndicator({ relay, className, onToggle, pending = f
         <span
           className={clsx(
             "w-1.5 h-1.5 rounded-full",
-            isOn ? "bg-status-active animate-pulse" : "bg-slate-700",
+            isOn ? "bg-status-active animate-pulse" : "bg-surface-border",
           )}
         />
         <span className="text-[10px] text-slate-600 font-mono-num uppercase">
