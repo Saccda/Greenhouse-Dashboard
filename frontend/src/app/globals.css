@@ -299,8 +299,32 @@ html, body {
   100% { transform: scale(2.2); opacity: 0;   }
 }
 
+/* Idle breath for a relay that is genuinely OFF.
+   Deliberately NOT led-blink: that one is step-end at 0.8s, a hard on/off
+   meant to be irritating, and it belongs to UNKNOWN (the feed is dead and
+   someone needs to look). OFF is the normal resting state, so it gets a slow
+   ease-in-out fade instead — the card reads as alive but idle, and motion
+   still distinguishes the three states on its own:
+     ON      pulse + expanding ring, green
+     UNKNOWN hard blink 0.8s,        amber
+     OFF     slow breath 3s,         muted */
+@keyframes led-idle {
+  0%, 100% { opacity: 1;   }
+  50%      { opacity: 0.5; }
+}
+
 .led-active  { animation: led-pulse 1.8s ease-in-out infinite; }
 .led-unknown { animation: led-blink 0.8s step-end infinite; }
+.led-idle    { animation: led-idle  3s   ease-in-out infinite; }
+
+/* These three run continuously for as long as the page is open. Anyone who
+   has asked their OS to reduce motion gets the colour coding only. */
+@media (prefers-reduced-motion: reduce) {
+  .led-active,
+  .led-unknown,
+  .led-idle { animation: none; }
+  .led-ring { display: none; }
+}
 
 .led-ring {
   position: absolute;

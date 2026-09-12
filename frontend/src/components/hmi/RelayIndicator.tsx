@@ -78,7 +78,7 @@ export default function RelayIndicator({ relay, className, onToggle, pending = f
               ? "bg-status-active/15 border-status-active text-status-active led-active"
               : isUnknown
               ? "bg-status-warning/15 border-status-warning text-status-warning led-unknown"
-              : "bg-surface-card border-surface-border text-slate-600",
+              : "bg-surface-card border-surface-border text-slate-600 led-idle",
           )}
           // currentColor drives the ON glow and the expanding ring, so those
           // two states pin it explicitly. OFF deliberately does NOT — it falls
