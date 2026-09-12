@@ -21,6 +21,7 @@ import type {
   TimeRange,
   Aggregation,
 } from "@/types";
+import { deriveConnectionStatus, type ConnectionStatus } from "@/lib/connection";
 
 interface UseDashboardOptions {
   farm:        string;
@@ -36,7 +37,7 @@ interface UseDashboardReturn {
   sprayStats:       SprayStatsResponse   | undefined;
   isLoading:        boolean;
   error:            Error | null;
-  connectionStatus: "online" | "offline" | "loading";
+  connectionStatus: ConnectionStatus;
   lastUpdated:      Date | null;
   refresh:          () => void;
 }
@@ -80,7 +81,7 @@ export function useDashboard({
   // ── Derived state ─────────────────────────────────────────────────────
   const error            = latestError ?? historyError ?? null;
   const isLoading        = latestLoading || historyLoading;
-  const connectionStatus = error ? "offline" : latest ? "online" : "loading";
+  const connectionStatus = deriveConnectionStatus(error, latest);
   const lastUpdated      = latest ? new Date(latest.timestamp) : null;
 
   const refresh = useCallback(() => {

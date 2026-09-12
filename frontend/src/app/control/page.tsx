@@ -17,6 +17,7 @@ import SetpointPanel from "@/components/hmi/SetpointPanel";
 import CampusSetpointPanel from "@/components/hmi/CampusSetpointPanel";
 import Sparkline from "@/components/charts/Sparkline";
 import type { LatestResponse, RelayStatus } from "@/types";
+import { deriveConnectionStatus } from "@/lib/connection";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ export default function ControlPage() {
     `/api/sensors/latest?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
   );
 
-  const connectionStatus = error ? "offline" : latest ? "online" : "loading";
+  const connectionStatus = deriveConnectionStatus(error, latest);
   const isOnline  = latest?.is_online ?? false;
   const temp      = !isOnline ? undefined : latest?.readings?.temperature?.value;
   const hum       = !isOnline ? undefined : latest?.readings?.humidity?.value;
@@ -90,7 +91,7 @@ export default function ControlPage() {
   }, [hum]);
 
   const alarms: string[] = [
-    ...(!isOnline && connectionStatus === "offline" ? ["SYSTEM OFFLINE"] : []),
+    ...(latest && !isOnline ? ["SYSTEM OFFLINE"] : []),
     ...(temp != null && temp > tempWarn ? [`TEMP HIGH  ${temp.toFixed(1)}°C > ${tempWarn}°C`] : []),
     ...(hum  != null && hum  > humWarn  ? [`HUM HIGH  ${Math.round(hum)}% > ${humWarn}%`]     : []),
   ];
@@ -132,6 +133,7 @@ export default function ControlPage() {
       <Header
         selectedFarm={farm} farms={farms} onFarmChange={setFarm}
         connectionStatus={connectionStatus}
+        dataAgeMinutes={latest?.data_age_minutes}
         lastUpdated={latest ? new Date(latest.timestamp) : null}
         isLoading={isLoading} onRefresh={() => mutate()}
       />
@@ -144,7 +146,9 @@ export default function ControlPage() {
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
             <span className={clsx(
               "inline-block w-2 h-2 rounded-full",
-              connectionStatus === "online" ? "bg-brand-green animate-pulse" : "bg-slate-600",
+              connectionStatus === "online" ? "bg-brand-green animate-pulse"
+              : connectionStatus === "stale"  ? "bg-status-warning"
+              : "bg-surface-border",
             )} />
             Live Relay Status
           </h2>

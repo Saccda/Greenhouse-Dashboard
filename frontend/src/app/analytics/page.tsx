@@ -34,6 +34,7 @@ import DistributionChart from "@/components/analytics/DistributionChart";
 import DiurnalChart from "@/components/analytics/DiurnalChart";
 import SprayEffectPanel from "@/components/analytics/SprayEffectPanel";
 import type { AnalyticsSummary, ParameterAnalytics } from "@/types/analytics";
+import { deriveConnectionStatus } from "@/lib/connection";
 
 const RANGES = [
   { label: "24 Hours", value: "-24h" },
@@ -138,7 +139,7 @@ export default function AnalyticsPage() {
     { revalidateOnFocus: false },
   );
 
-  const connectionStatus = error ? "offline" : data ? "online" : "loading";
+  const connectionStatus = deriveConnectionStatus(error, data);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">

@@ -74,6 +74,7 @@ export default function DashboardContent() {
         farms={farms}
         onFarmChange={setFarm}
         connectionStatus={connectionStatus}
+        dataAgeMinutes={latest?.data_age_minutes}
         lastUpdated={lastUpdated}
         isLoading={isLoading}
         onRefresh={refresh}

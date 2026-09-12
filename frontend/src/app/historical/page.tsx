@@ -12,6 +12,7 @@ import { DateRangePicker, AggregationDropdown, type RangePreset } from "@/compon
 import { useFarmSelection } from "@/hooks/useFarmSelection";
 import { fmt } from "@/lib/stats";
 import type { HistoryResponse, SprayStatsResponse, Aggregation } from "@/types";
+import { deriveConnectionStatus } from "@/lib/connection";
 
 const today    = () => format(new Date(), "yyyy-MM-dd");
 const nDaysAgo = (n: number) => format(subDays(new Date(), n), "yyyy-MM-dd");
@@ -79,7 +80,7 @@ export default function HistoricalPage() {
     { revalidateOnFocus: false },
   );
 
-  const connectionStatus = error ? "offline" : history ? "online" : "loading";
+  const connectionStatus = deriveConnectionStatus(error, history);
   const stats = sprayStats?.stats;
 
   const tableRows = useMemo(() => {
