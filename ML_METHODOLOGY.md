@@ -136,9 +136,9 @@ is badly biased. Label these accordingly in any output.
 
 ### 1.4 The effective sample size is the number of days, not the number of rows
 
-Readings two minutes apart are almost perfectly correlated. 21,259 rows do not
-provide 21,259 independent observations; the independent experimental unit is
-the **day**.
+The measured sampling cadence is a **median of 30 seconds** (p90 60 s). Readings
+that close are almost perfectly correlated: 21,259 rows do not provide 21,259
+independent observations. The independent experimental unit is the **day**.
 
 This single point invalidates most naive applications of ML to this dataset, and
 it is the most defensible thing in this document. It drives the validation
@@ -308,8 +308,8 @@ Never `KFold(shuffle=True)`. Never `train_test_split(random_state=42)`.
 ### 4.2 Why a random split would be fraud
 
 With a random split, the reading at 10:00:00 goes into training and the reading
-at 10:02:00 goes into test. They differ by ~0.05 °C. The model is being tested on
-data it has effectively already seen.
+at 10:00:30 goes into test. At a 30-second cadence they are very nearly the same
+number. The model is being tested on data it has effectively already seen.
 
 The reported MAE would be excellent and entirely meaningless. **This is the single
 easiest way to produce an impressive-looking and completely worthless result**,
@@ -377,6 +377,29 @@ threshold alerting already in production, which works.
 
 Training is **offline** on the lab desktop against Postgres. Inference is a
 loaded model artifact in the FastAPI backend. Nothing trains inside a request.
+
+**Postgres is never exposed to the internet, and does not need to be:**
+
+```
+LAB DESKTOP  (private - nothing here faces the internet)
+├── Postgres            localhost:5432   <- stays firewalled
+├── GreenhouseBackend   (FastAPI, NSSM)  <- reads Postgres over localhost
+│     ├── trains offline, writes the model artifact to disk
+│     └── serves /api/ml/forecast from the loaded artifact
+└── cloudflared tunnel ─────> internet ─────> Vercel frontend
+                              (only the HTTP API crosses)
+```
+
+Both the training job and the inference service run *on* the same machine as the
+database, so the connection is a loopback one. The only thing that crosses the
+tunnel is forecast JSON over the API that is already published. Opening port 5432
+would add attack surface — it is among the most heavily scanned ports on the
+internet — and buy nothing.
+
+The practical consequence is that **the audit and training scripts run on the lab
+desktop, not on a laptop.** `scripts/audit_data.py --source influx` exists so that
+development and code review can happen off-machine against the 30-day cloud
+window; it is not a substitute for auditing the archive.
 
 | Component | Location |
 |---|---|
@@ -472,13 +495,21 @@ the wrong one.
 
 ## 9. Reproducing
 
-🔒 *Nothing below exists yet — this fixes the interface the implementation must
-provide.*
+`scripts/audit_data.py` exists and runs today. 🔒 The training and validation
+scripts do not — those lines fix the interface the implementation must provide.
+
+Run the audit **on the lab desktop**; that is where Postgres lives (§5.1).
 
 ```bash
 cd backend
 
-python scripts/audit_data.py --farm kampot      # §0 — re-run before trusting §0.1–0.2
+# §0 — re-run before trusting §0.1–0.2. Introspects; assumes no schema.
+python scripts/audit_data.py --source postgres              # lists tables
+python scripts/audit_data.py --source postgres --table <name>
+
+# Off-machine equivalent against the 30-day cloud window, for development.
+python scripts/audit_data.py --source influx --farm kampot
+
 python scripts/train_forecast.py --farm kampot --horizon 30
 python scripts/validate_forecast.py --farm kampot   # §4 — must print the skill score
 ```
