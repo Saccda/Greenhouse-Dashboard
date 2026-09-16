@@ -29,7 +29,7 @@ Every claim below was produced by querying the live bucket on **2026-09-16**.
 | Kep | 6 (of a 16-day span) | 278 | Not usable |
 | Campus | 14 | 8,711 | Bridge is intermittent; not usable yet |
 
-### 0.2 The coverage gap — the single most important fact
+### 0.2 The monitored window — the single most important fact
 
 Kampot's readings, by hour of day, across all 29 days:
 
@@ -45,24 +45,73 @@ hour 17–23  :      0 rows    0/29 days
 **Fifteen of twenty-four hours have never been observed — not on one single day
 out of twenty-nine.**
 
-This is not a data-collection accident that more patience will fix. It is
-configured behaviour: `MAINTENANCE_START=16:00`, `MAINTENANCE_END=06:00` in
-`backend/config.py`. The rig is powered down overnight.
+This is a **deliberate operational decision, not a data-collection failure.** The
+rig is powered down outside working hours to save energy, on the reasoning that
+temperature has already fallen by evening and there is nothing the cooling and
+spray system needs to act on overnight.
+
+**That reasoning is supported by the farm's own data.** Temperature peaks at
+14:00 (mean 33.1 °C) and is already falling when recording stops:
+
+| Hour | Temp (mean ± sd) | Humidity (mean ± sd) |
+|---|---|---|
+| 14:00 | 33.1 ± 3.0 °C | 70.3 ± 10.1 % |
+| 15:00 | 31.7 ± 2.4 °C | 74.0 ± 9.1 % |
+| 16:00 | 30.9 ± 2.2 °C | 75.4 ± 8.9 % |
+
+Fitted per day over 14:00–16:00, temperature falls at a median **−0.61 °C/h**
+(falling on 17 of 28 days). For the heat-control objective the system was built
+to serve, shutting down at 16:00 forfeits little.
 
 > **Consequence for this phase:** a longer archive increases the number of
 > *days*, which is genuinely valuable (see §0.4). It does **not** fill the night
 > gap. If the rig has always run on this schedule, then a two-year archive has
 > exactly as much night-time data as a two-week one: none.
+>
+> Note this is a statement about **what can be claimed**, not a criticism of the
+> schedule. Every proportion the dashboard reports is conditional on monitored
+> hours, and must be worded that way, regardless of how sensible the reason for
+> the window is.
 
-### 0.3 An unexplained discrepancy worth resolving
+### 0.2.1 Where the energy-saving argument does not transfer: humidity
 
-The configured window is 06:00–16:00, but **no data has ever arrived before
-08:00**. Two hours that should be recorded are empty on every day.
+The argument "temperature has already dropped, so there is nothing to record"
+is sound for **temperature**. It does not carry over to **humidity**, and the
+distinction matters because the two move in opposite directions.
 
-Either the config does not reflect the field reality, or the rig is switched on
-manually each morning. Worth establishing which, because it is two extra hours
-per day of the cool part of the morning — the most informative unobserved region
-adjacent to what we do see, and the cheapest coverage improvement available.
+As air cools at constant water content, relative humidity **rises mechanically**.
+So the falling temperature that justifies the shutdown is the same process that
+drives humidity upward through the unobserved hours. The farm's own data shows
+humidity already climbing at the cutoff — median **+0.29 %/h** over 14:00–16:00 —
+from a base that is not low:
+
+```
+At 16:00, humidity  mean 75.4 %   max 99.1 %
+  readings already >= 85 %  : 11 %
+  readings already >= 90 %  :  7 %
+  readings already >= 95 %  :  5 %
+```
+
+The rise is modest and only on 15 of 28 days, so this is a **flag, not a finding**:
+it says the night-time humidity regime is unknown and plausibly high, not that it
+is harmful. Prolonged high overnight humidity is a recognised driver of fungal
+disease in pepper, but confirming whether that risk is material here is an
+**agronomy question, not a statistics one**, and should be put to an agronomist
+before any hardware change is considered.
+
+Recorded here because it is the one argument for night-time data that the
+energy-saving rationale does not already answer.
+
+### 0.3 The config does not match the field
+
+`backend/config.py` declares `MAINTENANCE_END=06:00`, but **no data has ever
+arrived before 08:00** — on any of the 29 days.
+
+Since the schedule is set deliberately (§0.2), the likely explanation is simply
+that the config value is stale and 08:00 is the real switch-on time. Worth
+correcting either way, because `MAINTENANCE_START/END` is what the alerting logic
+uses to decide whether silence is expected or a fault: a two-hour window where
+the system believes it should be receiving data and is not.
 
 ### 0.4 🔒 Re-audit against Postgres before modelling
 
@@ -119,10 +168,10 @@ This is a statement about sample size, not about the merits of the architecture.
 The model has never seen 17:00–08:00. Predicting that region is not
 interpolation, it is **extrapolation into a domain with zero support**.
 
-The uncomfortable part: night is precisely when unattended crop risk is highest,
-so it is the forecast a farm owner would most want — and the one we are least
-entitled to produce. A model that emits a confident night-time number is worse
-than no model, because it will be trusted.
+This holds regardless of *why* the window exists. The shutdown is a considered
+decision (§0.2) and a reasonable one, but a model cannot learn a regime it has
+never seen, and a model that emits a confident night-time number is worse than no
+model, because it will be trusted.
 
 **Design rule enforced in code (§2.5): the service refuses to forecast past the
 shutdown boundary.**
@@ -440,12 +489,20 @@ A prediction shown without its error bar will be read as fact.
 | 3. 🔒 Day-level modelling | Months of days | Gated on §0.4 |
 | 4. 🔒 Spray optimisation | Tens of spray events | Gated: n = 3 |
 | 5. 🔒 Cross-farm transfer | Campus/Kep streaming reliably | Gated: campus bridge |
-| 6. 🔒 Night-time forecasting | Continuous recording | **Gated on hardware** — no amount of data or modelling substitutes |
+| 6. 🔒 Night-time forecasting | Continuous recording | **Gated on an operating decision** — see below |
 
-Stage 6 is listed to make the point that it is a *hardware* decision, not a
-modelling one. If overnight prediction is a research objective, the rig must run
-overnight. That is a conversation with the farm owner, not a task for this
-document.
+Stage 6 is listed to make the point that it is an *operating* decision, not a
+modelling one. No amount of data or technique substitutes: if overnight
+prediction is a research objective, the rig has to run overnight.
+
+The farm has already weighed this and chosen energy saving over night-time data
+(§0.2), and for the heat-control objective that is the right call. The only
+consideration that decision did not price in is humidity (§0.2.1). If an
+agronomist judges the overnight humidity regime to matter for this crop, the
+trade-off is worth revisiting — and a cheap intermediate exists: record overnight
+for a few weeks in one season purely to characterise the regime, without
+committing to running continuously. A short campaign would settle empirically
+what is currently an assumption, at a fraction of the energy cost.
 
 ---
 
