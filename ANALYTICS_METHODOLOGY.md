@@ -278,6 +278,10 @@ claims.
 
 ## 5. What this sets up for the ML phase
 
+> Designed in detail in **`ML_METHODOLOGY.md`** — data audit, what is ruled out
+> and why, model and validation design, and the acceptance criteria fixed in
+> advance. Read that document before implementing anything predictive.
+
 The predictive work discussed for a later phase builds directly on these
 foundations rather than replacing them:
 
