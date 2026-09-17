@@ -1,5 +1,5 @@
 """
-Campus MQTT -> InfluxDB bridge — bypasses Node-RED for the PP Campus rig only.
+Campus MQTT -> InfluxDB + Postgres bridge — bypasses Node-RED for PP Campus.
 
 Kampot/Kep keep streaming through Node-RED completely unchanged; this is a
 separate, additive process that subscribes to the campus controller's own
@@ -25,10 +25,31 @@ Writes one InfluxDB point per message to config.FARMS["campus"]["measurement"]:
     `readings.temperature`) all key off that existing lowercase convention.
   - "CH1".."CH8" are written literally as-is (config.FARM_CHANNELS["campus"]
     keys) since there's no prior convention for these — brand new fields.
+
+Postgres archive
+----------------
+Kampot reaches Postgres through Node-RED; campus has no such wiring, so campus
+had no archive at all — only InfluxDB Cloud, which is a rolling ~30-day window,
+not a historical store. Without this, campus can never accumulate the multi-month
+history the ML work needs (ML_METHODOLOGY.md 0.4).
+
+No network change is required for this. Postgres runs on this same machine and
+is reached over loopback; this process already dials OUT to HiveMQ and InfluxDB.
+Nothing in this architecture accepts an inbound connection.
+
+The archive is strictly secondary to the live feed:
+
+  - It is optional. No POSTGRES_URL means the bridge logs once and carries on
+    exactly as before.
+  - InfluxDB is written FIRST. The dashboard depends on it; the archive does not.
+  - A Postgres failure is caught, logged and swallowed. A database that is down,
+    full, or mid-restart must never cost us live campus telemetry or stall the
+    MQTT loop — the archive can miss rows, the dashboard cannot.
 """
 import json
 import os
 import sys
+from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -44,6 +65,119 @@ CHANNEL_FIELDS  = list(config.FARM_CHANNELS["campus"].keys())  # CH1..CH8, liter
 # lowercase convention Kampot/Kep already use; channels keep their literal name.
 RENAMED_FIELDS  = [("Temperature", "temperature"), ("Humidity", "humidity")]
 LITERAL_FIELDS  = [(k, k) for k in CHANNEL_FIELDS]
+
+
+# ── Postgres archive ────────────────────────────────────────────────────────
+#
+# Long format: one row per (time, farm, field, value) rather than a column per
+# channel. Three reasons:
+#   1. Kampot has relay1-3 and campus has CH1-8, so no single wide table fits
+#      both; long format lets one table hold every farm.
+#   2. CH5-CH8 are still "Not yet assigned". Renaming one later is a data change
+#      here, not a schema migration.
+#   3. It is the shape InfluxDB itself uses, so the two stores stay comparable.
+
+_pg_conn = None          # lazily opened, reopened on failure
+_pg_disabled = False     # set once if unconfigured or structurally unusable
+
+_REQUIRED_COLUMNS = {"time", "farm", "device_id", "field", "value"}
+
+
+def _pg_table() -> str:
+    return config.POSTGRES_CAMPUS_TABLE
+
+
+def _pg_connect():
+    """Open a connection and ensure the archive table exists. None on failure."""
+    global _pg_disabled
+    if _pg_disabled or not config.POSTGRES_URL:
+        return None
+    try:
+        import psycopg2
+    except ImportError:
+        print("[campus-mqtt-bridge] psycopg2 not installed - archive disabled, "
+              "live feed unaffected. Fix: pip install -r requirements.txt")
+        _pg_disabled = True
+        return None
+
+    conn = psycopg2.connect(config.POSTGRES_URL)
+    conn.autocommit = True
+    table = _pg_table()
+    with conn.cursor() as cur:
+        cur.execute(
+            'CREATE TABLE IF NOT EXISTS "' + table + '" ('
+            '  time      timestamptz      NOT NULL,'
+            '  farm      text             NOT NULL,'
+            '  device_id text,'
+            '  field     text             NOT NULL,'
+            '  value     double precision NOT NULL'
+            ')'
+        )
+        cur.execute(
+            'CREATE INDEX IF NOT EXISTS "' + table + '_farm_field_time_idx" '
+            'ON "' + table + '" (farm, field, time DESC)'
+        )
+        # CREATE TABLE IF NOT EXISTS is silent when a table of that name already
+        # exists with a DIFFERENT shape - e.g. if the name collides with one the
+        # Node-RED flow owns. Every insert would then fail, one log line per
+        # message, forever. Check the shape once and disable instead.
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = %s",
+            (table,),
+        )
+        missing = _REQUIRED_COLUMNS - {r[0] for r in cur.fetchall()}
+        if missing:
+            print("[campus-mqtt-bridge] table '" + table + "' exists but is "
+                  "missing " + str(sorted(missing)) + " - archive disabled, live "
+                  "feed unaffected. Set POSTGRES_CAMPUS_TABLE to a free name.")
+            _pg_disabled = True
+            conn.close()
+            return None
+    return conn
+
+
+def _write_postgres(payload: dict, ts: datetime) -> None:
+    """Archive one message. Raises on failure; the caller swallows it."""
+    global _pg_conn
+    if _pg_disabled or not config.POSTGRES_URL:
+        return
+
+    device_id = payload.get("ID")
+    device_id = str(device_id) if device_id is not None else None
+
+    rows = []
+    for payload_key, field in RENAMED_FIELDS + LITERAL_FIELDS:
+        value = payload.get(payload_key)
+        if value is not None:
+            # double precision throughout, channels included. Postgres does not
+            # lock a column's type from its first write the way InfluxDB does,
+            # so one numeric type for everything keeps the table uniform and
+            # costs nothing.
+            rows.append((ts, "campus", device_id, field, float(value)))
+    if not rows:
+        return
+
+    if _pg_conn is None or _pg_conn.closed:
+        _pg_conn = _pg_connect()
+        if _pg_conn is None:
+            return
+    try:
+        with _pg_conn.cursor() as cur:
+            cur.executemany(
+                'INSERT INTO "' + _pg_table() + '" '
+                "(time, farm, device_id, field, value) VALUES (%s, %s, %s, %s, %s)",
+                rows,
+            )
+    except Exception:
+        # Most likely the connection died between messages. Drop it so the next
+        # message reconnects rather than reusing a broken handle.
+        try:
+            _pg_conn.close()
+        except Exception:
+            pass
+        _pg_conn = None
+        raise
 
 
 def _write_point(payload: dict) -> None:
@@ -109,10 +243,18 @@ def _on_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage) -> None:
         print(f"[campus-mqtt-bridge] bad payload on {msg.topic}: {e}")
         return
 
+    # InfluxDB first: the live dashboard reads from it. The archive is
+    # secondary and is never allowed to interfere with the write above.
     try:
         _write_point(payload)
     except Exception as e:
         print(f"[campus-mqtt-bridge] InfluxDB write failed: {e}")
+
+    try:
+        _write_postgres(payload, datetime.now(config.TIMEZONE))
+    except Exception as e:
+        print(f"[campus-mqtt-bridge] Postgres archive write failed (live feed "
+              f"unaffected): {e}")
 
 
 def main() -> None:
@@ -139,6 +281,13 @@ def main() -> None:
     client.on_connect    = _on_connect
     client.on_disconnect = _on_disconnect
     client.on_message    = _on_message
+
+    if config.POSTGRES_URL:
+        print(f"[campus-mqtt-bridge] archiving to Postgres table "
+              f"'{_pg_table()}' (loopback; not exposed)")
+    else:
+        print("[campus-mqtt-bridge] POSTGRES_URL not set - InfluxDB only, no "
+              "archive. Campus history limited to the ~30-day cloud window.")
 
     client.connect(config.MQTT_BROKER_HOST, config.MQTT_BROKER_PORT, keepalive=60)
     client.loop_forever(retry_first_connection=True)

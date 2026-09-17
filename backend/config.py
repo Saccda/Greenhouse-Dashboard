@@ -25,7 +25,18 @@ INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "IoT_Project")
 # ---------------------------------------------------------------------------
 # PostgreSQL
 # ---------------------------------------------------------------------------
+# Postgres lives on the lab desktop and is reached over LOOPBACK ONLY. Every
+# process that needs it (the Node-RED flow, the campus bridge, the training
+# job, the API) runs on that same machine, so the port is never exposed to the
+# internet — see ML_METHODOLOGY.md 5.1.
 POSTGRES_URL = os.getenv("POSTGRES_URL", "")
+
+# Archive table for the campus bridge. Long format (time/farm/field/value) so
+# that farms with different channel sets — Kampot's relay1-3 vs campus's CH1-8 —
+# can share one table, and so a channel being assigned a real name later does
+# not require an ALTER TABLE. Overridable in case the name collides with
+# something the Node-RED flow already owns.
+POSTGRES_CAMPUS_TABLE = os.getenv("POSTGRES_CAMPUS_TABLE", "campus_readings")
 
 # ---------------------------------------------------------------------------
 # Node-RED
