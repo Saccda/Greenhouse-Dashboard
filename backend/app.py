@@ -54,6 +54,7 @@ from routes.campus        import router as campus_router
 from routes.analytics     import router as analytics_router
 from routes.auth          import router as auth_router
 from routes.users         import router as users_router
+from routes.forecast      import router as forecast_router
 from schemas              import HealthResponse
 from services             import influxdb_service as db
 from services             import alert_checker
@@ -146,6 +147,7 @@ app.include_router(campus_router)
 app.include_router(analytics_router)
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(forecast_router)
 
 # ── Root health — quick liveness probe used by the frontend ──────────────
 

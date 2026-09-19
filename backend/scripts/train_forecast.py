@@ -34,6 +34,8 @@ try:
 except Exception:
     pass
 
+import json
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -43,6 +45,44 @@ from services import forecast_features as ff
 from scripts.validate_forecast import _fit_ridge, _fit_hgb, INTERVAL
 
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
+
+
+def _persistence_bands(table, horizon, init_days):
+    """
+    The SHIPPED Stage 1 artifact (§2.6): the empirical 80% interval of persistence
+    residuals, measured out-of-fold.
+
+    For each test day, the band is taken from the TRAINING persistence residuals
+    (so it is never fit on the day it is scored), and coverage is checked on the
+    test day. The returned q_lo/q_hi are the pooled out-of-fold quantiles the API
+    adds to the current reading — never in-sample, so the band the farm sees is
+    the one measured on days the method never saw.
+    """
+    days = sorted(table["day"].unique())
+    pooled_resid, cover_hits, cover_total, per_day_mae = [], 0, 0, []
+    for i in range(init_days, len(days)):
+        train = table[table["day"].isin(days[:i])]
+        test  = table[table["day"] == days[i]]
+        if len(train) < 200 or test.empty:
+            continue
+        r_tr = (train["y"] - train["y_persist"]).to_numpy()
+        r_te = (test["y"] - test["y_persist"]).to_numpy()
+        lo = np.quantile(r_tr, (1 - INTERVAL) / 2)
+        hi = np.quantile(r_tr, 1 - (1 - INTERVAL) / 2)
+        cover_hits += int(((r_te >= lo) & (r_te <= hi)).sum())
+        cover_total += len(r_te)
+        pooled_resid.append(r_te)
+        per_day_mae.append(float(np.abs(r_te).mean()))
+    if not pooled_resid:
+        return None
+    pooled = np.concatenate(pooled_resid)
+    return {
+        "q_lo":      round(float(np.quantile(pooled, (1 - INTERVAL) / 2)), 3),
+        "q_hi":      round(float(np.quantile(pooled, 1 - (1 - INTERVAL) / 2)), 3),
+        "oof_mae":   round(float(np.mean(per_day_mae)), 3),
+        "coverage":  round(cover_hits / cover_total, 3) if cover_total else None,
+        "n_test_days": len(per_day_mae),
+    }
 
 
 def _oof_residuals(table, feats, horizon, fit_fn, init_days):
@@ -148,11 +188,36 @@ def main():
         raw = raw.rename(columns={"temperature": "_t", "humidity": "temperature",
                                   "_t": "humidity"})
 
+    # 1. The shipped artifact: persistence interval bands (§2.6). This is what
+    #    the API actually serves — always emitted, model or no model.
+    bands = {"target": args.target, "interval": INTERVAL, "unit": "°C",
+             "model": "persistence", "horizons": {}}
+    for hz in ff.HORIZONS:
+        table = ff.build_features(raw, hz)
+        if table.empty:
+            continue
+        b = _persistence_bands(table, hz, args.init_days)
+        if b:
+            bands["horizons"][str(hz)] = b
+    bands["metadata"] = {
+        "trained_at": datetime.now(config.TIMEZONE).isoformat(),
+        "source": args.source, "farm": "kampot",
+    }
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    bands_path = os.path.join(MODELS_DIR, f"forecast_bands_{args.target}.json")
+    with open(bands_path, "w", encoding="utf-8") as f:
+        json.dump(bands, f, indent=2)
+    print(f"\nShipped artifact -> {os.path.relpath(bands_path)}")
+    for hz, b in bands["horizons"].items():
+        print(f"  {hz:>3}min  band [{b['q_lo']:+.2f}, {b['q_hi']:+.2f}] "
+              f"coverage {b['coverage']:.0%}  (persistence MAE {b['oof_mae']})")
+
+    # 2. The shelved point-forecast model, kept for the record (§2.6).
+    print("\nShelved model (for the record):")
     for hz in ff.HORIZONS:
         train_one(raw, args.target, hz, args.model, args.init_days)
 
-    print("\nArtifacts saved to backend/models/. The API loads them at startup;")
-    print("a horizon whose skill is <= 0 should be served as persistence instead.")
+    print("\nThe API loads forecast_bands_*.json and serves persistence + interval.")
 
 
 if __name__ == "__main__":

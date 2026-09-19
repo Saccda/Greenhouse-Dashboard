@@ -17,9 +17,11 @@ import { format, parseISO } from "date-fns";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useSettings }  from "@/hooks/useSettings";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
+import { useAuth }      from "@/hooks/useAuth";
 import Header           from "@/components/layout/Header";
 import KPICard          from "@/components/ui/KPICard";
 import SensorChart      from "@/components/charts/SensorChart";
+import ForecastCard     from "@/components/dashboard/ForecastCard";
 import { RelayPanel }   from "@/components/hmi/RelayIndicator";
 import AlertPanel       from "@/components/dashboard/AlertPanel";
 import SprayEventsTable from "@/components/dashboard/SprayEventsTable";
@@ -28,6 +30,11 @@ import { TIME_RANGE_OPTIONS, type TimeRange, type Aggregation } from "@/types";
 export default function DashboardContent() {
   const { settings }                  = useSettings();
   const { farm, setFarm, farms }      = useFarmSelection();
+  const { user }                      = useAuth();
+  // Stage 1 forecast preview is developer-only and Kampot-only (the farm it was
+  // trained on) until it is signed off — see ML_METHODOLOGY.md §2.6. The backend
+  // enforces the same role gate, so this is defence-in-depth, not the only lock.
+  const showForecast = user?.role === "developer" && farm === "kampot";
   const [timeRange,   setTimeRange]   = useState<TimeRange>("-24h");
   const [aggregation] = useState<Aggregation>("15m");
   const tempWarn                      = settings.tempWarn;
@@ -206,6 +213,9 @@ export default function DashboardContent() {
             isLoading={isLoading && !history}
           />
         </section>
+
+        {/* ── Forecast preview (developer-only, Kampot-only) ─────────── */}
+        {showForecast && <ForecastCard farm={farm} />}
 
         {/* ── Bottom row: HMI panel + spray events + alerts ─────────── */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -199,6 +199,21 @@ async def require_admin(user: dict = Depends(require_auth)) -> dict:
     return user
 
 
+async def require_developer(user: dict = Depends(require_auth)) -> dict:
+    """
+    FastAPI dependency — 'developer' accounts ONLY.
+
+    Note this deliberately EXCLUDES 'owner', which is unusual: owner is normally
+    the superset role. It gates work-in-progress that the farm owner should not
+    see yet — the Stage 1 forecast preview is developer-only until it has proven
+    itself on a farm and been signed off (ML_METHODOLOGY.md §2.6). A 403 here is
+    expected for the owner account, not a misconfiguration.
+    """
+    if user["role"] != "developer":
+        raise HTTPException(status_code=403, detail="Developer-only preview")
+    return user
+
+
 def require_farm_access(user: dict, farm_id: str) -> None:
     """
     Raise 403 if this account isn't allowed to see farm_id.
