@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import warnings
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -39,6 +40,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 
 import config
+
+
+def _read_sql(query, conn, **kwargs):
+    """
+    pd.read_sql over a raw psycopg2 connection works fine but emits a UserWarning
+    on every call ("pandas only supports SQLAlchemy connectable ..."). Pulling in
+    SQLAlchemy just to silence a cosmetic warning is not worth a dependency, so we
+    suppress that one warning here and nowhere else.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        return pd.read_sql(query, conn, **kwargs)
 
 TZ = config.TZ_NAME
 BAR_WIDTH = 40
@@ -88,6 +101,24 @@ def audit_frame(df: pd.DataFrame, label: str) -> None:
     per_day = days.value_counts()
     print(f"  rows per day    : median {per_day.median():.0f}"
           f"   min {per_day.min():.0f}   max {per_day.max():.0f}")
+
+    # ── Duplicate timestamps. If the writer emits one row per reading, a repeated
+    #    timestamp is the same instant logged twice, not new evidence. Duplicates
+    #    inflate the autocorrelation, distort the day-level CV, and flatter the
+    #    persistence baseline, so they must be removed before training. Detected
+    #    from the timestamps alone — nothing about the table's columns is needed. ─
+    dup = int(t.duplicated().sum())
+    print(f"  duplicate times : {dup:,}  ({dup / len(t):.1%} of rows)")
+    if dup:
+        print("     >> de-duplicate before training (ML_METHODOLOGY 1.4)")
+
+    # A day with far more rows than the median is usually a burst of duplicates or
+    # a brief cadence change, not a genuinely longer recording day. Surface the
+    # extremes so a suspicious day can be eyeballed before it skews anything.
+    def _days_line(series):
+        return ", ".join(f"{d} ({int(n):,})" for d, n in series.items())
+    print("  heaviest days   : " + _days_line(per_day.sort_values(ascending=False).head(4)))
+    print("  lightest days   : " + _days_line(per_day.sort_values().head(4)))
 
     # ── Hour-of-day coverage. THE decisive number: a model cannot predict an
     #    hour that was never recorded, and no amount of extra history fixes a
@@ -149,7 +180,7 @@ def discover(conn) -> None:
         WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
         ORDER BY table_schema, table_name, ordinal_position
     """
-    df = pd.read_sql(q, conn)
+    df = _read_sql(q, conn)
     if df.empty:
         print("  No user tables found. Is POSTGRES_URL pointing at the right database?")
         return
@@ -174,7 +205,7 @@ def pick_time_column(conn, table: str) -> str:
         WHERE table_name = %s
         ORDER BY ordinal_position
     """
-    cols = pd.read_sql(q, conn, params=(table,))
+    cols = _read_sql(q, conn, params=(table,))
     if cols.empty:
         sys.exit(f"Table '{table}' not found.")
 
@@ -216,12 +247,12 @@ def audit_postgres(table: str | None) -> None:
         tcol = pick_time_column(conn, table)
         print(f"\n  using time column: {tcol}")
 
-        df = pd.read_sql(f'SELECT "{tcol}" AS time FROM "{table}"', conn)
+        df = _read_sql(f'SELECT "{tcol}" AS time FROM "{table}"', conn)
         audit_frame(df, f"postgres: {table}")
 
         # Long format (field/value per row, the usual Node-RED shape) reports
         # per-field extent too — one field can stop while the others continue.
-        names = pd.read_sql(
+        names = _read_sql(
             "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
             conn, params=(table,),
         ).column_name.tolist()
@@ -235,7 +266,7 @@ def audit_postgres(table: str | None) -> None:
                            max("{tcol}") AS last
                     FROM "{table}" GROUP BY 1 ORDER BY 2 DESC
                 '''
-                print(pd.read_sql(q, conn).to_string(index=False))
+                print(_read_sql(q, conn).to_string(index=False))
                 break
     finally:
         conn.close()

@@ -19,31 +19,41 @@ yet.
 
 ## 0. Data audit — what we actually have
 
-Every claim below was produced by querying the live bucket on **2026-09-16**.
+Audited against the **Postgres archive on the lab desktop, 2026-09-19**
+(`iot_data.environment`) — the real training corpus, not the rolling ~30-day
+Influx window an earlier draft was limited to. Reproduce with
+`scripts/audit_data.py --source postgres --table environment`.
 
 ### 0.1 Volume
 
-| Farm | Days with data | Rows | Verdict |
-|---|---|---|---|
-| **Kampot** | 29 | 21,259 | The only trainable farm today |
-| Kep | 6 (of a 16-day span) | 278 | Not usable |
-| Campus | 14 | 8,711 | Bridge is intermittent; not usable yet |
+| Farm | Source | Days | Rows | Verdict |
+|---|---|---|---|---|
+| **Kampot** | Postgres archive | **115** | 115,244 | Trainable |
+| Kep | — | — | — | Never wired to Postgres; no archive |
+| Campus | Postgres (new) | 0 so far | — | Archiving only since 2026-09-19; months away |
+
+Kampot spans **2026-05-04 → 2026-09-19**, with 83% of calendar days present. At a
+median 30 s cadence the independent unit is the day, not the row (§1.4), so the
+effective sample size is **~115 day-blocks** — four times the 29 the Influx window
+implied. That is the number that moves ridge, and possibly gradient boosting,
+from aspirational to viable (§1.1).
 
 ### 0.2 The monitored window — the single most important fact
 
-Kampot's readings, by hour of day, across all 29 days:
+Kampot's readings, by hour of day, across all 115 days:
 
 ```
-hour 00–07  :      0 rows    0/29 days
-hour 08     :    671 rows   29/29 days
-hour 09     :  2,563 rows   29/29 days
-hour 10–15  : ~2,800/hr     28/29 days
-hour 16     :    479 rows   28/29 days
-hour 17–23  :      0 rows    0/29 days
+hour 00–07  :        0 rows      0/115 days
+hour 08     :    2,988 rows    112/115 days
+hour 09     :   13,090 rows    112/115 days
+hour 10–14  : ~13k–20k/hr      101–109/115 days
+hour 15     :    9,115 rows     94/115 days
+hour 16     :    1,464 rows     94/115 days
+hour 17–23  :        0 rows      0/115 days
 ```
 
 **Fifteen of twenty-four hours have never been observed — not on one single day
-out of twenty-nine.**
+out of 115.**
 
 This is a **deliberate operational decision, not a data-collection failure.** The
 rig is powered down outside working hours to save energy, on the reasoning that
@@ -105,7 +115,7 @@ energy-saving rationale does not already answer.
 ### 0.3 The config does not match the field
 
 `backend/config.py` declares `MAINTENANCE_END=06:00`, but **no data has ever
-arrived before 08:00** — on any of the 29 days.
+arrived before 08:00** — on any of the 115 days.
 
 Since the schedule is set deliberately (§0.2), the likely explanation is simply
 that the config value is stale and 08:00 is the real switch-on time. Worth
@@ -113,40 +123,45 @@ correcting either way, because `MAINTENANCE_START/END` is what the alerting logi
 uses to decide whether silence is expected or a fault: a two-hour window where
 the system believes it should be receiving data and is not.
 
-### 0.4 🔒 Re-audit against Postgres before modelling
+### 0.4 The recording window never changed — resolved against the archive
 
-The figures above come from InfluxDB Cloud, which is holding a **rolling ~30-day
-window**, not an archive. The Node-RED → Postgres store on the lab desktop is
-reported to hold *several months or more*, which would raise the independent
-sample size from ~29 day-blocks to ~150–700.
+The previous draft flagged this as the open question: the Influx figures came
+from a rolling ~30-day window, and an earlier continuously-recording period —
+if one existed — would be the only night-time evidence obtainable without a
+hardware change. The Postgres audit settles it. Month by month:
 
-That materially changes what §3 can attempt, so **the audit must be repeated
-against Postgres before any model is fitted.** Run on the lab desktop:
+| Month | earliest hr | latest hr | hours seen | days |
+|---|---|---|---|---|
+| 2026-05 | 8 | 16 | 9 | 21 |
+| 2026-06 | 8 | 16 | 9 | 14 |
+| 2026-07 | 8 | 16 | 9 | 31 |
+| 2026-08 | 8 | 16 | 9 | 31 |
+| 2026-09 | 8 | 16 | 9 | 18 |
 
-```sql
--- Extent and volume
-SELECT min(time) AS first, max(time) AS last, count(*) AS rows
-FROM <sensor_table>;
+**Every month is identical: 08:00–16:00, nine hours.** There is no earlier
+continuous period hiding in the archive. The night gap is not an artefact of the
+short Influx window — it is the entire five-month record. §1.2 (no overnight
+forecasting) now rests on 115 days rather than 29.
 
--- Coverage by hour: the numbers that actually matter
-SELECT extract(hour FROM time AT TIME ZONE 'Asia/Phnom_Penh') AS hr,
-       count(*)                       AS rows,
-       count(DISTINCT date(time))     AS days_seen
-FROM <sensor_table>
-GROUP BY 1 ORDER BY 1;
+What the archive *does* add is days, exactly where they help: the independent
+sample size quadruples, and the daytime hours 09–14 each have 100+ days behind
+them.
 
--- Did the recording schedule ever change?
-SELECT date_trunc('month', time) AS month,
-       min(extract(hour FROM time AT TIME ZONE 'Asia/Phnom_Penh')) AS earliest_hr,
-       max(extract(hour FROM time AT TIME ZONE 'Asia/Phnom_Penh')) AS latest_hr,
-       count(DISTINCT date(time))                                  AS days
-FROM <sensor_table>
-GROUP BY 1 ORDER BY 1;
-```
+### 0.4.1 🔒 One open data-quality item: duplicate rows
 
-The third query is the one to read carefully. If an earlier period recorded
-continuously, that window is disproportionately valuable — it is the only
-evidence of night-time behaviour that will ever exist without a hardware change.
+`rows per day` has a median of 753 but a **maximum of 13,191** — roughly 17× —
+whereas the same audit against Influx shows a maximum of 1,871 and zero duplicate
+timestamps. That points to duplicate rows in **Postgres specifically** (a
+double-insert or a Node-RED retry writing the same reading twice), present in the
+archive but not in the cloud stream.
+
+This must be measured and removed before training. Duplicated rows inflate the
+autocorrelation, distort the day-level cross-validation, and flatter the
+persistence baseline (§1.4, §4) — they make the model look better than it is. The
+audit now reports duplicate-timestamp count and the heaviest/lightest days
+directly (`scripts/audit_data.py --source postgres --table environment`), and the
+training loader will `DISTINCT ON (time)` / de-duplicate on timestamp as its first
+step regardless of the count. This subsection closes once that number is in.
 
 ---
 
@@ -157,9 +172,9 @@ State these before a reviewer raises them.
 ### 1.1 No deep learning (LSTM, GRU, Transformer)
 
 These architectures need thousands of complete daily cycles to identify seasonal
-structure. At 29 — or even 700 — *partial* days, the parameter count exceeds
-anything the data can constrain. The model would memorise the training days and
-the held-out error would say so.
+structure. At 115 — or even a few hundred — *partial* days, the parameter count
+exceeds anything the data can constrain. The model would memorise the training
+days and the held-out error would say so.
 
 This is a statement about sample size, not about the merits of the architecture.
 
@@ -186,13 +201,14 @@ is badly biased. Label these accordingly in any output.
 ### 1.4 The effective sample size is the number of days, not the number of rows
 
 The measured sampling cadence is a **median of 30 seconds** (p90 60 s). Readings
-that close are almost perfectly correlated: 21,259 rows do not provide 21,259
-independent observations. The independent experimental unit is the **day**.
+that close are almost perfectly correlated: 115,244 rows do not provide 115,244
+independent observations. The independent experimental unit is the **day**, of
+which there are 115.
 
 This single point invalidates most naive applications of ML to this dataset, and
 it is the most defensible thing in this document. It drives the validation
-scheme in §4 — and it is why "we have 21,259 data points" is a statement about
-storage, not about evidence.
+scheme in §4 — and it is why "we have 115,244 data points" is a statement about
+storage, not about evidence: ~115 independent days.
 
 ### 1.5 🔒 Spray effectiveness modelling stays blocked
 
@@ -245,9 +261,10 @@ distinct hours are ever observed, so hour-of-day is a near-constant with no
 support outside the window — an encoding that invites the model to extrapolate
 exactly where §1.2 forbids it.
 
-Deliberately excluded: day-of-year and any seasonal term. With 29 days there is
-no seasonal signal to fit, only a trend the model would happily overfit.
-Revisit once the Postgres re-audit (§0.4) confirms months of history.
+Deliberately excluded: day-of-year and any seasonal term. The archive spans one
+May–September stretch (§0.4), not a full year, so there is no seasonal *cycle* to
+fit — only a within-season trend the model would happily overfit. Revisit only
+if the record ever covers multiple years.
 
 ### 2.3 Models, in the order they will be fitted
 
@@ -394,12 +411,16 @@ Report the **distribution of per-day MAE**, not just its mean, and compare model
 against baseline with a **paired test across held-out days** — paired because the
 same day is scored by both, so day-to-day difficulty cancels.
 
-n = number of held-out days (~29 today, more after §0.4). The existing
+n = number of held-out days accumulated across the walk-forward folds (§4.1) —
+on the order of 100 now that the archive holds 115 days (§0.4), up from the ~29
+the Influx window implied. The existing
 `backend/services/stats_core.py` already implements the paired t-test and
 Cohen's d used for the spray analysis; this reuses it directly.
 
-With n ≈ 29 the test is adequate for a large effect and underpowered for a small
-one. If the result is "no significant improvement", **that is a finding and it
+At n on the order of 100 the paired test has reasonable power for a moderate
+effect, not only a large one — a real gain over the ~29-day picture, though still
+not enough to call a *small* effect reliably. If the result is "no significant
+improvement", **that is a finding and it
 gets reported** — it means persistence is the right production choice for this
 horizon, which is useful engineering knowledge and an honest research result.
 
@@ -514,13 +535,13 @@ textbook hypotheticals — in this dataset each one changes the answer.
 | Concept | Where it bites |
 |---|---|
 | Baselines | Persistence beats most ML at short horizons (§2.3) |
-| Autocorrelation | Effective n is 29 days, not 21,259 rows (§1.4) |
+| Autocorrelation | Effective n is ~115 days, not 115,244 rows (§1.4) |
 | Data leakage | Random split gives a great, worthless MAE (§4.2) |
 | MNAR missingness | 15 unobserved hours cannot be imputed (§0.2) |
 | Extrapolation | Why night-time prediction is refused (§1.2) |
 | Robust statistics | MAD vs SD when outliers are the target (§3.2) |
 | Paired testing | Same day scored by both models (§4.5) |
-| Power | n = 29 detects large effects only (§4.5) |
+| Power | n ~ 100 held-out days; moderate effects detectable (§4.5) |
 | Interval calibration | 80% must mean 80% (§2.4) |
 | Pre-registration | Acceptance criteria fixed in advance (§4.6) |
 
