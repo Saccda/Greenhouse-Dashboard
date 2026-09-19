@@ -6,7 +6,14 @@ psycopg2-binary>=2.9.9
 python-dotenv>=1.0.0
 pytz>=2024.1
 pandas>=2.0.0
+numpy>=1.24.0
 requests>=2.31.0
+# ML Stage 1 (temperature forecast) — ridge + HistGradientBoosting per
+# ML_METHODOLOGY.md §2, and joblib to persist the fitted model artifact the
+# API loads at startup. Training runs offline on the lab desktop; nothing here
+# is imported inside a request path.
+scikit-learn>=1.4.0
+joblib>=1.3.0
 apscheduler>=3.10.0
 httpx>=0.27.0
 limits>=3.0.0
