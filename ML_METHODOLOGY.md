@@ -147,21 +147,31 @@ What the archive *does* add is days, exactly where they help: the independent
 sample size quadruples, and the daytime hours 09–14 each have 100+ days behind
 them.
 
-### 0.4.1 🔒 One open data-quality item: duplicate rows
+### 0.4.1 The cadence is not stationary (but there are no duplicates)
 
-`rows per day` has a median of 753 but a **maximum of 13,191** — roughly 17× —
-whereas the same audit against Influx shows a maximum of 1,871 and zero duplicate
-timestamps. That points to duplicate rows in **Postgres specifically** (a
-double-insert or a Node-RED retry writing the same reading twice), present in the
-archive but not in the cloud stream.
+`rows per day` has a median of 753 and a **maximum of 13,191** — roughly 17×. The
+first suspicion was duplicate rows, but the audit reports **zero duplicate
+timestamps**: every row is a distinct instant. The heavy days are the tell —
+2026-05-27 (13,191), 2026-05-24 (7,193), 2026-05-25 (5,057) — all in the first
+weeks of the deployment. The logger began at a ~2-second cadence and was later
+relaxed to the steady ~30 seconds seen since.
 
-This must be measured and removed before training. Duplicated rows inflate the
-autocorrelation, distort the day-level cross-validation, and flatter the
-persistence baseline (§1.4, §4) — they make the model look better than it is. The
-audit now reports duplicate-timestamp count and the heaviest/lightest days
-directly (`scripts/audit_data.py --source postgres --table environment`), and the
-training loader will `DISTINCT ON (time)` / de-duplicate on timestamp as its first
-step regardless of the count. This subsection closes once that number is in.
+So this is a **cadence change, not corruption**, and the fix is not
+de-duplication (there is nothing to remove) but **resampling to a uniform time
+grid** before any feature is built. Two reasons it is mandatory rather than
+cosmetic:
+
+1. **Evidence weighting.** Trained on raw rows, 2026-05-27 would contribute 13,191
+   samples against a normal day's ~750 — 17× the weight for one day of weather, in
+   direct violation of the day-as-unit principle (§1.4). Resampling to a fixed
+   grid makes every day contribute comparably.
+2. **Well-defined lag features.** The §2.2 features are defined in *time*
+   (t−5 min, t−10 min, …), not in *rows*. On a uniform grid "the reading 5 minutes
+   ago" is unambiguous; on raw irregular data it is not.
+
+The loader resamples each day to a fixed grid (1-minute) and never bridges the
+overnight shutdown gap between days. This closes the item: no rows are discarded
+as bad, the record is simply put on an even footing before modelling.
 
 ---
 
@@ -573,28 +583,34 @@ the wrong one.
 
 ## 9. Reproducing
 
-`scripts/audit_data.py` exists and runs today. 🔒 The training and validation
-scripts do not — those lines fix the interface the implementation must provide.
-
-Run the audit **on the lab desktop**; that is where Postgres lives (§5.1).
+All three scripts exist and run today. Everything runs **on the lab desktop**,
+where Postgres lives (§5.1); the `--source influx` variants run the same code
+against the 30-day cloud window for development off-machine.
 
 ```bash
 cd backend
 
-# §0 — re-run before trusting §0.1–0.2. Introspects; assumes no schema.
+# §0 — the data audit. Introspects; assumes no schema.
 python scripts/audit_data.py --source postgres              # lists tables
-python scripts/audit_data.py --source postgres --table <name>
+python scripts/audit_data.py --source postgres --table environment
 
-# Off-machine equivalent against the 30-day cloud window, for development.
-python scripts/audit_data.py --source influx --farm kampot
+# §4 — validation. THE gate: does anything beat persistence on unseen days?
+python scripts/validate_forecast.py --source postgres
+python scripts/validate_forecast.py --source postgres --target humidity
 
-python scripts/train_forecast.py --farm kampot --horizon 30
-python scripts/validate_forecast.py --farm kampot   # §4 — must print the skill score
+# §2 — train + save the artifact, but only for a model validation justified.
+python scripts/train_forecast.py --source postgres           # ridge (default)
+python scripts/train_forecast.py --source postgres --model hgb   # if it clearly won
 ```
 
-`validate_forecast.py` is the one that matters. It must print, for every horizon:
-baseline MAE, model MAE, skill score, the paired test result, and realised
+`validate_forecast.py` is the one that matters. It prints, for every horizon:
+baseline MAE, model MAE, skill score, the paired-test p-value, and realised
 interval coverage — and it must be re-run after any change to features or model.
+
+The order is not optional: **validate before you train.** If validation shows no
+horizon beats persistence, there is nothing to ship — `train_forecast.py` will
+still save an artifact but stamps it `skill <= 0` and warns, and the API serves
+persistence for that horizon instead.
 
 A model whose validation output is not reproducible on demand should not be in
 production.

@@ -26,3 +26,7 @@ frontend/out/
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# ML model artifacts — built on the lab desktop from the Postgres archive
+# (scripts/train_forecast.py). Machine-local and data-derived; never committed.
+backend/models/
