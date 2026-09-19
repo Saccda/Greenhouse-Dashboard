@@ -319,6 +319,47 @@ This rule is the operational expression of §1.2, and it is the part most likely
 to be quietly dropped under pressure to make the card look complete. It should
 not be.
 
+### 2.6 Result on the 115-day archive
+
+Validated on 2026-09-19 against the full Postgres archive (115 days, ~93 held-out
+days per horizon under rolling-origin CV). Reproduce with
+`scripts/validate_forecast.py --source postgres`.
+
+| Horizon | Persistence MAE | Ridge MAE | Skill | Paired-test p | HGB skill |
+|---|---|---|---|---|---|
+| 15 min | **0.782 °C** | 0.782 | −0.000 | 0.9996 | −0.007 |
+| 30 min | **1.113 °C** | 1.102 | +0.010 | 0.557 | −0.018 |
+| 60 min | **1.536 °C** | 1.489 | +0.031 | 0.111 | +0.006 |
+
+Realised 80% interval coverage: **80.4% / 79.6% / 79.5%** — calibrated to nominal
+at every horizon. Worst single held-out day vs the median day: 2.3× (15 min),
+2.2× (30 min), 3.0× (60 min).
+
+**Against the §4.6 acceptance criteria, the point-forecast model does not ship:**
+
+| Criterion | 15 min | 30 min | 60 min |
+|---|---|---|---|
+| 1. Skill > 0 | ✗ | ✓ | ✓ |
+| 2. Paired test p < 0.05 | ✗ | ✗ | ✗ |
+| 3. Coverage 70–90% | ✓ | ✓ | ✓ |
+| 4. No day > 3× median MAE | ✓ | ✓ | ✓ |
+
+Criterion 2 fails at every horizon. Ridge edges ahead at 60 min (+3.1%,
+p = 0.11) but not significantly, and gradient boosting never beats ridge — so
+even relaxing the bar would ship ridge, not HGB (§2.3). **This is the
+pre-registered "no significant improvement" outcome (§4.5), and it is reported
+as a finding, not hidden.** Persistence is genuinely hard to beat at these
+horizons, exactly as §2.3 anticipated.
+
+**What ships is not nothing.** Criteria 3 and 4 pass cleanly: the prediction
+interval is sound. So Stage 1 ships as **persistence point forecast + the
+validated 80% interval** — "it is 32.4 °C now; within an hour, an 80% chance it
+stays within about ±2 °C". The interval is the advance warning the threshold
+system cannot give, and it is honest because its coverage was measured on days
+the method never saw. The point-forecast *model* is shelved, to be revisited
+only if a future data regime (a wider window, a second season) changes the
+picture.
+
 ---
 
 ## 3. Stage 2 — Sensor health and anomaly detection
@@ -448,6 +489,13 @@ the results happen to support.
 
 **If Stage 1 fails these criteria, it does not ship.** The fallback is the
 threshold alerting already in production, which works.
+
+**Outcome (2026-09-19, §2.6):** the point-forecast model failed criterion 2 at
+every horizon — no significant improvement over persistence. It does not ship.
+Criteria 3 and 4 passed, so the calibrated interval *does* ship, wrapped around a
+persistence forecast. The criteria did their job: they turned a negative result
+into a clear, defensible decision instead of a search for a metric that would
+have made the model look good.
 
 ---
 

@@ -111,9 +111,12 @@ def validate_horizon(table: pd.DataFrame, horizon: int, feats, use_hgb: bool,
         print(f"  horizon {horizon}: not enough days ({len(days)}) for CV")
         return None
 
-    # Per-day MAE for every model, plus interval hit/count for the shipped model.
+    # Per-day MAE for every model, plus interval hit/count. Coverage is tracked
+    # for BOTH ridge and persistence: §2.6 ships the interval around persistence,
+    # so that is the band whose calibration actually has to hold.
     per_day = {m: {} for m in ("persistence", "diurnal", "ridge", "hgb")}
     cover_hits = cover_total = 0
+    pcover_hits = pcover_total = 0
 
     for i in range(init_days, len(days)):
         test_day = days[i]
@@ -140,19 +143,26 @@ def validate_horizon(table: pd.DataFrame, horizon: int, feats, use_hgb: bool,
         if use_hgb:
             per_day["hgb"][test_day] = mae(_fit_hgb(Xtr, ytr).predict(Xte))
 
-        # Interval coverage for ridge (the likely shipped model): empirical
-        # training residual quantiles, applied to the test day (§2.4).
-        resid = ytr - ridge.predict(Xtr)
-        lo = np.quantile(resid, (1 - INTERVAL) / 2)
-        hi = np.quantile(resid, 1 - (1 - INTERVAL) / 2)
-        inside = (yte >= ridge_pred + lo) & (yte <= ridge_pred + hi)
-        cover_hits += int(inside.sum())
-        cover_total += len(yte)
+        # Interval coverage from empirical training-residual quantiles applied to
+        # the test day (§2.4), for ridge and for persistence.
+        def coverage(pred_tr, pred_te):
+            r = ytr - pred_tr
+            lo = np.quantile(r, (1 - INTERVAL) / 2)
+            hi = np.quantile(r, 1 - (1 - INTERVAL) / 2)
+            inside = (yte >= pred_te + lo) & (yte <= pred_te + hi)
+            return int(inside.sum()), len(yte)
 
-    return _summarise(horizon, per_day, use_hgb, cover_hits, cover_total)
+        h, tot = coverage(ridge.predict(Xtr), ridge_pred)
+        cover_hits += h; cover_total += tot
+        ph, ptot = coverage(train["y_persist"].to_numpy(), test["y_persist"].to_numpy())
+        pcover_hits += ph; pcover_total += ptot
+
+    return _summarise(horizon, per_day, use_hgb,
+                      cover_hits, cover_total, pcover_hits, pcover_total)
 
 
-def _summarise(horizon, per_day, use_hgb, cover_hits, cover_total):
+def _summarise(horizon, per_day, use_hgb, cover_hits, cover_total,
+               pcover_hits=0, pcover_total=0):
     days = sorted(per_day["persistence"].keys())
     base = np.array([per_day["persistence"][d] for d in days])
 
@@ -186,8 +196,9 @@ def _summarise(horizon, per_day, use_hgb, cover_hits, cover_total):
         print(f"  {name:<12}{mae_:>9.3f}{skill_s:>9}{dmae:>9.3f}{p_s:>11}")
 
     cov = cover_hits / cover_total if cover_total else float("nan")
-    print(f"  ridge {int(INTERVAL*100)}% interval realised coverage: {cov:.1%} "
-          f"(nominal {int(INTERVAL*100)}%)")
+    pcov = pcover_hits / pcover_total if pcover_total else float("nan")
+    print(f"  {int(INTERVAL*100)}% interval realised coverage: "
+          f"ridge {cov:.1%}   persistence {pcov:.1%}   (nominal {int(INTERVAL*100)}%)")
 
     # Per-day spread for the best non-baseline model (§4.4).
     best = min(("ridge",) + (("hgb",) if use_hgb else ()),
