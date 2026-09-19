@@ -22,6 +22,7 @@ import Header           from "@/components/layout/Header";
 import KPICard          from "@/components/ui/KPICard";
 import SensorChart      from "@/components/charts/SensorChart";
 import ForecastCard     from "@/components/dashboard/ForecastCard";
+import SensorHealthCard from "@/components/dashboard/SensorHealthCard";
 import { RelayPanel }   from "@/components/hmi/RelayIndicator";
 import AlertPanel       from "@/components/dashboard/AlertPanel";
 import SprayEventsTable from "@/components/dashboard/SprayEventsTable";
@@ -215,7 +216,12 @@ export default function DashboardContent() {
         </section>
 
         {/* ── Forecast preview (developer-only, Kampot-only) ─────────── */}
-        {showForecast && <ForecastCard farm={farm} />}
+        {showForecast && (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <ForecastCard farm={farm} />
+            <SensorHealthCard farm={farm} />
+          </div>
+        )}
 
         {/* ── Bottom row: HMI panel + spray events + alerts ─────────── */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
