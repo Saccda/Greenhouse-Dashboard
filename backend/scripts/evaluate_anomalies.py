@@ -52,6 +52,9 @@ def main():
     ap.add_argument("--influx-days", type=int, default=30)
     ap.add_argument("--list", type=int, default=25,
                     help="how many individual events to print for manual review")
+    ap.add_argument("--csv", metavar="PATH",
+                    help="write every incident to a CSV with a blank classification "
+                         "column to fill in (§3.3 step 2)")
     args = ap.parse_args()
 
     print(f"Stage 2 anomaly evaluation - {datetime.now(config.TIMEZONE):%Y-%m-%d %H:%M %Z}")
@@ -109,9 +112,52 @@ def main():
         for day, n in by_day.most_common(5):
             print(f"  {day}  {n:>5,} incidents")
 
+    if args.csv:
+        _write_csv(args.csv, an.group_incidents(events))
+
     rule("Done")
     print("  Precision/recall are NOT reported: there are no labels, and an")
     print("  invented number is worse than an absent one (§3.3).")
+    if not args.csv:
+        print("\n  To do the classification pass, re-run with:")
+        print("    --csv incidents.csv      (one row per incident, ready to fill in)")
+
+
+def _write_csv(path: str, incidents: list[dict]) -> None:
+    """
+    One row per incident with an empty `classification` column.
+
+    This is §3.3 step 2 made practical. The classification cannot be automated —
+    it needs someone who knows the rig to say whether a flag was a real fault, a
+    genuine extreme, or noise — so the job here is to lay the evidence out and
+    get out of the way. The `verdict` column is left blank on purpose: a
+    pre-filled guess would bias the very judgement the exercise exists to
+    collect.
+    """
+    import csv
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["start", "end", "detector", "family", "field",
+                    "raw_events", "span_min", "detail",
+                    "verdict", "notes"])
+        for i in incidents:
+            w.writerow([
+                i["start"][:19].replace("T", " "),
+                i["end"][:19].replace("T", " "),
+                i["detector"], i["family"], i["field"],
+                i["count"], i["span_min"], i["detail"],
+                "", "",
+            ])
+
+    rule(f"Classification worksheet -> {path}")
+    print(f"  {len(incidents)} incidents written, `verdict` column left blank.")
+    print("  Fill each row's verdict with one of:")
+    print("    TRUE_FAULT       the instrument really was broken")
+    print("    GENUINE_EXTREME  the reading was real, just unusual")
+    print("    FALSE_ALARM      nothing was wrong; the detector misfired")
+    print("  Then send it back and the per-detector hit rate can be computed")
+    print("  from YOUR labels — which is the only honest way to get one (§3.3).")
 
 
 if __name__ == "__main__":

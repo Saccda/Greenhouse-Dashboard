@@ -51,6 +51,12 @@
      7.6:1 on the dark tint but only 1.8:1 on the light one. */
   --warn-ink: #f59e0b;
 
+  /* "All good" TEXT, the green counterpart to --warn-ink. Same trap: the
+     brand green reads 6.9:1 on the dark tinted surface but only 2.0:1 on the
+     light one, and Tailwind's text-brand-green is not remapped per theme the
+     way the bg-brand-green/NN tints are. */
+  --ok-ink: #4ade80;
+
   color-scheme: dark;
 }
 
@@ -86,6 +92,10 @@
   /* Darker step so warning text clears 4.5:1 on the pale amber surface
      (6.1:1 here, against 1.8:1 for the dark theme's amber-500). */
   --warn-ink: #92400e;
+
+  /* Darker green so success text clears 4.5:1 on the pale green surface
+     (6.3:1 here, against 2.0:1 for the brand green). */
+  --ok-ink: #166534;
 
   color-scheme: light;
 }

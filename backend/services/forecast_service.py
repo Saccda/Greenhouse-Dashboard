@@ -93,6 +93,31 @@ def get_forecast(farm: str, target: str = "temperature") -> dict:
     base["is_online"] = is_online
     base["current"] = current
 
+    # Recent actual readings, so the card can plot the trend the forecast
+    # continues from. Served here rather than reusing the dashboard's history
+    # because that series is aggregated for a 24-hour window — far too coarse
+    # for a one-hour context strip, and it would not be guaranteed to end on the
+    # same reading `current` was taken from.
+    def _series(window: str, agg: str) -> list[dict]:
+        hist = db.get_history(measurement, [target], time_range=window, aggregation=agg)
+        return [
+            {"t": p["time"], "v": round(float(p["value"]), 2)}
+            for p in hist.get(target, []) if p.get("value") is not None
+        ]
+
+    try:
+        base["recent"] = _series("-90m", "2m")
+        base["recent_is_stale"] = False
+        if not base["recent"]:
+            # Outside monitored hours the last 90 minutes are empty by design.
+            # Showing the last session beats showing an empty chart — flagged as
+            # stale so the card can label it rather than imply it is current.
+            base["recent"] = _series("-12h", "5m")[-60:]
+            base["recent_is_stale"] = True
+    except Exception:
+        base["recent"] = []
+        base["recent_is_stale"] = False
+
     before_open = now.hour < WINDOW_OPEN_HOUR
     for hz_str, b in sorted(bands["horizons"].items(), key=lambda kv: int(kv[0])):
         hz = int(hz_str)

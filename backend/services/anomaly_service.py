@@ -382,13 +382,32 @@ def farm_health(farm: str = "kampot", days: int = 7) -> dict:
         return {"farm": farm, "days": days, "status": "no_data",
                 "incidents": [], "summary": None}
     events = detect_all(raw)
+    incidents = group_incidents(events)
+
+    # Per-day roll-up for the card's status strip. Reading counts are included so
+    # a day the rig never reported can be shown as "no data" rather than being
+    # painted the same green as a day that genuinely ran clean — the distinction
+    # matters most on exactly the days something went wrong.
+    per_day = raw.index.normalize().value_counts()
+    daily: dict[str, dict] = {
+        str(day.date()): {"date": str(day.date()), "readings": int(n),
+                          "faults": 0, "unusual": 0}
+        for day, n in per_day.items()
+    }
+    for inc in incidents:
+        key = inc["start"][:10]
+        row = daily.setdefault(key, {"date": key, "readings": 0,
+                                     "faults": 0, "unusual": 0})
+        row["faults" if inc["family"] == "fault" else "unusual"] += 1
+
     return {
         "farm":      farm,
         "days":      days,
         "status":    "ok",
-        "incidents": group_incidents(events),
+        "incidents": incidents,
         "summary":   summarise(events, raw),
         "readings":  int(len(raw)),
+        "daily":     [daily[k] for k in sorted(daily)],
         "span":      [raw.index.min().isoformat(), raw.index.max().isoformat()],
     }
 

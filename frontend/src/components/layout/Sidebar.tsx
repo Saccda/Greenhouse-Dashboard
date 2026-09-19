@@ -18,6 +18,7 @@ import {
   LogIn,
   LogOut,
   Info,
+  Sparkles,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTheme } from "@/hooks/useTheme";
@@ -32,6 +33,15 @@ const NAV_ITEMS = [
   { href: "/historical", label: "Historical", icon: History         },
   { href: "/alert-log",  label: "Alert Log",  icon: Bell            },
 ];
+
+// Entries only some roles may see. Insights holds the Stage 1/2 previews, which
+// stay developer-only until they are signed off (ML_METHODOLOGY.md §2.6) — the
+// owner should not be shown a nav item leading to work in progress. The backend
+// rejects the underlying API calls regardless; hiding the link is courtesy, not
+// the lock.
+const ROLE_NAV_ITEMS: Record<string, typeof NAV_ITEMS> = {
+  developer: [{ href: "/insights", label: "Insights", icon: Sparkles }],
+};
 
 function getInitials(name: string): string {
   return (
@@ -88,7 +98,7 @@ export default function Sidebar() {
 
       {/* ── Navigation ───────────────────────────────────────── */}
       <nav className="flex-1 py-4 flex flex-col gap-1 px-3">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {[...NAV_ITEMS, ...(ROLE_NAV_ITEMS[user?.role ?? ""] ?? [])].map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
