@@ -31,6 +31,17 @@ INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "IoT_Project")
 # internet — see ML_METHODOLOGY.md 5.1.
 POSTGRES_URL = os.getenv("POSTGRES_URL", "")
 
+# Write-capable connection for the campus bridge. Kept SEPARATE from
+# POSTGRES_URL on purpose: that one is the read-only account the audit and
+# training scripts use, so a bug in analysis code cannot corrupt the archive
+# it is analysing. The bridge genuinely needs INSERT and CREATE, which is a
+# different privilege level and therefore a different role.
+#
+# Falls back to POSTGRES_URL when unset, because a single-user setup is a
+# reasonable place to start — but if that account is read-only the bridge will
+# say so clearly at startup rather than failing once per message.
+POSTGRES_WRITE_URL = os.getenv("POSTGRES_WRITE_URL", "") or POSTGRES_URL
+
 # Archive table for the campus bridge. Long format (time/farm/field/value) so
 # that farms with different channel sets — Kampot's relay1-3 vs campus's CH1-8 —
 # can share one table, and so a channel being assigned a real name later does

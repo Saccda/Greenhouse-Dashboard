@@ -90,7 +90,7 @@ def _pg_table() -> str:
 def _pg_connect():
     """Open a connection and ensure the archive table exists. None on failure."""
     global _pg_disabled
-    if _pg_disabled or not config.POSTGRES_URL:
+    if _pg_disabled or not config.POSTGRES_WRITE_URL:
         return None
     try:
         import psycopg2
@@ -100,9 +100,43 @@ def _pg_connect():
         _pg_disabled = True
         return None
 
-    conn = psycopg2.connect(config.POSTGRES_URL)
+    try:
+        conn = psycopg2.connect(config.POSTGRES_WRITE_URL)
+    except Exception as e:
+        print(f"[campus-mqtt-bridge] cannot reach Postgres - archive disabled, "
+              f"live feed unaffected: {e}")
+        _pg_disabled = True
+        return None
+
     conn.autocommit = True
     table = _pg_table()
+    try:
+        _ensure_schema(conn, table)
+    except Exception as e:
+        # Two quite different causes end up here and they need different advice,
+        # so do not print both. A RuntimeError is our own table-shape complaint
+        # from _ensure_schema; anything else is the database refusing us, and by
+        # far the likeliest reason is POSTGRES_WRITE_URL pointing at the
+        # read-only analysis role, which has SELECT but neither INSERT nor
+        # CREATE. Either way this is caught once and the archive disabled, rather
+        # than raising per message for the life of the service.
+        print("[campus-mqtt-bridge] cannot write to Postgres - archive disabled, "
+              "live feed unaffected.")
+        print(f"    {type(e).__name__}: {e}")
+        if not isinstance(e, RuntimeError):
+            print(f"    POSTGRES_WRITE_URL needs a role with INSERT and CREATE on "
+                  f"'{table}'. The read-only analysis role will not do.")
+        _pg_disabled = True
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return None
+    return conn
+
+
+def _ensure_schema(conn, table: str) -> None:
+    """Create the archive table and index if absent, and verify its shape."""
     with conn.cursor() as cur:
         cur.execute(
             'CREATE TABLE IF NOT EXISTS "' + table + '" ('
@@ -128,19 +162,17 @@ def _pg_connect():
         )
         missing = _REQUIRED_COLUMNS - {r[0] for r in cur.fetchall()}
         if missing:
-            print("[campus-mqtt-bridge] table '" + table + "' exists but is "
-                  "missing " + str(sorted(missing)) + " - archive disabled, live "
-                  "feed unaffected. Set POSTGRES_CAMPUS_TABLE to a free name.")
-            _pg_disabled = True
-            conn.close()
-            return None
-    return conn
+            raise RuntimeError(
+                f"table '{table}' exists but is missing {sorted(missing)} - the "
+                f"name collides with something else. Set POSTGRES_CAMPUS_TABLE "
+                f"to a free name."
+            )
 
 
 def _write_postgres(payload: dict, ts: datetime) -> None:
     """Archive one message. Raises on failure; the caller swallows it."""
     global _pg_conn
-    if _pg_disabled or not config.POSTGRES_URL:
+    if _pg_disabled or not config.POSTGRES_WRITE_URL:
         return
 
     device_id = payload.get("ID")
@@ -282,12 +314,18 @@ def main() -> None:
     client.on_disconnect = _on_disconnect
     client.on_message    = _on_message
 
-    if config.POSTGRES_URL:
-        print(f"[campus-mqtt-bridge] archiving to Postgres table "
-              f"'{_pg_table()}' (loopback; not exposed)")
+    if config.POSTGRES_WRITE_URL:
+        # Connect once up front so a misconfiguration is visible in the service
+        # log at start, not discovered days later when someone asks why the
+        # archive is empty.
+        probe = _pg_connect()
+        if probe is not None:
+            probe.close()
+            print(f"[campus-mqtt-bridge] archiving to Postgres table "
+                  f"'{_pg_table()}' (loopback; not exposed)")
     else:
-        print("[campus-mqtt-bridge] POSTGRES_URL not set - InfluxDB only, no "
-              "archive. Campus history limited to the ~30-day cloud window.")
+        print("[campus-mqtt-bridge] POSTGRES_WRITE_URL not set - InfluxDB only, "
+              "no archive. Campus history limited to the ~30-day cloud window.")
 
     client.connect(config.MQTT_BROKER_HOST, config.MQTT_BROKER_PORT, keepalive=60)
     client.loop_forever(retry_first_connection=True)

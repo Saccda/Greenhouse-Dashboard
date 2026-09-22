@@ -4,7 +4,7 @@ Verify the campus bridge's Postgres archive without touching a real database.
 Runs campus_mqtt_bridge's archive path against a stubbed psycopg2. The point is
 the failure modes, not the happy path: the archive must never cost us live
 campus telemetry, so this asserts that a dead connection, a name collision with
-an existing table, and an unset POSTGRES_URL all degrade quietly while the
+an existing table, and an unset POSTGRES_WRITE_URL all degrade quietly while the
 InfluxDB write still happens.
 
     cd backend
@@ -20,6 +20,9 @@ sys.path.insert(0, _HERE)                    # backend/scripts/
 
 import config
 config.POSTGRES_URL = "postgresql://stub@localhost:5432/stub"
+# The bridge writes via POSTGRES_WRITE_URL — a role separate from the
+# read-only one the analysis scripts use.
+config.POSTGRES_WRITE_URL = config.POSTGRES_URL
 config.POSTGRES_CAMPUS_TABLE = "campus_readings"
 
 EXECUTED = []
@@ -126,9 +129,9 @@ EXECUTED.clear()
 b._write_postgres(PAYLOAD, TS)
 check("stays quiet on later messages", EXECUTED == [])
 
-print("\n7. POSTGRES_URL unset -> complete no-op")
+print("\n7. POSTGRES_WRITE_URL unset -> complete no-op")
 b._pg_disabled = False
-config.POSTGRES_URL = ""
+config.POSTGRES_WRITE_URL = ""
 EXECUTED.clear()
 b._write_postgres(PAYLOAD, TS)
 check("nothing attempted", EXECUTED == [])
