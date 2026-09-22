@@ -322,13 +322,20 @@ const LOOPS = [
   },
 ];
 
-function VideoCard({ src, title }: { src: string; title: string }) {
+function VideoCard({ src, poster, title }: { src: string; poster?: string; title: string }) {
   const [failure, setFailure] = useState<"missing" | "unsupported" | null>(null);
 
-  const handleError: React.ReactEventHandler<HTMLVideoElement> = (e) => {
-    const code = e.currentTarget.error?.code;
-    // 4 = MEDIA_ERR_SRC_NOT_SUPPORTED (bad/undecodable file), the rest are network/abort → treat as missing
-    setFailure(code === 4 ? "unsupported" : "missing");
+  // A 404 returns an HTML error page, which <video> reports as
+  // MEDIA_ERR_SRC_NOT_SUPPORTED (4) — the same code as a genuine codec failure.
+  // Reading error.code alone therefore tells a missing file that the browser
+  // cannot play it, sending you to look in the wrong place entirely.
+  const handleError = async () => {
+    try {
+      const res = await fetch(src, { method: "HEAD" });
+      setFailure(res.ok ? "unsupported" : "missing");
+    } catch {
+      setFailure("missing");
+    }
   };
 
   return (
@@ -337,8 +344,10 @@ function VideoCard({ src, title }: { src: string; title: string }) {
         {!failure ? (
           <video
             src={src}
+            poster={poster}
             controls
             preload="metadata"
+            playsInline
             className="absolute inset-0 w-full h-full"
             onError={handleError}
           />
@@ -362,11 +371,17 @@ function VideoCard({ src, title }: { src: string; title: string }) {
   );
 }
 
+// Web-optimised versions, produced by scripts/optimize-media.ps1. The .MOV
+// originals these replace were served as video/quicktime, which Chrome and
+// Firefox refuse outright, and every one of them carried its moov atom at 99.7%
+// of the file — so the browser had to download the whole clip before it could
+// show a single frame. These are real MP4, faststart, with a poster so the card
+// shows something before anyone presses play.
 const VIDEOS = [
-  { src: "/InsideFarm.MOV", title: "Inside the farm" },
-  { src: "/OutsideFarm.mp4", title: "Around the farm" },
-  { src: "/InsideFarm_Zoom Out View.MOV", title: "Inside the farm — zoomed out" },
-  { src: "/OutsideFarm_Zoom Out View.MOV", title: "Around the farm — zoomed out" },
+  { src: "/farm/inside-farm.mp4",       poster: "/farm/inside-farm-poster.jpg",       title: "Inside the farm" },
+  { src: "/farm/outside-farm.mp4",      poster: "/farm/outside-farm-poster.jpg",      title: "Around the farm" },
+  { src: "/farm/inside-farm-wide.mp4",  poster: "/farm/inside-farm-wide-poster.jpg",  title: "Inside the farm — zoomed out" },
+  { src: "/farm/outside-farm-wide.mp4", poster: "/farm/outside-farm-wide-poster.jpg", title: "Around the farm — zoomed out" },
 ];
 
 const PID_SRC = "/P&ID System Diagram.png";

@@ -143,6 +143,20 @@ export default function CampusMedia() {
 function VideoCard({ src, poster, title, caption }: Clip) {
   const [failure, setFailure] = useState<"missing" | "unsupported" | null>(null);
 
+  // A 404 hands back an HTML error page, which <video> reports as
+  // MEDIA_ERR_SRC_NOT_SUPPORTED (4) — the exact same code as a genuine codec
+  // failure. Reading error.code alone therefore tells a file that was never
+  // converted that the browser cannot play it, which sends you looking in
+  // entirely the wrong place. Ask the server which case this is.
+  const handleError = async () => {
+    try {
+      const res = await fetch(src, { method: "HEAD" });
+      setFailure(res.ok ? "unsupported" : "missing");
+    } catch {
+      setFailure("missing");
+    }
+  };
+
   return (
     <div className="rounded-xl overflow-hidden ring-1 ring-surface-border bg-surface-hover">
       <div className="aspect-video bg-black relative">
@@ -154,12 +168,7 @@ function VideoCard({ src, poster, title, caption }: Clip) {
             preload="metadata"
             playsInline
             className="absolute inset-0 w-full h-full"
-            // MEDIA_ERR_SRC_NOT_SUPPORTED (4) means the browser has the file but
-            // cannot decode the container — the .MOV case. Everything else is a
-            // network or missing-file problem, and the two need different advice.
-            onError={(e) =>
-              setFailure(e.currentTarget.error?.code === 4 ? "unsupported" : "missing")
-            }
+            onError={handleError}
           />
         ) : (
           // Fixed light-on-dark here, not slate-*: this well stays dark in both
@@ -170,10 +179,12 @@ function VideoCard({ src, poster, title, caption }: Clip) {
             <p className="text-white/70 text-sm">
               {failure === "unsupported"
                 ? "This browser can't play this file"
-                : "Not converted yet"}
+                : "Not uploaded yet"}
             </p>
             <code className="text-white/60 text-[11px] bg-white/10 px-2.5 py-1 rounded">
-              bash scripts/optimize-media.sh
+              {failure === "unsupported"
+                ? "powershell -File scripts\optimize-media.ps1"
+                : `public${src}`}
             </code>
           </div>
         )}
