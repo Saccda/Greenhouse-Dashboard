@@ -1,57 +1,53 @@
 "use client";
 /**
- * SiteMedia — photographs and video of the physical rig.
+ * CampusMedia — photographs and video of the PP Campus rig.
  *
  * The rest of the dashboard is numbers. This is the one place that answers
  * "what does the thing actually look like", which matters more than it sounds:
  * a reading of CH2 = ON means little until you have seen the sprinklers it
  * turns on.
  *
- * Media is declared per farm rather than globally, because each site is a
- * different physical build. A farm with nothing uploaded says so plainly
- * instead of rendering an empty grid.
+ * Campus only, deliberately. It is our own development platform, so its
+ * hardware is ours to photograph and document; Kampot is a working farm and its
+ * build is not ours to present this way. If a second site ever needs the same
+ * treatment, lift PHOTOS/CLIPS into a per-farm registry then — not before.
  */
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { clsx } from "clsx";
 import { Video as VideoIcon, Expand, X } from "lucide-react";
 
 export interface Photo { src: string; title: string; caption?: string }
 export interface Clip  { src: string; poster?: string; title: string; caption?: string }
 
-export const SITE_MEDIA: Record<string, { photos: Photo[]; videos: Clip[] }> = {
-  campus: {
-    photos: [
-      {
-        src: "/campus/campus-front.jpg",
-        title: "Front view",
-        caption: "The campus rig as installed — controller cabinet, sensor box and spray manifold.",
-      },
-      {
-        src: "/campus/campus-side.jpg",
-        title: "Side view",
-        caption: "Side elevation showing the frame, piping runs and the tank feeding the spray loop.",
-      },
-    ],
-    videos: [
-      {
-        src: "/campus/campus-operation-front.mp4",
-        poster: "/campus/campus-operation-front-poster.jpg",
-        title: "In operation — front",
-        caption: "The spray cycle running, viewed from the front.",
-      },
-      {
-        src: "/campus/campus-operation-side.mp4",
-        poster: "/campus/campus-operation-side-poster.jpg",
-        title: "In operation — side",
-        caption: "The same cycle from the side, showing coverage across the bed.",
-      },
-    ],
+const PHOTOS: Photo[] = [
+  {
+    src: "/campus/campus-front.jpg",
+    title: "Front view",
+    caption: "The campus rig as installed — controller cabinet, sensor box and spray manifold.",
   },
-};
+  {
+    src: "/campus/campus-side.jpg",
+    title: "Side view",
+    caption: "Side elevation showing the frame, piping runs and the tank feeding the spray loop.",
+  },
+];
 
-export default function SiteMedia({ farm }: { farm: string }) {
-  const media = SITE_MEDIA[farm];
+const CLIPS: Clip[] = [
+  {
+    src: "/campus/campus-operation-front.mp4",
+    poster: "/campus/campus-operation-front-poster.jpg",
+    title: "In operation — front",
+    caption: "The spray cycle running, viewed from the front.",
+  },
+  {
+    src: "/campus/campus-operation-side.mp4",
+    poster: "/campus/campus-operation-side-poster.jpg",
+    title: "In operation — side",
+    caption: "The same cycle from the side, showing coverage across the bed.",
+  },
+];
+
+export default function CampusMedia() {
   const [lightbox, setLightbox] = useState<Photo | null>(null);
 
   // Escape closes the lightbox; without it the only way out is the button,
@@ -65,19 +61,6 @@ export default function SiteMedia({ farm }: { farm: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox, onKey]);
 
-  if (!media) {
-    return (
-      <section className="rounded-2xl border border-surface-border bg-surface-card p-8">
-        <p className="text-sm text-slate-300 font-medium">No site media for this farm yet</p>
-        <p className="text-[13px] text-slate-500 mt-1.5 max-w-xl leading-relaxed">
-          Photographs and video are added per site. Drop files into{" "}
-          <code className="text-slate-400">frontend/public/</code> and register them in{" "}
-          <code className="text-slate-400">SiteMedia.tsx</code>.
-        </p>
-      </section>
-    );
-  }
-
   return (
     <>
       <section className="rounded-2xl border border-surface-border bg-surface-card p-5">
@@ -86,7 +69,7 @@ export default function SiteMedia({ farm }: { farm: string }) {
           Photographs of the installation as built.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {media.photos.map((p) => (
+          {PHOTOS.map((p) => (
             <button
               key={p.src}
               type="button"
@@ -122,7 +105,7 @@ export default function SiteMedia({ farm }: { farm: string }) {
           The system running — what the relay states on the Control page actually do.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {media.videos.map((v) => <VideoCard key={v.src} {...v} />)}
+          {CLIPS.map((v) => <VideoCard key={v.src} {...v} />)}
         </div>
       </section>
 

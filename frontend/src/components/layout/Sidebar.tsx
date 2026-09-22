@@ -25,6 +25,7 @@ import { clsx } from "clsx";
 import { useTheme } from "@/hooks/useTheme";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
+import { useFarmSelection } from "@/hooks/useFarmSelection";
 
 const NAV_ITEMS = [
   { href: "/overview",   label: "Overview",   icon: Info            },
@@ -32,7 +33,6 @@ const NAV_ITEMS = [
   { href: "/control",    label: "Control",    icon: Sliders         },
   { href: "/analytics",  label: "Analytics",  icon: BarChart3       },
   { href: "/historical", label: "Historical", icon: History         },
-  { href: "/site",       label: "Site",       icon: Camera          },
   { href: "/alert-log",  label: "Alert Log",  icon: Bell            },
 ];
 
@@ -43,6 +43,14 @@ const NAV_ITEMS = [
 // the lock.
 const ROLE_NAV_ITEMS: Record<string, typeof NAV_ITEMS> = {
   developer: [{ href: "/insights", label: "Insights", icon: Sparkles }],
+};
+
+// Entries that belong to one site only. Site holds the campus rig's photographs,
+// video and 3D model: campus is our own development platform, whereas Kampot is
+// a working farm someone depends on. Showing a Kampot operator a nav item for a
+// page that has nothing for them is just clutter.
+const FARM_NAV_ITEMS: Record<string, typeof NAV_ITEMS> = {
+  campus: [{ href: "/site", label: "Site", icon: Camera }],
 };
 
 function getInitials(name: string): string {
@@ -58,6 +66,7 @@ export default function Sidebar() {
   const { toggle, isDark } = useTheme();
   const { settings } = useSettings();
   const { user, logout } = useAuth();
+  const { farm } = useFarmSelection();
 
   const initials = getInitials(user?.username || settings.userName || "ME Team");
 
@@ -100,7 +109,11 @@ export default function Sidebar() {
 
       {/* ── Navigation ───────────────────────────────────────── */}
       <nav className="flex-1 py-4 flex flex-col gap-1 px-3">
-        {[...NAV_ITEMS, ...(ROLE_NAV_ITEMS[user?.role ?? ""] ?? [])].map(({ href, label, icon: Icon }) => {
+        {[
+          ...NAV_ITEMS,
+          ...(FARM_NAV_ITEMS[farm] ?? []),
+          ...(ROLE_NAV_ITEMS[user?.role ?? ""] ?? []),
+        ].map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
