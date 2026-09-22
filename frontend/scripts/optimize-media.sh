@@ -21,13 +21,11 @@
 #      uploaded on every deploy and downloaded by every visitor who opens the
 #      page.
 #
-# Re-encoding is lossy, so the originals are left untouched — output goes to
-# public/campus/ under web-friendly names.
+# Re-encoding is lossy, so the originals are left untouched. Output goes to
+# public/campus/ and public/farm/ under web-friendly names.
 set -euo pipefail
 
 PUBLIC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../public" && pwd)"
-OUT="$PUBLIC/campus"
-mkdir -p "$OUT"
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
   echo "ffmpeg not found on PATH."
@@ -36,14 +34,25 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
   exit 1
 fi
 
-# source file | output name | long edge in px
+# source file | destination subfolder | output name | long edge in px
+#
+# The Kampot clips are included because they have exactly the same faults: all
+# four are .MOV or moov-at-the-end, so the Overview page has been downloading
+# each in full before the first frame, and the .MOV ones likely show "this
+# browser can't play this file" in Chrome.
 JOBS=(
-  "PP Campus in Operation Side View.MOV|campus-operation-side.mp4|1280"
-  "PP Campus in Operation Front View.mp4|campus-operation-front.mp4|1280"
+  "PP Campus in Operation Side View.MOV|campus|campus-operation-side.mp4|1280"
+  "PP Campus in Operation Front View.mp4|campus|campus-operation-front.mp4|1280"
+  "InsideFarm.MOV|farm|inside-farm.mp4|1280"
+  "OutsideFarm.mp4|farm|outside-farm.mp4|1280"
+  "InsideFarm_Zoom Out View.MOV|farm|inside-farm-wide.mp4|1280"
+  "OutsideFarm_Zoom Out View.MOV|farm|outside-farm-wide.mp4|1280"
 )
 
 for job in "${JOBS[@]}"; do
-  IFS='|' read -r src out width <<< "$job"
+  IFS='|' read -r src folder out width <<< "$job"
+  OUT="$PUBLIC/$folder"
+  mkdir -p "$OUT"
   if [ ! -f "$PUBLIC/$src" ]; then
     echo "SKIP (not found): $src"
     continue
@@ -65,14 +74,14 @@ for job in "${JOBS[@]}"; do
     "$OUT/$out"
 
   after_kb=$(du -k "$OUT/$out" | cut -f1)
-  echo "   -> campus/$out  ($((after_kb / 1024)) MB)"
+  echo "   -> $folder/$out  ($((after_kb / 1024)) MB)"
 
   # A poster frame means the card shows something before anyone presses play,
   # instead of a black rectangle.
   poster="${out%.mp4}-poster.jpg"
   ffmpeg -hide_banner -loglevel error -y \
     -i "$OUT/$out" -ss 00:00:01 -vframes 1 -q:v 4 "$OUT/$poster"
-  echo "   -> campus/$poster"
+  echo "   -> $folder/$poster"
 done
 
 echo ""
