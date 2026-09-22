@@ -19,6 +19,7 @@ import {
   LogOut,
   Info,
   Sparkles,
+  Camera,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTheme } from "@/hooks/useTheme";
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/control",    label: "Control",    icon: Sliders         },
   { href: "/analytics",  label: "Analytics",  icon: BarChart3       },
   { href: "/historical", label: "Historical", icon: History         },
+  { href: "/site",       label: "Site",       icon: Camera          },
   { href: "/alert-log",  label: "Alert Log",  icon: Bell            },
 ];
 

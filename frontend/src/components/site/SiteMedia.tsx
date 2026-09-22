@@ -1,0 +1,204 @@
+"use client";
+/**
+ * SiteMedia — photographs and video of the physical rig.
+ *
+ * The rest of the dashboard is numbers. This is the one place that answers
+ * "what does the thing actually look like", which matters more than it sounds:
+ * a reading of CH2 = ON means little until you have seen the sprinklers it
+ * turns on.
+ *
+ * Media is declared per farm rather than globally, because each site is a
+ * different physical build. A farm with nothing uploaded says so plainly
+ * instead of rendering an empty grid.
+ */
+import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
+import { clsx } from "clsx";
+import { Video as VideoIcon, Expand, X } from "lucide-react";
+
+export interface Photo { src: string; title: string; caption?: string }
+export interface Clip  { src: string; poster?: string; title: string; caption?: string }
+
+export const SITE_MEDIA: Record<string, { photos: Photo[]; videos: Clip[] }> = {
+  campus: {
+    photos: [
+      {
+        src: "/campus/campus-front.jpg",
+        title: "Front view",
+        caption: "The campus rig as installed — controller cabinet, sensor box and spray manifold.",
+      },
+      {
+        src: "/campus/campus-side.jpg",
+        title: "Side view",
+        caption: "Side elevation showing the frame, piping runs and the tank feeding the spray loop.",
+      },
+    ],
+    videos: [
+      {
+        src: "/campus/campus-operation-front.mp4",
+        poster: "/campus/campus-operation-front-poster.jpg",
+        title: "In operation — front",
+        caption: "The spray cycle running, viewed from the front.",
+      },
+      {
+        src: "/campus/campus-operation-side.mp4",
+        poster: "/campus/campus-operation-side-poster.jpg",
+        title: "In operation — side",
+        caption: "The same cycle from the side, showing coverage across the bed.",
+      },
+    ],
+  },
+};
+
+export default function SiteMedia({ farm }: { farm: string }) {
+  const media = SITE_MEDIA[farm];
+  const [lightbox, setLightbox] = useState<Photo | null>(null);
+
+  // Escape closes the lightbox; without it the only way out is the button,
+  // which is a poor experience for anyone on a keyboard.
+  const onKey = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") setLightbox(null);
+  }, []);
+  useEffect(() => {
+    if (!lightbox) return;
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox, onKey]);
+
+  if (!media) {
+    return (
+      <section className="rounded-2xl border border-surface-border bg-surface-card p-8">
+        <p className="text-sm text-slate-300 font-medium">No site media for this farm yet</p>
+        <p className="text-[13px] text-slate-500 mt-1.5 max-w-xl leading-relaxed">
+          Photographs and video are added per site. Drop files into{" "}
+          <code className="text-slate-400">frontend/public/</code> and register them in{" "}
+          <code className="text-slate-400">SiteMedia.tsx</code>.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="rounded-2xl border border-surface-border bg-surface-card p-5">
+        <h2 className="text-sm font-semibold text-slate-200">The rig</h2>
+        <p className="text-xs text-slate-500 mt-1 mb-4">
+          Photographs of the installation as built.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {media.photos.map((p) => (
+            <button
+              key={p.src}
+              type="button"
+              onClick={() => setLightbox(p)}
+              className="group text-left rounded-xl overflow-hidden ring-1 ring-surface-border bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            >
+              <div className="relative aspect-[4/3] bg-black/20">
+                <Image
+                  src={p.src}
+                  alt={p.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                />
+                <span className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Expand size={13} />
+                </span>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-medium text-slate-200">{p.title}</p>
+                {p.caption && (
+                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{p.caption}</p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-surface-border bg-surface-card p-5">
+        <h2 className="text-sm font-semibold text-slate-200">In operation</h2>
+        <p className="text-xs text-slate-500 mt-1 mb-4">
+          The system running — what the relay states on the Control page actually do.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {media.videos.map((v) => <VideoCard key={v.src} {...v} />)}
+        </div>
+      </section>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.title}
+        >
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            aria-label="Close"
+            className="absolute top-4 right-4 p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
+          >
+            <X size={18} />
+          </button>
+          <div className="relative w-full max-w-5xl aspect-[4/3]" onClick={(e) => e.stopPropagation()}>
+            <Image
+              src={lightbox.src}
+              alt={lightbox.title}
+              fill
+              sizes="100vw"
+              className="object-contain"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function VideoCard({ src, poster, title, caption }: Clip) {
+  const [failure, setFailure] = useState<"missing" | "unsupported" | null>(null);
+
+  return (
+    <div className="rounded-xl overflow-hidden ring-1 ring-surface-border bg-surface-hover">
+      <div className="aspect-video bg-black relative">
+        {!failure ? (
+          <video
+            src={src}
+            poster={poster}
+            controls
+            preload="metadata"
+            playsInline
+            className="absolute inset-0 w-full h-full"
+            // MEDIA_ERR_SRC_NOT_SUPPORTED (4) means the browser has the file but
+            // cannot decode the container — the .MOV case. Everything else is a
+            // network or missing-file problem, and the two need different advice.
+            onError={(e) =>
+              setFailure(e.currentTarget.error?.code === 4 ? "unsupported" : "missing")
+            }
+          />
+        ) : (
+          // Fixed light-on-dark here, not slate-*: this well stays dark in both
+          // themes because it holds video, and globals.css would otherwise flip
+          // the slate steps to their dark-on-light values in light mode.
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900 px-4 text-center">
+            <VideoIcon size={26} className="text-white/40" />
+            <p className="text-white/70 text-sm">
+              {failure === "unsupported"
+                ? "This browser can't play this file"
+                : "Not converted yet"}
+            </p>
+            <code className="text-white/60 text-[11px] bg-white/10 px-2.5 py-1 rounded">
+              bash scripts/optimize-media.sh
+            </code>
+          </div>
+        )}
+      </div>
+      <div className="px-4 py-3">
+        <p className="text-sm font-medium text-slate-200">{title}</p>
+        {caption && <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{caption}</p>}
+      </div>
+    </div>
+  );
+}

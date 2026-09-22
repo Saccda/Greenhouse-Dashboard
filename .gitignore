@@ -30,3 +30,12 @@ Thumbs.db
 # ML model artifacts — built on the lab desktop from the Postgres archive
 # (scripts/train_forecast.py). Machine-local and data-derived; never committed.
 backend/models/
+
+# CAD sources — large binaries git cannot diff. Keep the optimised .glb in
+# public/models/ and store the STEP/SLDASM originals outside the repo.
+*.step
+*.stp
+*.STEP
+*.STP
+*.sldprt
+*.sldasm
