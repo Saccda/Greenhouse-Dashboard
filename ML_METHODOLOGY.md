@@ -373,10 +373,40 @@ looking at a card.** That is the class of failure this stage catches.
 | Detector | Rule | Catches |
 |---|---|---|
 | Dead feed | No reading for > `DATA_STALE_MINUTES` | Bridge down, ESP32 offline, network loss |
-| Flatline | Identical value for N consecutive readings | Stuck sensor, frozen cache |
+| Flatline | Identical value held for > 30 min, away from the sensor's limits | Stuck sensor, frozen cache |
+| Saturated | Identical value held at a physical limit | Instrument at its ceiling — censored, not faulty |
 | Out of range | Outside physical bounds (temp 0–60 °C, humidity 0–100%) | Wiring fault, unit error, parse bug |
 | Jump | \|Δ\| > k · MAD(Δ) | Spike, dropout, transient |
 | Residual | \|y − ŷ\| > k · MAD(residuals) | Genuinely unusual conditions |
+
+### 3.1.1 Saturation is not a fault — a correction from the field
+
+The first implementation treated any long flatline as a fault, and flagged three
+of them on Kampot: humidity pinned at exactly 100 for 72, 105 and 108 minutes.
+The farm's reading was that these were heavy rain, and the data agrees
+decisively. In all three episodes humidity ramps smoothly to the ceiling
+beforehand (95.2 → 100, 83.0 → 100, 85.9 → 100), recovers smoothly after, and
+temperature falls 4.6–4.8 °C alongside. The maximum humidity ever recorded is
+exactly 100.0 and never higher.
+
+So the instrument is working. It simply cannot report above its ceiling, which
+makes the reading **right-censored**: we know RH ≥ 100, not what it actually
+was. Three consequences:
+
+1. **It is not a fault.** Paging someone for rain is precisely how an alert
+   channel gets muted (§3.3). These now raise a separate `saturated` detector in
+   the *unusual* family. Kampot's fault rate falls from 0.29/day to 0.04/day —
+   the remaining one being a genuine 73-minute dead feed.
+2. **It is still worth surfacing**, because censored readings are not ordinary
+   ones, and something downstream has to know.
+3. **It biases any mean or variance of humidity** computed over those windows,
+   which is a live concern for `ANALYTICS_METHODOLOGY.md` — 329 of 18,640
+   Kampot humidity readings sit at exactly 100. Time-in-range is unaffected
+   (100 falls in the high band either way); a mean is not.
+
+Recorded because it is the clearest example in this project of domain knowledge
+beating a detector: no amount of statistics would have distinguished "sensor
+stuck" from "raining hard" without someone who knows the season.
 
 ### 3.2 Why MAD and not standard deviation
 

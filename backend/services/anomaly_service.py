@@ -178,12 +178,26 @@ def detect_dead_feed(df: pd.DataFrame) -> list[Event]:
 
 def detect_flatline(df: pd.DataFrame, field: str) -> list[Event]:
     """
-    A bit-identical value held for FLATLINE_MINUTES or more — a frozen sensor.
+    A bit-identical value held for FLATLINE_MINUTES or more.
+
+    Two quite different things look identical in the raw data, and conflating
+    them was a real mistake in the first version:
+
+      SATURATED — the value is stuck at the sensor's physical LIMIT. Kampot's
+        humidity sits at exactly 100 for an hour or two during heavy rain; it
+        ramps smoothly up to the ceiling beforehand, falls smoothly after, and
+        temperature drops ~4.7 C alongside. The instrument is working perfectly.
+        It simply cannot report above 100, so the reading is RIGHT-CENSORED: we
+        know RH >= 100, not what it actually was. That is worth surfacing, but
+        it is not a fault, and paging someone for rain is how an alert channel
+        gets ignored.
+
+      FROZEN — the value is stuck at an arbitrary mid-range figure. Nothing
+        physical pins a sensor to 34.2 C for forty minutes. That is a fault.
 
     Measured in wall-clock duration, never in reading count: at the archive's
     fast-cadence periods 83 identical readings span two minutes, which is just
-    sensor resolution, while the same count at 30 s spans 40 minutes, which is a
-    fault. Only duration tells those apart (§0.4.1).
+    sensor resolution, while the same count at 30 s spans 40 minutes (§0.4.1).
     """
     s = df[field].dropna()
     if len(s) < FLATLINE_MIN_READINGS:
@@ -196,13 +210,27 @@ def detect_flatline(df: pd.DataFrame, field: str) -> list[Event]:
         minutes = (run.index[-1] - run.index[0]).total_seconds() / 60.0
         if minutes < FLATLINE_MINUTES:
             continue
-        out.append(Event(
-            detector="flatline", family="fault", field=field,
-            start=run.index[0].isoformat(), end=run.index[-1].isoformat(),
-            value=float(run.iloc[0]),
-            detail=f"Identical value {run.iloc[0]:g} held for {minutes:.0f} min "
-                   f"({len(run)} readings)",
-        ))
+
+        value = float(run.iloc[0])
+        lo, hi = PHYSICAL_BOUNDS.get(field, (None, None))
+        at_limit = lo is not None and (value >= hi or value <= lo)
+
+        if at_limit:
+            out.append(Event(
+                detector="saturated", family="unusual", field=field,
+                start=run.index[0].isoformat(), end=run.index[-1].isoformat(),
+                value=value,
+                detail=f"Pinned at the sensor limit ({value:g}) for {minutes:.0f} min "
+                       f"- readings are censored, not wrong",
+            ))
+        else:
+            out.append(Event(
+                detector="flatline", family="fault", field=field,
+                start=run.index[0].isoformat(), end=run.index[-1].isoformat(),
+                value=value,
+                detail=f"Identical value {value:g} held for {minutes:.0f} min "
+                       f"({len(run)} readings)",
+            ))
     return out
 
 

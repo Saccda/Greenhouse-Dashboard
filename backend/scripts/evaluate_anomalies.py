@@ -88,8 +88,9 @@ def main():
     print("  raw count is shown too, so grouping can never hide volume.")
 
     rule("By detector")
-    fam = {d: ("fault" if d in ("dead_feed", "flatline", "out_of_range") else "unusual")
-           for d in summary["by_detector"]}
+    # Derived from the events themselves rather than a second hardcoded list —
+    # a new detector would otherwise be silently mislabelled here.
+    fam = {e.detector: e.family for e in events}
     for det, n in sorted(summary["by_detector"].items(), key=lambda kv: -kv[1]):
         per_day = n / summary["n_days"] if summary["n_days"] else 0
         print(f"  {det:<14} {fam[det]:<8} {n:>6,}   {per_day:>6.2f}/day")

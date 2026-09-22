@@ -21,7 +21,7 @@ import useSWR from "swr";
 import { clsx } from "clsx";
 import {
   ShieldCheck, ShieldAlert, FlaskConical, Activity,
-  WifiOff, Snowflake, AlertTriangle, TrendingUp, ChevronDown,
+  WifiOff, Snowflake, AlertTriangle, TrendingUp, ChevronDown, Droplets,
 } from "lucide-react";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { swrFetcher } from "@/lib/api";
@@ -53,6 +53,10 @@ interface HealthResponse {
 const DETECTOR_META: Record<string, { label: string; icon: typeof WifiOff }> = {
   dead_feed:    { label: "Dead feed",    icon: WifiOff },
   flatline:     { label: "Frozen value", icon: Snowflake },
+  // Distinct from a frozen sensor: the instrument is fine, it has simply hit
+  // its ceiling (humidity 100% in heavy rain), so the reading is censored
+  // rather than wrong. Not a fault, and must not be styled as one.
+  saturated:    { label: "Sensor saturated", icon: Droplets },
   out_of_range: { label: "Out of range", icon: AlertTriangle },
   jump:         { label: "Spike",        icon: Activity },
   residual:     { label: "Unusual move", icon: TrendingUp },
