@@ -301,7 +301,9 @@ const LOOPS = [
   },
 ];
 
-function VideoCard({ src, poster, title }: { src: string; poster?: string; title: string }) {
+function VideoCard({ src, poster, title, caption }: {
+  src: string; poster?: string; title: string; caption?: string;
+}) {
   const [failure, setFailure] = useState<"missing" | "unsupported" | null>(null);
 
   // A 404 returns an HTML error page, which <video> reports as
@@ -345,7 +347,10 @@ function VideoCard({ src, poster, title }: { src: string; poster?: string; title
           </div>
         )}
       </div>
-      <p className="px-4 py-3 text-base text-slate-300">{title}</p>
+      <div className="px-4 py-3">
+        <p className="text-base text-slate-300">{title}</p>
+        {caption && <p className="text-sm text-slate-500 mt-1 leading-relaxed">{caption}</p>}
+      </div>
     </div>
   );
 }
@@ -357,10 +362,18 @@ function VideoCard({ src, poster, title }: { src: string; poster?: string; title
 // show a single frame. These are real MP4, faststart, with a poster so the card
 // shows something before anyone presses play.
 const VIDEOS = [
-  { src: "/farm/inside-farm.mp4",       poster: "/farm/inside-farm-poster.jpg",       title: "Inside the farm" },
-  { src: "/farm/outside-farm.mp4",      poster: "/farm/outside-farm-poster.jpg",      title: "Around the farm" },
-  { src: "/farm/inside-farm-wide.mp4",  poster: "/farm/inside-farm-wide-poster.jpg",  title: "Inside the farm — zoomed out" },
-  { src: "/farm/outside-farm-wide.mp4", poster: "/farm/outside-farm-wide-poster.jpg", title: "Around the farm — zoomed out" },
+  {
+    src: "/campus/campus-operation-front.mp4",
+    poster: "/campus/campus-operation-front-poster.jpg",
+    title: "In operation — front",
+    caption: "The spray cycle running, viewed from the front.",
+  },
+  {
+    src: "/campus/campus-operation-side.mp4",
+    poster: "/campus/campus-operation-side-poster.jpg",
+    title: "In operation — side",
+    caption: "The same cycle from the side, showing coverage across the bed.",
+  },
 ];
 
 const PID_SRC = "/P&ID System Diagram.png";
@@ -448,7 +461,7 @@ function ImplementSection() {
         n="03"
         phase="Implement"
         title="Building it"
-        tagline="From CAD to a working prototype on the farm — the same loops shown in the design, now running on real hardware."
+        tagline="From CAD to a working prototype at PP Campus — the same loop shown in the design, now running on real hardware."
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -477,7 +490,7 @@ function ImplementSection() {
 
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          Farm Footage
+          The Rig in Operation
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {VIDEOS.map((v) => <VideoCard key={v.src} {...v} />)}

@@ -1,6 +1,6 @@
 "use client";
 /**
- * CampusMedia — photographs and video of the PP Campus rig.
+ * CampusMedia — photographs of the PP Campus rig.
  *
  * The rest of the dashboard is numbers. This is the one place that answers
  * "what does the thing actually look like", which matters more than it sounds:
@@ -14,10 +14,9 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Video as VideoIcon, Expand, X } from "lucide-react";
+import { Expand, X } from "lucide-react";
 
 export interface Photo { src: string; title: string; caption?: string }
-export interface Clip  { src: string; poster?: string; title: string; caption?: string }
 
 const PHOTOS: Photo[] = [
   {
@@ -32,20 +31,6 @@ const PHOTOS: Photo[] = [
   },
 ];
 
-const CLIPS: Clip[] = [
-  {
-    src: "/campus/campus-operation-front.mp4",
-    poster: "/campus/campus-operation-front-poster.jpg",
-    title: "In operation — front",
-    caption: "The spray cycle running, viewed from the front.",
-  },
-  {
-    src: "/campus/campus-operation-side.mp4",
-    poster: "/campus/campus-operation-side-poster.jpg",
-    title: "In operation — side",
-    caption: "The same cycle from the side, showing coverage across the bed.",
-  },
-];
 
 export default function CampusMedia() {
   const [lightbox, setLightbox] = useState<Photo | null>(null);
@@ -99,16 +84,6 @@ export default function CampusMedia() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-surface-border bg-surface-card p-5">
-        <h2 className="text-sm font-semibold text-slate-200">In operation</h2>
-        <p className="text-xs text-slate-500 mt-1 mb-4">
-          The system running — what the relay states on the Control page actually do.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {CLIPS.map((v) => <VideoCard key={v.src} {...v} />)}
-        </div>
-      </section>
-
       {lightbox && (
         <div
           className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4"
@@ -137,62 +112,5 @@ export default function CampusMedia() {
         </div>
       )}
     </>
-  );
-}
-
-function VideoCard({ src, poster, title, caption }: Clip) {
-  const [failure, setFailure] = useState<"missing" | "unsupported" | null>(null);
-
-  // A 404 hands back an HTML error page, which <video> reports as
-  // MEDIA_ERR_SRC_NOT_SUPPORTED (4) — the exact same code as a genuine codec
-  // failure. Reading error.code alone therefore tells a file that was never
-  // converted that the browser cannot play it, which sends you looking in
-  // entirely the wrong place. Ask the server which case this is.
-  const handleError = async () => {
-    try {
-      const res = await fetch(src, { method: "HEAD" });
-      setFailure(res.ok ? "unsupported" : "missing");
-    } catch {
-      setFailure("missing");
-    }
-  };
-
-  return (
-    <div className="rounded-xl overflow-hidden ring-1 ring-surface-border bg-surface-hover">
-      <div className="aspect-video bg-black relative">
-        {!failure ? (
-          <video
-            src={src}
-            poster={poster}
-            controls
-            preload="metadata"
-            playsInline
-            className="absolute inset-0 w-full h-full"
-            onError={handleError}
-          />
-        ) : (
-          // Fixed light-on-dark here, not slate-*: this well stays dark in both
-          // themes because it holds video, and globals.css would otherwise flip
-          // the slate steps to their dark-on-light values in light mode.
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900 px-4 text-center">
-            <VideoIcon size={26} className="text-white/40" />
-            <p className="text-white/70 text-sm">
-              {failure === "unsupported"
-                ? "This browser can't play this file"
-                : "Not uploaded yet"}
-            </p>
-            <code className="text-white/60 text-[11px] bg-white/10 px-2.5 py-1 rounded">
-              {failure === "unsupported"
-                ? "powershell -File scripts\optimize-media.ps1"
-                : `public${src}`}
-            </code>
-          </div>
-        )}
-      </div>
-      <div className="px-4 py-3">
-        <p className="text-sm font-medium text-slate-200">{title}</p>
-        {caption && <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{caption}</p>}
-      </div>
-    </div>
   );
 }
