@@ -45,7 +45,12 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  iso:   [1, 0.75, 1],
+  // A true isometric looks down at 35.26 degrees (atan of 1/sqrt 2) with equal
+  // weight on both horizontal axes. The previous [1, 0.75, 1] sat at 28
+  // degrees and square-on to the rig, which read as a front view tilted rather
+  // than an isometric. This swings the azimuth round toward the length of the
+  // rig and raises the elevation to the real isometric angle.
+  iso:   [1.35, 1.1, 0.78],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
@@ -80,6 +85,10 @@ function StudioEnvironment() {
     const pmrem = new THREE.PMREMGenerator(gl);
     const env = pmrem.fromScene(new RoomEnvironment(), 0.04);
     scene.environment = env.texture;
+    // RoomEnvironment is a brightly lit white box, which on fully metallic
+    // materials washes the model out. Scaling it back keeps the reflections
+    // that make the metal legible without bleaching the surfaces.
+    scene.environmentIntensity = 0.55;
     return () => {
       scene.environment = null;
       env.dispose();
@@ -205,16 +214,18 @@ export default function CampusModelScene({
       // A (1, 0.75, 1) direction is the three-quarter view CAD is normally
       // presented in. Bounds sets the distance; only the direction matters here.
       camera={{ position: [12, 9, 12], fov: 40, near: 0.1, far: 300 }}
-      gl={{ antialias: true }}
+      // One honest global brightness control, applied after lighting rather
+      // than by dimming each light and hoping they stay in balance.
+      gl={{ antialias: true, toneMappingExposure: 0.78 }}
       style={{ background: "transparent" }}
     >
       {/* Lights fill in shape and give the shadows direction; the environment
           above does the actual work on these metallic materials. Deliberately
           not drei's <Environment> or <Stage>, which fetch an HDR from a CDN. */}
-      <ambientLight intensity={0.35} />
-      <hemisphereLight args={["#ffffff", "#9ca3af", 0.35]} />
-      <directionalLight position={[8, 12, 6]} intensity={0.9} />
-      <directionalLight position={[-8, 5, -6]} intensity={0.35} />
+      <ambientLight intensity={0.22} />
+      <hemisphereLight args={["#ffffff", "#8a94a6", 0.28]} />
+      <directionalLight position={[8, 12, 6]} intensity={0.75} />
+      <directionalLight position={[-8, 5, -6]} intensity={0.28} />
 
       <StudioEnvironment />
 
