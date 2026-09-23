@@ -45,12 +45,10 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  // Elevation is the true isometric 35.26 degrees (atan of 1/sqrt 2); the
-  // original [1, 0.75, 1] sat at 28 and read as a tilted front view. Azimuth is
-  // 30 degrees — swung anticlockwise from the 45 it started at. An earlier pass
-  // went to 60, i.e. the same distance the other way, which was the wrong
-  // direction.
-  iso:   [0.80, 1.13, 1.39],
+  // 30 degrees azimuth, 32 elevation. Slightly below the textbook isometric
+  // 35.26 because the reference CAD view sits a touch lower, showing more of
+  // the wall face and less of the floor.
+  iso:   [0.80, 1.00, 1.39],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
@@ -211,9 +209,14 @@ export default function CampusModelScene({
       // channel change, so nothing is ever missed.
       frameloop="demand"
       dpr={[1, 2]}
-      // A (1, 0.75, 1) direction is the three-quarter view CAD is normally
-      // presented in. Bounds sets the distance; only the direction matters here.
-      camera={{ position: [12, 9, 12], fov: 40, near: 0.1, far: 300 }}
+      // fov 24, not 40. CAD isometrics are ORTHOGRAPHIC — parallel edges stay
+      // parallel — whereas a wide perspective fov splays the floor slab outward
+      // and makes the view read as though taken from much higher up. A narrow
+      // fov with the camera correspondingly further back is very close to
+      // orthographic while keeping a perspective camera, which behaves better
+      // when someone orbits and zooms. Bounds sets the distance; only the
+      // direction is fixed here.
+      camera={{ position: [12, 9, 12], fov: 24, near: 0.1, far: 500 }}
       // One honest global brightness control, applied after lighting rather
       // than by dimming each light and hoping they stay in balance.
       gl={{ antialias: true, toneMappingExposure: 0.78 }}
