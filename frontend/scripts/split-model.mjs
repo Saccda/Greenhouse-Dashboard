@@ -37,24 +37,41 @@ const OUT_MAP = "src/components/site/campusParts.json";
 // Deliberately data rather than code: correcting a mis-picked body is an edit
 // here and a re-run, not a change to the viewer.
 const PARTS = {
-  // Distributed along the rig at one height, 10 x 35 x 35 mm each — a nozzle run.
-  ch2_spray: [23, 57, 144, 176, 270, 309, 291, 210, 76],
-  // Tank panel, plate and rod on the cooling skid.
+  // Every nozzle head is modelled as TWO bodies ~70 mm apart — the head and its
+  // tip — which is why they appear to overlap when picked in SolidWorks. Derived
+  // geometrically rather than by clicking: every body under 350 mm sitting in
+  // the nozzle plane (Z -6.9..-6.2, Y above 8.0). That yields 68 bodies = 34
+  // heads across the rail runs, at a clean 7 per rail, which matches the count
+  // from the drawing. Picking 34 heads by hand would have been error-prone; the
+  // geometry states the pattern plainly.
+  ch2_spray: [
+    2, 4, 5, 6, 7, 12, 13, 17, 23, 34, 37, 42, 57, 58, 63, 68, 73, 75, 79, 87,
+    89, 100, 102, 120, 122, 129, 131, 132, 133, 135, 137, 141, 144, 146, 151,
+    154, 161, 164, 166, 176, 178, 182, 186, 187, 188, 194, 196, 210, 213, 214,
+    215, 218, 219, 220, 222, 223, 242, 256, 259, 264, 268, 270, 272, 287, 291,
+    295, 305, 309,
+  ],
+  // Tank panel, plate and rod on the cooling skid. Thin — worth extending with
+  // the chiller and pump once those bodies are identified in the viewer.
   ch4_cool: [126, 119, 282],
-  // 24 x 24 x 60 mm on the wall panel — an indicator lamp, which is exactly the
+  // 24 x 24 x 60 mm on the wall panel: an indicator lamp, which is exactly the
   // right thing to light for "system enabled".
   ch1_enable: [50],
   // Context only, never bound: the water storage tank.
   storage: [35],
 };
 
-// Bodies supplied as CH2 that are clustered at the cooling skid rather than
-// distributed along the rig, several far too large to be nozzles (up to
-// 489 x 1200 x 500 mm). Held here rather than silently dropped so they can be
-// reinstated once identified in the viewer.
+// Bodies originally supplied as CH2 that the geometry contradicts: they cluster
+// within ~2 m at the cooling skid rather than running along the rig, and several
+// are far too large to be nozzles ([116] is 0.49 x 1.2 x 0.5 m, [46] is
+// 0.4 x 0.4 x 0.7 m). Most look like chiller and fan units. Kept here rather
+// than dropped so they can be reassigned once identified.
 const UNVERIFIED = [
   294, 258, 253, 244, 245, 239, 221, 208, 207, 183, 157, 149, 140, 125, 116,
   110, 84, 81, 74, 72, 71, 46, 15,
+  // end-of-rail fittings, not nozzle heads: they sit at the rail end and do not
+  // fit the two-body pattern
+  76, 80, 115,
 ];
 
 const io = await new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
