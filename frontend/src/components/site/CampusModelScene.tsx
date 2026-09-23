@@ -45,14 +45,16 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  // 30 degrees azimuth, 42 elevation. Arrived at by eye against the reference
-  // CAD view, not from theory — 40 was read as slightly low and 45 as clearly
-  // too high, so this sits between them. Only the y component controls the
-  // elevation; x and z fix the azimuth and should stay put.
+  // 30 degrees azimuth, 45 elevation. Arrived at by eye against the reference
+  // CAD view, not from theory. This pair was very nearly right before the panel
+  // was enlarged; what spoiled it was the tighter Bounds margin pulling the
+  // camera in, not the angle, so the angle is restored here and the fov below
+  // compensates instead. Only the y component controls the elevation; x and z
+  // fix the azimuth and should stay put.
   //
   // The readout in the viewer's bottom bar reports these two angles live, so a
   // better pair can be found by orbiting rather than by guessing from here.
-  iso:   [0.80, 1.44, 1.39],
+  iso:   [0.80, 1.60, 1.39],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
@@ -235,14 +237,21 @@ export default function CampusModelScene({
       // channel change, so nothing is ever missed.
       frameloop="demand"
       dpr={[1, 2]}
-      // fov 24, not 40. CAD isometrics are ORTHOGRAPHIC — parallel edges stay
-      // parallel — whereas a wide perspective fov splays the floor slab outward
-      // and makes the view read as though taken from much higher up. A narrow
-      // fov with the camera correspondingly further back is very close to
-      // orthographic while keeping a perspective camera, which behaves better
-      // when someone orbits and zooms. Bounds sets the distance; only the
-      // direction is fixed here.
-      camera={{ position: [12, 9, 12], fov: 24, near: 0.1, far: 500 }}
+      // fov 14. CAD isometrics are ORTHOGRAPHIC — parallel edges stay parallel —
+      // whereas a wide fov splays the floor slab outward and reads as though
+      // shot from much higher up. A narrow fov with the camera correspondingly
+      // further back approximates orthographic while staying a perspective
+      // camera, which behaves better than a true ortho camera under orbit and
+      // zoom.
+      //
+      // Why this is 14 and not 24: Bounds fits the model to the frame, so the
+      // MARGIN sets apparent size and the FOV sets perspective splay — they are
+      // independent. Tightening the margin to fill the enlarged panel pulled
+      // the camera physically closer, which increased the splay and undid the
+      // isometric look. Narrowing the fov pushes it back out at the same
+      // apparent size. Zoom and projection pull against each other here; this
+      // pair is the balance.
+      camera={{ position: [12, 9, 12], fov: 14, near: 0.1, far: 800 }}
       // One honest global brightness control, applied after lighting rather
       // than by dimming each light and hoping they stay in balance.
       gl={{ antialias: true, toneMappingExposure: 0.78 }}
