@@ -45,10 +45,11 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  // 30 degrees azimuth, 32 elevation. Slightly below the textbook isometric
-  // 35.26 because the reference CAD view sits a touch lower, showing more of
-  // the wall face and less of the floor.
-  iso:   [0.80, 1.00, 1.39],
+  // 30 degrees azimuth, 40 elevation. ABOVE the textbook isometric 35.26, not
+  // below it: read against the reference CAD view the camera wanted to come up
+  // rather than down. Two earlier passes went the other way. Only the y
+  // component controls this — x and z fix the azimuth and should stay put.
+  iso:   [0.80, 1.35, 1.39],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
