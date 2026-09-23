@@ -39,3 +39,8 @@ backend/models/
 *.STP
 *.sldprt
 *.sldasm
+
+# Raw CAD exports dropped into public/ — tens of MB and they would ship on
+# every deploy. Only the optimised model in public/models/ is committed.
+frontend/public/*.glb
+!frontend/public/models/*.glb
