@@ -23,7 +23,7 @@
  */
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Bounds, ContactShadows, Html, useGLTF } from "@react-three/drei";
+import { OrbitControls, Bounds, useBounds, ContactShadows, Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -39,12 +39,28 @@ const ROLE_GLOW: Record<string, string> = {
   ch1_enable: "#4ade80",   // system enabled — green
 };
 
+/**
+ * Camera directions, in the rotated frame where +Y is up and +X runs the length
+ * of the rig. Bounds computes the distance, so only the direction matters —
+ * which keeps these correct if the model is ever re-exported at another scale.
+ */
+export const VIEWS = {
+  iso:   [1, 0.75, 1],
+  front: [0, 0.18, 1],
+  side:  [1, 0.18, 0],
+  top:   [0.01, 1, 0.01],
+} as const;
+export type ViewName = keyof typeof VIEWS;
+
 export interface SceneProps {
   /** Roles currently ON, e.g. {"ch2_spray"}. Empty when the feed is stale. */
   active: Set<string>;
   /** Developer aid: click a part to report `role__bodyNumber`. */
   pickMode?: boolean;
   onPick?: (partName: string) => void;
+  /** Which preset to frame from, and a nonce so re-picking the same one re-fits. */
+  view?: ViewName;
+  viewNonce?: number;
 }
 
 /**
@@ -144,6 +160,25 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
   );
 }
 
+/**
+ * Re-frames the model along a preset direction. Bounds owns the distance, so
+ * this only sets where the camera looks FROM and asks Bounds to refit — the
+ * alternative, computing a distance here, would have to duplicate the bounding
+ * box maths and would drift out of step with the model.
+ */
+function ViewController({ view, nonce }: { view: ViewName; nonce: number }) {
+  const bounds = useBounds();
+  const camera = useThree((s) => s.camera);
+  useEffect(() => {
+    const [x, y, z] = VIEWS[view];
+    const len = Math.hypot(x, y, z) || 1;
+    const dist = camera.position.length() || 20;
+    camera.position.set((x / len) * dist, (y / len) * dist, (z / len) * dist);
+    bounds.refresh().fit();
+  }, [view, nonce, bounds, camera]);
+  return null;
+}
+
 function Loading() {
   return (
     <Html center>
@@ -155,7 +190,9 @@ function Loading() {
   );
 }
 
-export default function CampusModelScene({ active, pickMode, onPick }: SceneProps) {
+export default function CampusModelScene({
+  active, pickMode, onPick, view = "iso", viewNonce = 0,
+}: SceneProps) {
   const controls = useRef<OrbitControlsImpl>(null);
 
   return (
@@ -186,14 +223,18 @@ export default function CampusModelScene({ active, pickMode, onPick }: SceneProp
             the origin and its true size are both handled without hardcoding
             either — a re-export at a different scale still frames correctly. */}
         <Bounds fit clip observe margin={1.2}>
-          {/* SolidWorks is Z-up, glTF and three are Y-up, and the Open Cascade
-              export did not convert. Without this the rig lies on its side and
-              the default camera ends up under the floor looking at the back of
-              the wall — which is exactly how it first appeared. */}
-          <group rotation={[-Math.PI / 2, 0, 0]}>
+          {/* The export is Z-DOWN: the floor sits at Z = -2.97 and the rig rises
+              toward Z = -8.25. Proven from the model rather than assumed — the
+              water tank's base is 0.09 m from the Z maximum and its 2 x 2 m
+              platform slab sits right at it, and a tank stands on the floor.
+              So "up" is -Z, and the conversion to three's Y-up is +90 degrees
+              about X. Rotating -90 (the usual Z-up conversion) is what stood it
+              on its head. */}
+          <group rotation={[Math.PI / 2, 0, 0]}>
             <Backdrop />
             <Parts active={active} pickMode={pickMode} onPick={onPick} />
           </group>
+          <ViewController view={view} nonce={viewNonce} />
         </Bounds>
         <ContactShadows position={[0, -0.01, 0]} opacity={0.3} scale={30} blur={2.4} far={12} />
       </Suspense>

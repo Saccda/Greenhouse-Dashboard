@@ -23,6 +23,7 @@ import { clsx } from "clsx";
 import { Box, Maximize2, RotateCcw, AlertTriangle, Crosshair, Copy, Check, Eye } from "lucide-react";
 
 import { swrFetcher } from "@/lib/api";
+import type { ViewName } from "./CampusModelScene";
 import type { LatestResponse } from "@/types";
 
 const CampusModelScene = dynamic(() => import("./CampusModelScene"), {
@@ -65,7 +66,6 @@ class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 export default function CampusModelViewer({ farm = "campus" }: { farm?: string }) {
-  const [sceneKey, setSceneKey] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [pickMode, setPickMode] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -75,6 +75,9 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
   // raising.
   const [preview, setPreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // A nonce alongside the name so clicking the same view again re-frames,
+  // which is what someone expects after they have orbited away from it.
+  const [view, setView] = useState<{ name: ViewName; nonce: number }>({ name: "iso", nonce: 0 });
 
   const { data: latest } = useSWR<LatestResponse>(
     `/api/sensors/latest?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
@@ -103,10 +106,12 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           expanded ? "h-[72vh]" : "h-[440px]",
         )}
       >
-        <WebGLBoundary key={sceneKey}>
+        <WebGLBoundary>
           <CampusModelScene
             active={active}
             pickMode={pickMode}
+            view={view.name}
+            viewNonce={view.nonce}
             onPick={(name) => setPicked((p) => (p.includes(name) ? p : [...p, name]))}
           />
         </WebGLBoundary>
@@ -170,7 +175,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           </button>
           <button
             type="button"
-            onClick={() => setSceneKey((k) => k + 1)}
+            onClick={() => setView((cur) => ({ name: cur.name, nonce: cur.nonce + 1 }))}
             title="Reset view"
             aria-label="Reset view"
             className="p-2 rounded-lg bg-surface-card/85 backdrop-blur ring-1 ring-surface-border text-slate-400 hover:text-slate-200 transition-colors"
@@ -186,6 +191,25 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           >
             <Maximize2 size={14} />
           </button>
+        </div>
+
+        {/* View presets. The CAD's own orientation is not obvious from the data,
+            so rather than hardcode one guess these let the reader pick. */}
+        <div className="absolute bottom-3 right-3 flex gap-1 p-1 rounded-xl bg-surface-card/85 backdrop-blur ring-1 ring-surface-border">
+          {(["iso", "front", "side", "top"] as ViewName[]).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView((cur) => ({ name: v, nonce: cur.nonce + 1 }))}
+              aria-pressed={view.name === v}
+              className={clsx(
+                "px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-colors",
+                view.name === v ? "bg-sky-500 text-white" : "text-slate-400 hover:text-slate-200",
+              )}
+            >
+              {v}
+            </button>
+          ))}
         </div>
 
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-[10px] text-slate-500 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
