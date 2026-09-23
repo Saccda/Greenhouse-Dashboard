@@ -11,11 +11,11 @@
  * costs far more framerate than the download costs patience. So
  * scripts/split-model.mjs produces:
  *
- *   campus-backdrop.glb  everything we never touch, merged flat   2.82 MB
- *   campus-parts.glb     the 14 bodies that light up, separate    0.21 MB
+ *   campus-backdrop.glb  everything we never touch, merged flat   2.72 MB
+ *   campus-parts.glb     the 75 bodies that light up, separate    0.96 MB
  *
- * 247 draw calls total, and the only parts we can address are the only ones we
- * ever wanted to.
+ * 1,025 draw calls total against 18,903 unsplit, and the only parts we can
+ * address are the only ones we ever wanted to.
  *
  * Part names carry their role and their SolidWorks body number — "ch2_spray__23"
  * — so a mis-picked body can be traced back to the CAD without guesswork, and
@@ -25,6 +25,7 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Bounds, ContactShadows, Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 const BACKDROP_URL = "/models/campus-backdrop.glb";
@@ -44,6 +45,32 @@ export interface SceneProps {
   /** Developer aid: click a part to report `role__bodyNumber`. */
   pickMode?: boolean;
   onPick?: (partName: string) => void;
+}
+
+/**
+ * Every material in the CAD export is metallicFactor 1.0 — SolidWorks writes
+ * everything as metal. A metal surface has no diffuse response: it can only
+ * reflect its surroundings, so with no environment map it renders BLACK no
+ * matter how many lights are in the scene. That is why the model arrived as a
+ * silhouette.
+ *
+ * RoomEnvironment is generated procedurally inside three, so this gives the
+ * metal something to reflect without fetching an HDR from a CDN — which is the
+ * usual fix and the one this project cannot use.
+ */
+function StudioEnvironment() {
+  const { scene, gl } = useThree();
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const env = pmrem.fromScene(new RoomEnvironment(), 0.04);
+    scene.environment = env.texture;
+    return () => {
+      scene.environment = null;
+      env.dispose();
+      pmrem.dispose();
+    };
+  }, [scene, gl]);
+  return null;
 }
 
 function Backdrop() {
@@ -138,25 +165,35 @@ export default function CampusModelScene({ active, pickMode, onPick }: SceneProp
       // channel change, so nothing is ever missed.
       frameloop="demand"
       dpr={[1, 2]}
-      camera={{ position: [9, 6, 9], fov: 40, near: 0.1, far: 300 }}
+      // A (1, 0.75, 1) direction is the three-quarter view CAD is normally
+      // presented in. Bounds sets the distance; only the direction matters here.
+      camera={{ position: [12, 9, 12], fov: 40, near: 0.1, far: 300 }}
       gl={{ antialias: true }}
       style={{ background: "transparent" }}
     >
-      {/* Plain lights rather than drei's <Environment> or <Stage>, which fetch
-          an HDR from a CDN at runtime. A grey CAD model reads fine on three
-          lights and the page stays usable on a rural connection. */}
-      <ambientLight intensity={0.85} />
-      <hemisphereLight args={["#ffffff", "#334155", 0.6]} />
-      <directionalLight position={[8, 12, 6]} intensity={1.4} />
-      <directionalLight position={[-8, 5, -6]} intensity={0.5} />
+      {/* Lights fill in shape and give the shadows direction; the environment
+          above does the actual work on these metallic materials. Deliberately
+          not drei's <Environment> or <Stage>, which fetch an HDR from a CDN. */}
+      <ambientLight intensity={0.35} />
+      <hemisphereLight args={["#ffffff", "#9ca3af", 0.35]} />
+      <directionalLight position={[8, 12, 6]} intensity={0.9} />
+      <directionalLight position={[-8, 5, -6]} intensity={0.35} />
+
+      <StudioEnvironment />
 
       <Suspense fallback={<Loading />}>
         {/* Bounds measures the real bounding box, so the model's offset from
             the origin and its true size are both handled without hardcoding
             either — a re-export at a different scale still frames correctly. */}
-        <Bounds fit clip observe margin={1.15}>
-          <Backdrop />
-          <Parts active={active} pickMode={pickMode} onPick={onPick} />
+        <Bounds fit clip observe margin={1.2}>
+          {/* SolidWorks is Z-up, glTF and three are Y-up, and the Open Cascade
+              export did not convert. Without this the rig lies on its side and
+              the default camera ends up under the floor looking at the back of
+              the wall — which is exactly how it first appeared. */}
+          <group rotation={[-Math.PI / 2, 0, 0]}>
+            <Backdrop />
+            <Parts active={active} pickMode={pickMode} onPick={onPick} />
+          </group>
         </Bounds>
         <ContactShadows position={[0, -0.01, 0]} opacity={0.3} scale={30} blur={2.4} far={12} />
       </Suspense>
