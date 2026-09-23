@@ -237,7 +237,11 @@ export default function CampusModelScene({
         {/* Bounds measures the real bounding box, so the model's offset from
             the origin and its true size are both handled without hardcoding
             either — a re-export at a different scale still frames correctly. */}
-        <Bounds fit clip observe margin={1.2}>
+        {/* margin 0.95, not drei's default 1.2. The rig is long and low, so a
+            20% pad around its bounding box left the model floating small in
+            the middle of the panel. Slightly under 1 fits the bounding sphere
+            a touch tighter than exactly, which reads as filling the frame. */}
+        <Bounds fit clip observe margin={0.95}>
           {/* The export is Z-DOWN: the floor sits at Z = -2.97 and the rig rises
               toward Z = -8.25. Proven from the model rather than assumed — the
               water tank's base is 0.09 m from the Z maximum and its 2 x 2 m

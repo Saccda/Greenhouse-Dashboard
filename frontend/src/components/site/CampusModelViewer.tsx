@@ -103,7 +103,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
         className={clsx(
           "relative rounded-xl bg-surface-base ring-1 ring-surface-border overflow-hidden",
           "transition-[height] duration-300",
-          expanded ? "h-[72vh]" : "h-[440px]",
+          expanded ? "h-[80vh]" : "h-[560px]",
         )}
       >
         <WebGLBoundary>

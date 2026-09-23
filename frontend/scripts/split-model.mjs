@@ -82,6 +82,31 @@ const UNVERIFIED = [
   76, 80, 115,
 ];
 
+/**
+ * Retune the materials the CAD exporter wrote.
+ *
+ * SolidWorks writes every surface as metallicFactor 1.0 / roughnessFactor 0.21
+ * — a near-mirror metal — regardless of what the part actually is. That is what
+ * made the model render black before an environment map was added, and it is
+ * also why fine form is illegible: a mirror shows you its surroundings, not its
+ * own shape, so a 20 mm shell rim on the water tank has essentially no shading
+ * contrast and the tank reads as a featureless cylinder.
+ *
+ * Dropping metallic and raising roughness restores a diffuse response, so the
+ * directional lights actually model the geometry. These are painted tanks,
+ * plastic pipe and powder-coated frame, none of which are bare polished metal
+ * in life either.
+ */
+function retuneMaterials(doc) {
+  let n = 0;
+  for (const mat of doc.getRoot().listMaterials()) {
+    mat.setMetallicFactor(0.35);
+    mat.setRoughnessFactor(0.6);
+    n++;
+  }
+  return n;
+}
+
 const io = await new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
   "draco3d.encoder": await draco3d.createEncoderModule(),
   "draco3d.decoder": await draco3d.createDecoderModule(),
@@ -111,9 +136,11 @@ function rootChildren(doc) {
     node.setName(`${role}__${body}`);         // role and body number both survive
     kept++;
   });
+  const tuned = retuneMaterials(doc);
   await doc.transform(prune(), dedup(), weld(), draco());
   const glb = await io.writeBinary(doc);
   writeFileSync(OUT_PARTS, glb);
+  console.log(`           ${tuned} materials retuned`);
   console.log(`parts    : ${kept} bodies -> ${OUT_PARTS} (${(glb.length / 1e6).toFixed(2)} MB)`);
 }
 
@@ -127,9 +154,11 @@ function rootChildren(doc) {
   });
   // join+flatten is exactly what we do NOT want for the parts file and exactly
   // what we do want here: the backdrop is never interacted with.
+  const tuned = retuneMaterials(doc);
   await doc.transform(prune(), dedup(), flatten(), join(), weld(), draco());
   const glb = await io.writeBinary(doc);
   writeFileSync(OUT_BACKDROP, glb);
+  console.log(`           ${tuned} materials retuned`);
   console.log(`backdrop : ${dropped} bodies removed -> ${OUT_BACKDROP} (${(glb.length / 1e6).toFixed(2)} MB)`);
 }
 
