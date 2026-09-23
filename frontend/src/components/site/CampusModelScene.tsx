@@ -125,13 +125,20 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
       obj.traverse((child) => {
         const mesh = child as THREE.Mesh;
         if (!mesh.isMesh) return;
-        const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        mesh.material = list.map((m) => {
+        // Put the material back in the SHAPE it arrived in. three renders an
+        // array material only through geometry.groups, and every mesh here is a
+        // single-material glTF primitive with no groups at all — so an array of
+        // one draws nothing whatsoever. That is not a subtle degradation: it
+        // made all 75 addressable bodies invisible, which is why the channel
+        // preview appeared to do nothing.
+        const wasArray = Array.isArray(mesh.material);
+        const list = wasArray ? (mesh.material as THREE.Material[]) : [mesh.material];
+        const clones = list.map((m) => {
           const clone = (m as THREE.MeshStandardMaterial).clone();
           materials.push(clone);
           return clone;
         });
-        if (!Array.isArray(mesh.material)) mesh.material = mesh.material[0];
+        mesh.material = wasArray ? clones : clones[0];
       });
       found.push({ role, node: obj, materials });
     });
@@ -288,9 +295,10 @@ export default function CampusModelScene({
             either — a re-export at a different scale still frames correctly. */}
         {/* margin 0.95, not drei's default 1.2. The rig is long and low, so a
             20% pad around its bounding box left the model floating small in
-            the middle of the panel. Slightly under 1 fits the bounding sphere
-            a touch tighter than exactly, which reads as filling the frame. */}
-        <Bounds fit clip observe margin={0.95}>
+            the middle of the panel. Under 1 fits tighter than exactly, which
+            reads as filling the frame; the narrow fov above is what keeps the
+            closer camera from reintroducing perspective splay. */}
+        <Bounds fit clip observe margin={0.85}>
           {/* The export is Z-DOWN: the floor sits at Z = -2.97 and the rig rises
               toward Z = -8.25. Proven from the model rather than assumed — the
               water tank's base is 0.09 m from the Z maximum and its 2 x 2 m

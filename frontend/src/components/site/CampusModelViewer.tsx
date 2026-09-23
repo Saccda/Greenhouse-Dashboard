@@ -55,7 +55,7 @@ class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean
         <div className="text-center max-w-sm">
           <AlertTriangle size={24} className="text-[color:var(--warn-ink)] mx-auto" />
           <p className="text-sm font-medium text-slate-300 mt-3">The 3D view could not start</p>
-          <p className="text-[12px] text-slate-500 mt-1.5 leading-relaxed">
+          <p className="text-[12px] text-slate-400 mt-1.5 leading-relaxed">
             WebGL is unavailable — usually an older graphics card or hardware acceleration turned
             off. The photographs on the Overview page show the same rig.
           </p>
@@ -108,7 +108,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
         className={clsx(
           "relative rounded-xl bg-surface-base ring-1 ring-surface-border overflow-hidden",
           "transition-[height] duration-300",
-          expanded ? "h-[80vh]" : "h-[560px]",
+          expanded ? "h-[88vh]" : "h-[680px]",
         )}
       >
         <WebGLBoundary>
@@ -146,9 +146,9 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
                   on ? "bg-current animate-pulse" : "bg-surface-border",
                   on && tint,
                 )} />
-                <span className={clsx("font-mono-num", on ? tint : "text-slate-500")}>{ch}</span>
-                <span className={on ? "text-slate-300" : "text-slate-500"}>{label}</span>
-                <Eye size={9} className={isPreview ? "text-sky-400" : "text-slate-600"} />
+                <span className={clsx("font-mono-num", on ? tint : "text-slate-400")}>{ch}</span>
+                <span className={on ? "text-slate-300" : "text-slate-400"}>{label}</span>
+                <Eye size={9} className={isPreview ? "text-sky-400" : "text-slate-400"} />
               </button>
             );
           })}
@@ -218,7 +218,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           ))}
         </div>
 
-        <div className="absolute bottom-3 left-3 flex items-center gap-2.5 text-[10px] text-slate-500 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
+        <div className="absolute bottom-3 left-3 flex items-center gap-2.5 text-[10px] text-slate-400 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
           <span className="flex items-center gap-1.5">
             <Box size={11} />
             {pickMode ? "click a highlighted part to identify it" : "drag to rotate · scroll to zoom · right-drag to pan"}
@@ -237,7 +237,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
       {pickMode && (
         <div className="rounded-xl bg-surface-hover ring-1 ring-surface-border p-3.5">
           <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
               Identified parts
             </p>
             {picked.length > 0 && (
@@ -248,14 +248,14 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1500);
                 }}
-                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
+                className="flex items-center gap-1 text-[10px] text-slate-300 hover:text-slate-200 transition-colors"
               >
                 {copied ? <Check size={11} /> : <Copy size={11} />} {copied ? "Copied" : "Copy"}
               </button>
             )}
           </div>
           {picked.length === 0 ? (
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-[11px] text-slate-300 leading-relaxed">
               Only the 14 mapped bodies are clickable — the rest of the rig is merged into one mesh
               for performance. Each name carries its SolidWorks body number, so anything wrong here
               can be traced straight back to the CAD.
