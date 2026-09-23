@@ -90,6 +90,11 @@ class FarmInfo(BaseModel):
     display_name: str
     location:     str
     measurement:  str
+    # Drives the landing page's weather panel. Optional so a farm added without
+    # coordinates degrades to "no weather" rather than silently showing another
+    # site's forecast.
+    latitude:     Optional[float] = None
+    longitude:    Optional[float] = None
 
 
 class FarmsResponse(BaseModel):

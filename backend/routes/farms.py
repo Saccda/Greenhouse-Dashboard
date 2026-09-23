@@ -23,6 +23,8 @@ def list_farms(user: dict = Depends(auth_service.require_auth)) -> FarmsResponse
             display_name=info["display_name"],
             location=info["location"],
             measurement=info["measurement"],
+            latitude=info.get("latitude"),
+            longitude=info.get("longitude"),
         )
         for farm_id, info in config.FARMS.items()
         if allowed is None or farm_id in allowed
@@ -41,4 +43,6 @@ def get_farm(farm_id: str, user: dict = Depends(auth_service.require_auth)) -> F
         display_name=info["display_name"],
         location=info["location"],
         measurement=info["measurement"],
+        latitude=info.get("latitude"),
+        longitude=info.get("longitude"),
     )

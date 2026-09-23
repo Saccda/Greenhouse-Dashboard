@@ -14,12 +14,17 @@ const WeatherMap = dynamic(() => import("./WeatherMap"), {
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
-const OPEN_METEO_URL =
-  "https://api.open-meteo.com/v1/forecast" +
-  "?latitude=10.6278&longitude=104.18" +
-  "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m" +
-  "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
-  "&timezone=Asia%2FBangkok&forecast_days=5";
+// Coordinates come from the selected farm rather than being baked in. They used
+// to be fixed at Kampot's, so choosing PP Campus showed the forecast for a site
+// 150 km away while the panel still claimed to be reporting the farm you had
+// picked — wrong in a way nobody would notice until it mattered.
+function forecastUrl(latitude: number, longitude: number) {
+  return "https://api.open-meteo.com/v1/forecast" +
+    `?latitude=${latitude}&longitude=${longitude}` +
+    "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m" +
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+    "&timezone=Asia%2FBangkok&forecast_days=5";
+}
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -89,13 +94,25 @@ function weatherLabel(code: number): string {
   return "Thunderstorm";
 }
 
-export default function WeatherWidget() {
+interface WeatherWidgetProps {
+  /** Omit either coordinate and the panel says it has no location, rather than
+   *  quietly falling back to some other site's weather. */
+  latitude?:  number | null;
+  longitude?: number | null;
+  label?:     string;
+}
+
+export default function WeatherWidget({ latitude, longitude, label }: WeatherWidgetProps) {
   const { isDark } = useTheme();
 
-  const { data } = useSWR(OPEN_METEO_URL, fetcher, {
-    refreshInterval: 1_800_000,
-    revalidateOnFocus: false,
-  });
+  const hasLocation = latitude != null && longitude != null;
+  // A null SWR key skips the request entirely — no point asking Open-Meteo for
+  // the weather at "undefined".
+  const { data } = useSWR(
+    hasLocation ? forecastUrl(latitude, longitude) : null,
+    fetcher,
+    { refreshInterval: 1_800_000, revalidateOnFocus: false },
+  );
 
   const current = data?.current;
   const daily   = data?.daily;
@@ -130,7 +147,7 @@ export default function WeatherWidget() {
         <div className="flex items-center gap-1.5">
           <MapPin size={10} className="text-sky-400 shrink-0" />
           <span className={clsx("text-xs font-semibold", isDark ? "text-white" : "text-slate-700")}>
-            Kampot, Cambodia
+            {hasLocation ? (label ?? "Cambodia") : "No location set"}
           </span>
         </div>
 

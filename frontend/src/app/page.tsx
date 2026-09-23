@@ -428,7 +428,11 @@ export default function HomePage() {
 
           {/* Weather widget */}
           <div className="flex-1 min-h-0">
-            <WeatherWidget />
+            <WeatherWidget
+              latitude={selectedFarm?.latitude}
+              longitude={selectedFarm?.longitude}
+              label={selectedFarm ? `${selectedFarm.location}, Cambodia` : undefined}
+            />
           </div>
         </div>
 
@@ -472,28 +476,19 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Partner logos — collaboration credit, kept separate from our own identity in the header.
-              Each logo already carries its own white backing for legibility, so the group sits
-              directly on the photo instead of inside a second, redundant card. */}
+          {/* Partner logo — collaboration credit, kept separate from our own identity in the
+              header. The logo carries its own white backing for legibility, so it sits directly
+              on the photo instead of inside a second, redundant card. */}
           <div className="absolute bottom-5 right-5 flex items-center gap-4" style={{ zIndex: 20 }}>
             <span className="text-sm font-bold uppercase tracking-widest text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.85),0_1px_12px_rgba(0,0,0,0.6)] shrink-0">
               In partnership with
             </span>
-            <div className="flex items-center gap-3.5">
-              <div className="h-16 px-4 flex items-center bg-white rounded-xl shadow-lg">
-                <Image
-                  src="/soge_logo.png" alt="SOGE — Solar Green Energy Cambodia"
-                  width={2000} height={749}
-                  className="h-12 w-auto object-contain"
-                />
-              </div>
-              <div className="h-16 px-3 flex items-center bg-white rounded-xl shadow-lg">
-                <Image
-                  src="/FairsFarmLogo.png" alt="Fair Farms — Organic Spices"
-                  width={368} height={357}
-                  className="h-[3.4rem] w-auto object-contain"
-                />
-              </div>
+            <div className="h-16 px-4 flex items-center bg-white rounded-xl shadow-lg">
+              <Image
+                src="/soge_logo.png" alt="SOGE — Solar Green Energy Cambodia"
+                width={2000} height={749}
+                className="h-12 w-auto object-contain"
+              />
             </div>
           </div>
 

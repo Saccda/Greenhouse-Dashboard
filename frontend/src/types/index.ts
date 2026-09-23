@@ -81,6 +81,10 @@ export interface Farm {
   display_name: string;
   location:     string;
   measurement:  string;
+  // Optional: a farm configured without coordinates gets no weather panel
+  // rather than another site's forecast.
+  latitude?:    number | null;
+  longitude?:   number | null;
 }
 
 export interface FarmsResponse {

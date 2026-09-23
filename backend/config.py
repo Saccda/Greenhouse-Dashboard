@@ -159,12 +159,16 @@ FARMS: dict[str, dict] = {
         "display_name": "Kampot Farm",
         "measurement":  "PepperFarmData",
         "location":     "Kampot Province",
+        "latitude":     10.6104,
+        "longitude":    104.1811,
         "fogger_spec":  {"lines": 9, "foggers_per_line": 18, "flow_lpm_per_fogger": 3.0},
     },
     "kep": {
         "display_name": "Kep Farm",
         "measurement":  "KepFarmData",
         "location":     "Kep Province",
+        "latitude":     10.4831,
+        "longitude":    104.3167,
         "fogger_spec":  None,  # TODO: confirm Kep's line/fogger layout and per-fogger flow rate
     },
     "campus": {
@@ -181,6 +185,8 @@ FARMS: dict[str, dict] = {
         # now — nothing reads it — but don't reuse that name.
         "measurement":  "PPCampusData",
         "location":     "Phnom Penh",
+        "latitude":     11.5564,
+        "longitude":    104.9282,
         "fogger_spec":  None,
     },
 }
