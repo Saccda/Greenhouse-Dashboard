@@ -27,6 +27,15 @@ const SECTIONS = [
 
 interface AlertLogResponse { logs: { id: number; created_at: string }[]; count: number; }
 
+// The hero photograph follows the farm selector. It used to be a single
+// hardcoded /farm.jpg for every site, which showed a Kampot pepper field to
+// someone who had explicitly selected the campus rig — the one thing on this
+// screen that was not actually about the farm they picked.
+const FARM_HERO: Record<string, string> = {
+  campus: "/campus/campus-right.jpg",
+};
+const DEFAULT_HERO = "/farm.jpg";
+
 // ── Live info card ────────────────────────────────────────────────────────────
 
 function FarmAnnotation({ farm }: { farm: Farm }) {
@@ -134,7 +143,10 @@ export default function HomePage() {
   const { farm: selectedFarmId, setFarm: setSelectedFarmId, farms } = useFarmSelection();
 
   const [query,    setQuery]    = useState("");
-  const [imgError, setImgError] = useState(false);
+  // Which hero source failed, rather than a boolean: a boolean stays true
+  // after the farm changes, so one site with a missing photo would leave every
+  // other site showing the fallback too.
+  const [failedHero, setFailedHero] = useState<string | null>(null);
 
   // Compute left column width so SECTIONS' rows of aspect-square cards fill
   // the exact height (2 cols — update this if SECTIONS' length changes).
@@ -197,6 +209,8 @@ export default function HomePage() {
       ).length
     : 0;
   const selectedFarm = farms.find((f) => f.id === selectedFarmId) ?? null;
+  const heroSrc = FARM_HERO[selectedFarmId] ?? DEFAULT_HERO;
+  const heroFailed = failedHero === heroSrc;
 
   const filtered = query
     ? SECTIONS.filter((s) => s.label.toLowerCase().includes(query.toLowerCase()))
@@ -421,13 +435,13 @@ export default function HomePage() {
         {/* ── Right: farm image ─────────────────────────────── */}
         <div className="flex-1 relative rounded-2xl overflow-hidden bg-slate-900 min-h-0">
 
-          {!imgError ? (
+          {!heroFailed ? (
             <Image
-              src="/farm.jpg"
-              alt="Farm overview"
+              src={heroSrc}
+              alt={selectedFarm ? `${selectedFarm.display_name} site` : "Farm overview"}
               fill
               className="object-cover"
-              onError={() => setImgError(true)}
+              onError={() => setFailedHero(heroSrc)}
               priority
             />
           ) : (
@@ -436,7 +450,7 @@ export default function HomePage() {
               <div className="text-center space-y-2">
                 <p className="text-white/75 text-sm font-medium">Add your farm photo to display here</p>
                 <code className="text-white/60 text-xs bg-white/10 px-4 py-2 rounded-lg block">
-                  frontend/public/farm.jpg
+                  frontend/public{heroSrc}
                 </code>
               </div>
             </div>
