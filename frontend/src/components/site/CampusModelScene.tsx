@@ -1,42 +1,120 @@
 "use client";
 /**
- * CampusModelScene — the Three.js half of the campus 3D model.
+ * CampusModelScene — the Three.js half of the campus digital twin.
  *
- * Kept in its own file and only ever reached through a dynamic import, because
- * three + fiber + drei is roughly 250 KB of JavaScript. Nothing outside this
- * page should pay for it, and it cannot server-render: WebGL needs a real
- * canvas, so `ssr: false` is required rather than merely preferred.
+ * Reached only through a dynamic import: three + fiber + drei is ~250 KB and
+ * cannot server-render, since WebGL needs a real canvas.
  *
- * On the model itself (public/models/campus.glb):
- *   - 2.76 MB, Draco-compressed, one draw call. The 41.8 MB Open Cascade export
- *     it came from is gitignored; see the commit that added it.
- *   - The Draco decoder is served from /draco/ rather than Google's CDN, so the
- *     page keeps working on a rural connection that cannot reach gstatic.
- *   - Geometry arrives in metres and offset from the origin, so nothing here
- *     assumes a centred model: <Bounds fit> measures the real bounding box and
- *     frames it. That also means a re-exported model of a different size still
- *     appears correctly without touching this file.
+ * TWO MODELS, deliberately. The CAD export is 313 bodies / 18,903 primitives.
+ * Merging it all gives one cheap draw call but nothing addressable; keeping it
+ * all separate keeps addressability at 17.7 MB and ~19,000 draw calls, which
+ * costs far more framerate than the download costs patience. So
+ * scripts/split-model.mjs produces:
  *
- * Binding live channel state (CH2 on -> the misting line lights up) is not here
- * yet, and deliberately so: this build merges every part into a single mesh, so
- * there is nothing individually addressable to light. That needs a
- * parts-preserving model plus a mapping of node -> role. The structure below
- * leaves room for it — the model sits in its own component, so per-part
- * materials become a change inside <CampusModel> rather than a rewrite.
+ *   campus-backdrop.glb  everything we never touch, merged flat   2.82 MB
+ *   campus-parts.glb     the 14 bodies that light up, separate    0.21 MB
+ *
+ * 247 draw calls total, and the only parts we can address are the only ones we
+ * ever wanted to.
+ *
+ * Part names carry their role and their SolidWorks body number — "ch2_spray__23"
+ * — so a mis-picked body can be traced back to the CAD without guesswork, and
+ * the picker below reports exactly that string.
  */
-import { Suspense, useRef } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Bounds, ContactShadows, Html, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
-const MODEL_URL = "/models/campus.glb";
+const BACKDROP_URL = "/models/campus-backdrop.glb";
+const PARTS_URL = "/models/campus-parts.glb";
 const DRACO_PATH = "/draco/";
 
-function CampusModel() {
-  const { scene } = useGLTF(MODEL_URL, DRACO_PATH);
-  // `scene` is cached and shared by useGLTF, so it is used directly rather than
-  // cloned — there is only ever one viewer on the page.
+/** Colour each role glows when its channel is running. */
+const ROLE_GLOW: Record<string, string> = {
+  ch2_spray:  "#38bdf8",   // water — sky
+  ch4_cool:   "#22d3ee",   // chilled water — cyan
+  ch1_enable: "#4ade80",   // system enabled — green
+};
+
+export interface SceneProps {
+  /** Roles currently ON, e.g. {"ch2_spray"}. Empty when the feed is stale. */
+  active: Set<string>;
+  /** Developer aid: click a part to report `role__bodyNumber`. */
+  pickMode?: boolean;
+  onPick?: (partName: string) => void;
+}
+
+function Backdrop() {
+  const { scene } = useGLTF(BACKDROP_URL, DRACO_PATH);
   return <primitive object={scene} />;
+}
+
+function Parts({ active, pickMode, onPick }: SceneProps) {
+  const { scene } = useGLTF(PARTS_URL, DRACO_PATH);
+  const invalidate = useThree((s) => s.invalidate);
+
+  // Materials are cloned once per part. useGLTF caches and shares the loaded
+  // scene, so mutating a material in place would leak the highlight into any
+  // other consumer of the same asset — and back into this one after a remount.
+  const parts = useMemo(() => {
+    const found: { role: string; node: THREE.Object3D; materials: THREE.MeshStandardMaterial[] }[] = [];
+    scene.traverse((obj) => {
+      const name = obj.name ?? "";
+      if (!name.includes("__")) return;
+      const role = name.split("__")[0];
+      const materials: THREE.MeshStandardMaterial[] = [];
+      obj.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mesh.material = list.map((m) => {
+          const clone = (m as THREE.MeshStandardMaterial).clone();
+          materials.push(clone);
+          return clone;
+        });
+        if (!Array.isArray(mesh.material)) mesh.material = mesh.material[0];
+      });
+      found.push({ role, node: obj, materials });
+    });
+    return found;
+  }, [scene]);
+
+  useEffect(() => {
+    for (const { role, materials } of parts) {
+      const on = active.has(role);
+      const glow = ROLE_GLOW[role];
+      for (const m of materials) {
+        if (on && glow) {
+          m.emissive = new THREE.Color(glow);
+          m.emissiveIntensity = 1.4;
+        } else {
+          m.emissive = new THREE.Color("#000000");
+          m.emissiveIntensity = 0;
+        }
+        m.needsUpdate = true;
+      }
+    }
+    // frameloop is "demand", so a state change that only alters materials would
+    // otherwise never be drawn.
+    invalidate();
+  }, [parts, active, invalidate]);
+
+  return (
+    <primitive
+      object={scene}
+      onClick={(e: { stopPropagation: () => void; object: THREE.Object3D }) => {
+        if (!pickMode || !onPick) return;
+        e.stopPropagation();
+        // Walk up to the named part: the click lands on a mesh, which may be a
+        // child of the node carrying the role__body name.
+        let o: THREE.Object3D | null = e.object;
+        while (o && !(o.name ?? "").includes("__")) o = o.parent;
+        if (o) onPick(o.name);
+      }}
+    />
+  );
 }
 
 function Loading() {
@@ -50,48 +128,37 @@ function Loading() {
   );
 }
 
-export default function CampusModelScene() {
+export default function CampusModelScene({ active, pickMode, onPick }: SceneProps) {
   const controls = useRef<OrbitControlsImpl>(null);
 
   return (
     <Canvas
-      // demand rather than always: a static model does not need 60 fps forever.
-      // OrbitControls invalidates on interaction, so it stays responsive while
-      // costing nothing when nobody is touching it.
+      // A static model has no reason to run at 60 fps forever. OrbitControls
+      // invalidates on interaction, and the highlight effect invalidates on
+      // channel change, so nothing is ever missed.
       frameloop="demand"
       dpr={[1, 2]}
-      shadows
-      camera={{ position: [9, 6, 9], fov: 40, near: 0.1, far: 200 }}
-      gl={{ antialias: true, preserveDrawingBuffer: false }}
+      camera={{ position: [9, 6, 9], fov: 40, near: 0.1, far: 300 }}
+      gl={{ antialias: true }}
       style={{ background: "transparent" }}
     >
-      {/* Deliberately plain lights rather than drei's <Environment> or <Stage>,
-          both of which fetch an HDR from a CDN at runtime. A grey CAD model
-          reads fine on a three-point setup and the page stays self-contained. */}
+      {/* Plain lights rather than drei's <Environment> or <Stage>, which fetch
+          an HDR from a CDN at runtime. A grey CAD model reads fine on three
+          lights and the page stays usable on a rural connection. */}
       <ambientLight intensity={0.85} />
       <hemisphereLight args={["#ffffff", "#334155", 0.6]} />
-      <directionalLight
-        position={[8, 12, 6]}
-        intensity={1.5}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-      />
+      <directionalLight position={[8, 12, 6]} intensity={1.4} />
       <directionalLight position={[-8, 5, -6]} intensity={0.5} />
 
       <Suspense fallback={<Loading />}>
-        {/* Bounds measures the real bounding box and frames it, so the model's
-            offset from the origin and its true size are both handled without
-            hardcoding either. */}
+        {/* Bounds measures the real bounding box, so the model's offset from
+            the origin and its true size are both handled without hardcoding
+            either — a re-export at a different scale still frames correctly. */}
         <Bounds fit clip observe margin={1.15}>
-          <CampusModel />
+          <Backdrop />
+          <Parts active={active} pickMode={pickMode} onPick={onPick} />
         </Bounds>
-        <ContactShadows
-          position={[0, -0.01, 0]}
-          opacity={0.35}
-          scale={30}
-          blur={2.4}
-          far={12}
-        />
+        <ContactShadows position={[0, -0.01, 0]} opacity={0.3} scale={30} blur={2.4} far={12} />
       </Suspense>
 
       <OrbitControls
@@ -101,15 +168,14 @@ export default function CampusModelScene() {
         enableDamping
         dampingFactor={0.08}
         minDistance={2}
-        maxDistance={60}
-        // Stop below the floor: looking up through the ground plane at a rig
-        // that has no underside modelled just shows the inside of the mesh.
+        maxDistance={80}
+        // Stop at the floor: looking up through a rig with no modelled underside
+        // just shows the inside of the mesh.
         maxPolarAngle={Math.PI / 2.05}
       />
     </Canvas>
   );
 }
 
-// Warm the cache as soon as this chunk is parsed, so the download starts while
-// React is still mounting the canvas rather than after it.
-useGLTF.preload(MODEL_URL, DRACO_PATH);
+useGLTF.preload(BACKDROP_URL, DRACO_PATH);
+useGLTF.preload(PARTS_URL, DRACO_PATH);
