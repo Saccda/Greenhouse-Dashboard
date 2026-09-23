@@ -21,7 +21,7 @@
  * — so a mis-picked body can be traced back to the CAD without guesswork, and
  * the picker below reports exactly that string.
  */
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Bounds, useBounds, ContactShadows, Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -45,11 +45,14 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  // 30 degrees azimuth, 45 elevation — well above the textbook isometric 35.26,
-  // arrived at by eye against the reference CAD view rather than from theory.
-  // Only the y component controls the elevation; x and z fix the azimuth and
-  // should stay put.
-  iso:   [0.80, 1.60, 1.39],
+  // 30 degrees azimuth, 42 elevation. Arrived at by eye against the reference
+  // CAD view, not from theory — 40 was read as slightly low and 45 as clearly
+  // too high, so this sits between them. Only the y component controls the
+  // elevation; x and z fix the azimuth and should stay put.
+  //
+  // The readout in the viewer's bottom bar reports these two angles live, so a
+  // better pair can be found by orbiting rather than by guessing from here.
+  iso:   [0.80, 1.44, 1.39],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
@@ -65,6 +68,8 @@ export interface SceneProps {
   /** Which preset to frame from, and a nonce so re-picking the same one re-fits. */
   view?: ViewName;
   viewNonce?: number;
+  /** Live camera angles in degrees, so a preset can be found by eye. */
+  onCamera?: (azimuth: number, elevation: number) => void;
 }
 
 /**
@@ -199,9 +204,29 @@ function Loading() {
 }
 
 export default function CampusModelScene({
-  active, pickMode, onPick, view = "iso", viewNonce = 0,
+  active, pickMode, onPick, view = "iso", viewNonce = 0, onCamera,
 }: SceneProps) {
   const controls = useRef<OrbitControlsImpl>(null);
+  // Last reported pair, so a drag does not fire a React render per frame.
+  const lastAngles = useRef<[number, number]>([0, 0]);
+
+  /**
+   * Convert the camera's offset from the orbit target into the same azimuth and
+   * elevation that VIEWS above is written in, so a angle found by dragging can
+   * be typed straight back into the preset. Getting this view right has taken
+   * several blind guesses; a readout costs a few lines and ends that.
+   */
+  const reportCamera = useCallback(() => {
+    const c = controls.current;
+    if (!c || !onCamera) return;
+    const v = c.object.position.clone().sub(c.target);
+    const az = THREE.MathUtils.radToDeg(Math.atan2(v.x, v.z));
+    const el = THREE.MathUtils.radToDeg(Math.atan2(v.y, Math.hypot(v.x, v.z)));
+    const [pa, pe] = lastAngles.current;
+    if (Math.abs(az - pa) < 0.5 && Math.abs(el - pe) < 0.5) return;
+    lastAngles.current = [az, el];
+    onCamera(az, el);
+  }, [onCamera]);
 
   return (
     <Canvas
@@ -261,6 +286,7 @@ export default function CampusModelScene({
       <OrbitControls
         ref={controls}
         makeDefault
+        onChange={reportCamera}
         enablePan
         enableDamping
         dampingFactor={0.08}

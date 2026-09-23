@@ -16,7 +16,7 @@
  * keeps a sprinkler lit from yesterday's reading is worse than one that admits
  * it does not know.
  */
-import { useState, useMemo, Component, type ReactNode } from "react";
+import { useState, useMemo, useCallback, Component, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import useSWR from "swr";
 import { clsx } from "clsx";
@@ -78,6 +78,11 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
   // A nonce alongside the name so clicking the same view again re-frames,
   // which is what someone expects after they have orbited away from it.
   const [view, setView] = useState<{ name: ViewName; nonce: number }>({ name: "iso", nonce: 0 });
+  // Live camera angles. The default ISO framing has been set by eye several
+  // times over; showing the numbers means the next adjustment is "orbit to it
+  // and read them off" rather than another guess at the source.
+  const [angles, setAngles] = useState<[number, number] | null>(null);
+  const onCamera = useCallback((az: number, el: number) => setAngles([az, el]), []);
 
   const { data: latest } = useSWR<LatestResponse>(
     `/api/sensors/latest?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
@@ -112,6 +117,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
             pickMode={pickMode}
             view={view.name}
             viewNonce={view.nonce}
+            onCamera={onCamera}
             onPick={(name) => setPicked((p) => (p.includes(name) ? p : [...p, name]))}
           />
         </WebGLBoundary>
@@ -212,9 +218,19 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           ))}
         </div>
 
-        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-[10px] text-slate-500 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
-          <Box size={11} />
-          {pickMode ? "click a highlighted part to identify it" : "drag to rotate · scroll to zoom · right-drag to pan"}
+        <div className="absolute bottom-3 left-3 flex items-center gap-2.5 text-[10px] text-slate-500 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
+          <span className="flex items-center gap-1.5">
+            <Box size={11} />
+            {pickMode ? "click a highlighted part to identify it" : "drag to rotate · scroll to zoom · right-drag to pan"}
+          </span>
+          {angles && (
+            <span
+              title="Camera angle. Orbit to a framing you like and quote these two numbers to set it as the default."
+              className="font-mono-num text-slate-400 border-l border-surface-border pl-2.5"
+            >
+              az {angles[0].toFixed(0)}° · el {angles[1].toFixed(0)}°
+            </span>
+          )}
         </div>
       </div>
 
