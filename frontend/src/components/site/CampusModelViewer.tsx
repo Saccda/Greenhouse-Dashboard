@@ -20,7 +20,7 @@ import { useState, useMemo, Component, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import useSWR from "swr";
 import { clsx } from "clsx";
-import { Box, Maximize2, RotateCcw, AlertTriangle, Crosshair, Copy, Check } from "lucide-react";
+import { Box, Maximize2, RotateCcw, AlertTriangle, Crosshair, Copy, Check, Eye } from "lucide-react";
 
 import { swrFetcher } from "@/lib/api";
 import type { LatestResponse } from "@/types";
@@ -69,6 +69,11 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
   const [expanded, setExpanded] = useState(false);
   const [pickMode, setPickMode] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  // Force a role lit regardless of the live feed. The rig is offline most of
+  // the time, so without this there is no way to check that a group covers the
+  // parts it claims to — which is exactly the question the body numbers keep
+  // raising.
+  const [preview, setPreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const { data: latest } = useSWR<LatestResponse>(
@@ -78,13 +83,14 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
   // Only "ON" lights anything. UNKNOWN — which is what the API returns once the
   // feed is stale — deliberately lights nothing.
   const active = useMemo(() => {
+    if (preview) return new Set([preview]);
     const on = new Set<string>();
     for (const relay of latest?.relays ?? []) {
       const m = CHANNEL_ROLE[relay.key];
       if (m && relay.state === "ON") on.add(m.role);
     }
     return on;
-  }, [latest]);
+  }, [latest, preview]);
 
   const isStale = latest ? !latest.is_online : false;
 
@@ -109,10 +115,20 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
         <div className="absolute top-3 left-3 flex flex-col gap-1">
           {Object.entries(CHANNEL_ROLE).map(([ch, { role, label, tint }]) => {
             const on = active.has(role);
+            const isPreview = preview === role;
             return (
-              <div
+              <button
                 key={ch}
-                className="flex items-center gap-2 text-[10px] bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border"
+                type="button"
+                onClick={() => setPreview((p) => (p === role ? null : role))}
+                title={isPreview ? "Stop previewing" : `Preview ${label} — light it regardless of live state`}
+                aria-pressed={isPreview}
+                className={clsx(
+                  "flex items-center gap-2 text-[10px] backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 transition-colors",
+                  isPreview
+                    ? "bg-sky-500/20 ring-sky-400/50"
+                    : "bg-surface-card/85 ring-surface-border hover:ring-slate-500",
+                )}
               >
                 <span className={clsx(
                   "w-1.5 h-1.5 rounded-full",
@@ -121,10 +137,16 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
                 )} />
                 <span className={clsx("font-mono-num", on ? tint : "text-slate-500")}>{ch}</span>
                 <span className={on ? "text-slate-300" : "text-slate-500"}>{label}</span>
-              </div>
+                <Eye size={9} className={isPreview ? "text-sky-400" : "text-slate-600"} />
+              </button>
             );
           })}
-          {isStale && (
+          {preview && (
+            <p className="text-[10px] text-sky-400 bg-sky-400/10 px-2.5 py-1.5 rounded-lg ring-1 ring-sky-400/25 max-w-[190px] leading-snug">
+              Preview — showing which parts this channel covers, not live state.
+            </p>
+          )}
+          {!preview && isStale && (
             <p className="text-[10px] text-[color:var(--warn-ink)] bg-amber-500/10 px-2.5 py-1.5 rounded-lg ring-1 ring-amber-500/25 max-w-[190px] leading-snug">
               Feed is stale — nothing is lit because the channel states are unknown, not off.
             </p>

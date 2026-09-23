@@ -50,9 +50,16 @@ const PARTS = {
     154, 161, 164, 166, 176, 178, 182, 186, 187, 188, 194, 196, 210, 213, 214,
     215, 218, 219, 220, 222, 223, 242, 256, 259, 264, 268, 270, 272, 287, 291,
     295, 305, 309,
+    // Confirmed by the farm team as nozzle heads, though they sit 3.2 m away
+    // vertically from the other 68 and are two orders larger (400x400x700 and
+    // 489x1200x500 mm). Most likely the drop-pipe assemblies rather than the
+    // heads themselves. Kept because the people who drew it say so; the preview
+    // control in the viewer is there to settle questions like this by looking.
+    46, 116,
   ],
-  // Tank panel, plate and rod on the cooling skid. Thin — worth extending with
-  // the chiller and pump once those bodies are identified in the viewer.
+  // Tank panel, plate and rod on the cooling skid. Deliberately left at three:
+  // the cooling unit beside the tank is made of many small bodies, and pulling
+  // them all in would cost draw calls for a part that reads fine as a hint.
   ch4_cool: [126, 119, 282],
   // 24 x 24 x 60 mm on the wall panel: an indicator lamp, which is exactly the
   // right thing to light for "system enabled".
@@ -61,14 +68,15 @@ const PARTS = {
   storage: [35],
 };
 
-// Bodies originally supplied as CH2 that the geometry contradicts: they cluster
-// within ~2 m at the cooling skid rather than running along the rig, and several
-// are far too large to be nozzles ([116] is 0.49 x 1.2 x 0.5 m, [46] is
-// 0.4 x 0.4 x 0.7 m). Most look like chiller and fan units. Kept here rather
-// than dropped so they can be reassigned once identified.
+// Bodies originally supplied as CH2 whose position argues against it: they sit
+// within ~2 m of each other at the cooling skid rather than running along the
+// rig. [46] and [116] were in this list until the farm team confirmed them as
+// nozzle parts, which is a fair warning that position alone is not proof — so
+// these are parked rather than discarded, pending a look through the viewer's
+// preview control.
 const UNVERIFIED = [
-  294, 258, 253, 244, 245, 239, 221, 208, 207, 183, 157, 149, 140, 125, 116,
-  110, 84, 81, 74, 72, 71, 46, 15,
+  294, 258, 253, 244, 245, 239, 221, 208, 207, 183, 157, 149, 140, 125,
+  110, 84, 81, 74, 72, 71, 15,
   // end-of-rail fittings, not nozzle heads: they sit at the rail end and do not
   // fit the two-body pattern
   76, 80, 115,
