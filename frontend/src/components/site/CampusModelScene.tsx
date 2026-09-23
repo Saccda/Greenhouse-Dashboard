@@ -45,12 +45,12 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  // A true isometric looks down at 35.26 degrees (atan of 1/sqrt 2) with equal
-  // weight on both horizontal axes. The previous [1, 0.75, 1] sat at 28
-  // degrees and square-on to the rig, which read as a front view tilted rather
-  // than an isometric. This swings the azimuth round toward the length of the
-  // rig and raises the elevation to the real isometric angle.
-  iso:   [1.35, 1.1, 0.78],
+  // Elevation is the true isometric 35.26 degrees (atan of 1/sqrt 2); the
+  // original [1, 0.75, 1] sat at 28 and read as a tilted front view. Azimuth is
+  // 30 degrees — swung anticlockwise from the 45 it started at. An earlier pass
+  // went to 60, i.e. the same distance the other way, which was the wrong
+  // direction.
+  iso:   [0.80, 1.13, 1.39],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
