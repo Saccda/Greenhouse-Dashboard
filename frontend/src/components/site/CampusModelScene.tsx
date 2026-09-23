@@ -45,16 +45,15 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  // 22 degrees azimuth, 45 elevation. Arrived at by eye against the reference
-  // CAD view, not from theory. This pair was very nearly right before the panel
-  // was enlarged; what spoiled it was the tighter Bounds margin pulling the
-  // camera in, not the angle, so the angle is restored here and the fov below
-  // compensates instead. Only the y component controls the elevation; x and z
-  // fix the azimuth and should stay put.
+  // The classic isometric direction is simply (1, 1, 1): azimuth 45, elevation
+  // 35.26 (atan of 1/sqrt 2). That is exactly what SolidWorks calls Isometric,
+  // which is the reference this is meant to match.
   //
-  // The readout in the viewer's bottom bar reports these two angles live, so a
-  // better pair can be found by orbiting rather than by guessing from here.
-  iso:   [0.60, 1.61, 1.49],
+  // Everything before this was tuned against a broken mapping — see
+  // ViewController — so the numbers that came out of that tuning described an
+  // angle nobody was actually looking at. Starting again from the textbook
+  // value, which the viewer's az/el readout now agrees with exactly.
+  iso:   [1, 1, 1],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
@@ -176,20 +175,36 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
 }
 
 /**
- * Re-frames the model along a preset direction. Bounds owns the distance, so
- * this only sets where the camera looks FROM and asks Bounds to refit — the
- * alternative, computing a distance here, would have to duplicate the bounding
- * box maths and would drift out of step with the model.
+ * Re-frames the model along a preset direction.
+ *
+ * The direction MUST be applied relative to the model's bounding-box centre,
+ * not the world origin. Bounds.reset() — which fit() delegates to for a
+ * perspective camera — recovers the direction it will use as
+ * `camera.position - boxCentre`. This model's centre sits 13.6 m from the
+ * origin, so positioning the camera at `direction * distance` from the origin
+ * fed Bounds a completely different direction from the one asked for: VIEWS.iso
+ * at azimuth 22 / elevation 45 came out as -12 / 79, very nearly top-down.
+ *
+ * It was also unstable. The old code took its distance from
+ * `camera.position.length()`, which changes after every fit, so each press of a
+ * preset produced a different wrong angle — which is why the mount-time framing
+ * and the ISO button disagreed.
+ *
+ * Anchoring to the centre makes VIEWS mean exactly what it says, and match the
+ * azimuth/elevation readout in the viewer, which was always measured from the
+ * orbit target and so was right all along.
  */
 function ViewController({ view, nonce }: { view: ViewName; nonce: number }) {
   const bounds = useBounds();
   const camera = useThree((s) => s.camera);
   useEffect(() => {
     const [x, y, z] = VIEWS[view];
-    const len = Math.hypot(x, y, z) || 1;
-    const dist = camera.position.length() || 20;
-    camera.position.set((x / len) * dist, (y / len) * dist, (z / len) * dist);
-    bounds.refresh().fit();
+    const dir = new THREE.Vector3(x, y, z).normalize();
+    bounds.refresh();
+    const { center, distance } = bounds.getSize();
+    camera.position.copy(center).addScaledVector(dir, distance || 20);
+    camera.lookAt(center);
+    bounds.fit();
   }, [view, nonce, bounds, camera]);
   return null;
 }
