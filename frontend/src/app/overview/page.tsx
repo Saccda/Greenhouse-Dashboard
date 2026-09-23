@@ -140,46 +140,25 @@ function ConceiveSection() {
 
 const CAD_IMAGES = [
   {
-    src: "/Overview_CAD.png",
-    title: "Complete Farm Layout",
-    caption: "A wide view showing how the whole farm, watering system, and main power station connect together.",
+    src: "/campus/cad-zoom-out-view.jpg",
+    title: "Complete Campus Rig",
+    caption: "The whole installation: the storage tank feeding the loop, the steel frame carrying the overhead misting lines, growing beds beneath, and the cooling skid and control panels against the back wall.",
   },
   {
-    src: "/System_Overview_CAD.png",
-    title: "Close Up View of The System",
-    caption: "A close look at solar tracker, cooling and spraying system and how the pipe are installed in the farm.",
+    src: "/campus/cad-close-up-view.jpg",
+    title: "Cooling Skid and Control Panels",
+    caption: "Where the water loop meets the electrics — chiller, insulated tank, inline filter and circulation pump on a single frame, with the indicator panel and junction enclosure mounted on the wall above.",
   },
   {
-    src: "/ClosesUpViewwithSolar_CAD.png",
-    title: "Solar Power Connection",
-    caption: "This view shows how the solar panels sit next to and safely plug into the main power equipment box.",
-  },  
-  {
-    src: "/CloseUp_Solar_CAD.png",
-    title: "Solar Tracker Setup",
-    caption: "Ground-mounted solar panels that track the sun to power the entire cooling, watering and control system without needing grid power.",
+    src: "/campus/cad-close-up-coolingtank-view.jpg",
+    title: "Chilled Water Tank and Pump",
+    caption: "The insulated tank with its hinged lid, the inline filter, and the circulation pump. Blue pipework carries chilled water out to the misting lines, and the panel lamps show which channel is currently running.",
   },
   {
-    src: "/CloseUpView.png",
-    title: "Cooling and Spraying System Architecture",
-    caption: "The central water station featuring built-in filters, a storage tank, and automatic valves to control water flow.",
+    src: "/campus/cad-close-up-misting-view.jpg",
+    title: "Overhead Misting Grid",
+    caption: "Misting nozzles spaced along parallel rails above the growing area. The probe hanging on the black cable is the temperature and humidity sensor — the single reading every channel is driven from.",
   },
-  {
-    src: "/CloseUp_Operator_CAD.png",
-    title: "Main Control Box and Screen",
-    caption: "A clear view of the weatherproof box housing the system computers and the simple control screen for the user.",
-  },
-    {
-    src: "/CloseUp_SensorBox_CAD.png",
-    title: "Weather and Soil Sensor Station",
-    caption: "A small, outdoor-rated sensor box placed directly in the field to check the daily weather and soil moisture.",
-  },
-  {
-    src: "/CloseUp_Sprikler_CAD.jpg",
-    title: "Automatic Overhead Misting Nozzle",
-    caption: "A close-up view of the overhead spray line showing the drop-down pipe and fine mist nozzle that waters the crops gently.",
-  },
-
 ];
 
 function CadGallery() {
@@ -274,16 +253,16 @@ function DesignSection() {
         n="02"
         phase="Design"
         title="Engineering the solution"
-        tagline="A dual-loop cooling system — chilled misting plus air circulation — sized and modeled in CAD before a single pipe was cut, and built to run off-grid on solar."
+        tagline="A chilled-water misting system, sized and modelled in CAD before a single pipe was cut."
       />
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <p className="text-base text-slate-400 leading-relaxed">
-          The design goal was to cool the crop without depending on grid power or constant manual
-          attention: a chilled-water misting loop for direct evaporative cooling of the plants, a
-          separate air-circulation loop for the farm itself, both driven by one temperature/humidity
-          reading and both powered by an on-site solar + battery system so the farm isn&rsquo;t
-          waiting on grid reliability during the exact heat events it&rsquo;s meant to respond to.
-          The eight renders below are the CAD model this build was drawn from.
+          The design goal was to cool the crop without constant manual attention: a chilled-water
+          misting loop for direct evaporative cooling, driven by a single temperature and humidity
+          reading so the system responds to the heat event rather than to somebody noticing it. One
+          tank, one pump, one sensor, and a grid of nozzles over the growing area &mdash; deliberately
+          few moving parts, because every one of them is something that can fail unattended.
+          The renders below are the CAD model the PP Campus rig was built from.
         </p>
       </div>
       <CadGallery />
