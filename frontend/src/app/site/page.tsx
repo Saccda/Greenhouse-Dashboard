@@ -1,13 +1,15 @@
 "use client";
 /**
- * /site — the PP Campus rig: photographs, video, and (next) the 3D twin.
+ * /site — the PP Campus 3D twin.
  *
  * CAMPUS ONLY, by design rather than by omission. Campus is our own development
- * platform; Kampot is a working farm someone depends on, and the two should not
- * share a page whose whole purpose is showing off hardware we are still
- * building. The sidebar only offers this entry while campus is selected, and
- * switching farms while here shows a plain explanation rather than an empty
- * page — the header's farm selector stays available so the way back is obvious.
+ * platform; Kampot is a working farm someone depends on. The sidebar only offers
+ * this entry while campus is selected, and switching farms while here shows a
+ * plain explanation rather than an empty page.
+ *
+ * The photographs and footage that used to live here moved to the Overview
+ * page's Implement section, where they sit with the CAD renders they are the
+ * built counterpart of. What is left is the model itself.
  *
  * The 3D slot is rendered as a visible empty state rather than hidden. It names
  * the exact file it is waiting for, so the next step lives in the product
@@ -20,7 +22,6 @@ import { swrFetcher } from "@/lib/api";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
 import { deriveConnectionStatus } from "@/lib/connection";
 import Header from "@/components/layout/Header";
-import CampusMedia from "@/components/site/CampusMedia";
 import type { LatestResponse } from "@/types";
 
 const SITE_FARM = "campus";
@@ -63,8 +64,6 @@ export default function SitePage() {
 
           {isCampus ? (
             <>
-              <CampusMedia />
-
               {/* ── 3D twin slot ──────────────────────────────────── */}
               <section className="rounded-2xl border border-surface-border bg-surface-card p-5">
                 <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">

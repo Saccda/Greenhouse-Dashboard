@@ -158,6 +158,9 @@ const SITE_CONTENT: Record<string, {
   designBody:       string;
   cad:              CadImage[];
   implementTagline: string;
+  /** Photographs of the finished build. Omitted for a site with none, which
+   *  hides the section rather than leaving an empty heading. */
+  photos?:          CadImage[];
   footageLabel:     string;
   videos:           Clip[];
 }> = {
@@ -258,6 +261,18 @@ const SITE_CONTENT: Record<string, {
     ],
     implementTagline:
       "From CAD to a working prototype at PP Campus — the same loop shown in the design, now running on real hardware.",
+    photos: [
+      {
+        src: "/campus/campus-front.jpg",
+        title: "Front view",
+        caption: "The campus rig as installed — controller cabinet, sensor box and spray manifold.",
+      },
+      {
+        src: "/campus/campus-side.jpg",
+        title: "Side view",
+        caption: "Side elevation showing the frame, piping runs and the tank feeding the spray loop.",
+      },
+    ],
     footageLabel: "The Rig in Operation",
     videos: [
       {
@@ -593,6 +608,36 @@ function ImplementSection() {
         </p>
         <PidDiagram />
       </div>
+
+      {content.photos && content.photos.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            The Rig as Built
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {content.photos.map((photo) => (
+              <div
+                key={photo.src}
+                className="bg-surface-card border border-surface-border rounded-xl overflow-hidden"
+              >
+                <div className="aspect-[4/3] relative bg-slate-900">
+                  <Image
+                    src={photo.src}
+                    alt={photo.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-base text-slate-300">{photo.title}</p>
+                  <p className="text-sm text-slate-500 mt-1 leading-relaxed">{photo.caption}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
