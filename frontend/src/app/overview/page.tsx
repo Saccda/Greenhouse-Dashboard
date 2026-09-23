@@ -138,36 +138,160 @@ function ConceiveSection() {
 // Design — CDIO design philosophy + CAD gallery
 // ─────────────────────────────────────────────────────────────────────────
 
-const CAD_IMAGES = [
-  {
-    src: "/campus/cad-zoom-out-view.jpg",
-    title: "Complete Campus Rig",
-    caption: "The whole installation: the storage tank feeding the loop, the steel frame carrying the overhead misting lines, growing beds beneath, and the cooling skid and control panels against the back wall.",
-  },
-  {
-    src: "/campus/cad-close-up-view.jpg",
-    title: "Cooling Skid and Control Panels",
-    caption: "Where the water loop meets the electrics — chiller, insulated tank, inline filter and circulation pump on a single frame, with the indicator panel and junction enclosure mounted on the wall above.",
-  },
-  {
-    src: "/campus/cad-close-up-coolingtank-view.jpg",
-    title: "Chilled Water Tank and Pump",
-    caption: "The insulated tank with its hinged lid, the inline filter, and the circulation pump. Blue pipework carries chilled water out to the misting lines, and the panel lamps show which channel is currently running.",
-  },
-  {
-    src: "/campus/cad-close-up-misting-view.jpg",
-    title: "Overhead Misting Grid",
-    caption: "Misting nozzles spaced along parallel rails above the growing area. The probe hanging on the black cable is the temperature and humidity sensor — the single reading every channel is driven from.",
-  },
-];
+interface CadImage { src: string; title: string; caption: string }
+interface Clip { src: string; poster?: string; title: string; caption?: string }
 
-function CadGallery() {
+/**
+ * Overview content that is specific to one physical build.
+ *
+ * The CAD renders and the footage show particular hardware, so they follow the
+ * farm selector rather than showing one site's equipment under another site's
+ * name. The prose moves with them for the same reason: Kampot runs off-grid on
+ * solar and campus runs off the wall, so a single paragraph cannot honestly
+ * describe both.
+ *
+ * Kep falls through to Kampot — it is the same pepper-farm build, and an empty
+ * Design section would be worse than a close relative's.
+ */
+const SITE_CONTENT: Record<string, {
+  designTagline:    string;
+  designBody:       string;
+  cad:              CadImage[];
+  implementTagline: string;
+  footageLabel:     string;
+  videos:           Clip[];
+}> = {
+  kampot: {
+    designTagline:
+      "A dual-loop cooling system — chilled misting plus air circulation — sized and modeled in CAD before a single pipe was cut, and built to run off-grid on solar.",
+    designBody:
+      "The design goal was to cool the crop without depending on grid power or constant manual " +
+      "attention: a chilled-water misting loop for direct evaporative cooling of the plants, a " +
+      "separate air-circulation loop for the farm itself, both driven by one temperature/humidity " +
+      "reading and both powered by an on-site solar + battery system so the farm isn\u2019t " +
+      "waiting on grid reliability during the exact heat events it\u2019s meant to respond to. " +
+      "The eight renders below are the CAD model this build was drawn from.",
+    cad: [
+      {
+        src: "/Overview_CAD.png",
+        title: "Complete Farm Layout",
+        caption: "A wide view showing how the whole farm, watering system, and main power station connect together.",
+      },
+      {
+        src: "/System_Overview_CAD.png",
+        title: "Close Up View of The System",
+        caption: "A close look at solar tracker, cooling and spraying system and how the pipe are installed in the farm.",
+      },
+      {
+        src: "/ClosesUpViewwithSolar_CAD.png",
+        title: "Solar Power Connection",
+        caption: "This view shows how the solar panels sit next to and safely plug into the main power equipment box.",
+      },
+      {
+        src: "/CloseUp_Solar_CAD.png",
+        title: "Solar Tracker Setup",
+        caption: "Ground-mounted solar panels that track the sun to power the entire cooling, watering and control system without needing grid power.",
+      },
+      {
+        src: "/CloseUpView.png",
+        title: "Cooling and Spraying System Architecture",
+        caption: "The central water station featuring built-in filters, a storage tank, and automatic valves to control water flow.",
+      },
+      {
+        src: "/CloseUp_Operator_CAD.png",
+        title: "Main Control Box and Screen",
+        caption: "A clear view of the weatherproof box housing the system computers and the simple control screen for the user.",
+      },
+      {
+        src: "/CloseUp_SensorBox_CAD.png",
+        title: "Weather and Soil Sensor Station",
+        caption: "A small, outdoor-rated sensor box placed directly in the field to check the daily weather and soil moisture.",
+      },
+      {
+        src: "/CloseUp_Sprikler_CAD.jpg",
+        title: "Automatic Overhead Misting Nozzle",
+        caption: "A close-up view of the overhead spray line showing the drop-down pipe and fine mist nozzle that waters the crops gently.",
+      },
+    ],
+    implementTagline:
+      "From CAD to a working prototype on the farm — the same loops shown in the design, now running on real hardware.",
+    footageLabel: "Farm Footage",
+    videos: [
+      { src: "/farm/inside-farm.mp4",       poster: "/farm/inside-farm-poster.jpg",       title: "Inside the farm" },
+      { src: "/farm/outside-farm.mp4",      poster: "/farm/outside-farm-poster.jpg",      title: "Around the farm" },
+      { src: "/farm/inside-farm-wide.mp4",  poster: "/farm/inside-farm-wide-poster.jpg",  title: "Inside the farm \u2014 zoomed out" },
+      { src: "/farm/outside-farm-wide.mp4", poster: "/farm/outside-farm-wide-poster.jpg", title: "Around the farm \u2014 zoomed out" },
+    ],
+  },
+
+  campus: {
+    designTagline:
+      "A chilled-water misting system, sized and modelled in CAD before a single pipe was cut.",
+    designBody:
+      "The design goal was to cool the crop without constant manual attention: a chilled-water " +
+      "misting loop for direct evaporative cooling, driven by a single temperature and humidity " +
+      "reading so the system responds to the heat event rather than to somebody noticing it. One " +
+      "tank, one pump, one sensor, and a grid of nozzles over the growing area \u2014 deliberately " +
+      "few moving parts, because every one of them is something that can fail unattended. " +
+      "The renders below are the CAD model the PP Campus rig was built from.",
+    cad: [
+      {
+        src: "/campus/cad-zoom-out-view.jpg",
+        title: "Complete Campus Rig",
+        caption: "The whole installation: the storage tank feeding the loop, the steel frame carrying the overhead misting lines, growing beds beneath, and the cooling skid and control panels against the back wall.",
+      },
+      {
+        src: "/campus/cad-close-up-view.jpg",
+        title: "Cooling Skid and Control Panels",
+        caption: "Where the water loop meets the electrics \u2014 chiller, insulated tank, inline filter and circulation pump on a single frame, with the indicator panel and junction enclosure mounted on the wall above.",
+      },
+      {
+        src: "/campus/cad-close-up-coolingtank-view.jpg",
+        title: "Chilled Water Tank and Pump",
+        caption: "The insulated tank with its hinged lid, the inline filter, and the circulation pump. Blue pipework carries chilled water out to the misting lines, and the panel lamps show which channel is currently running.",
+      },
+      {
+        src: "/campus/cad-close-up-misting-view.jpg",
+        title: "Overhead Misting Grid",
+        caption: "Misting nozzles spaced along parallel rails above the growing area. The probe hanging on the black cable is the temperature and humidity sensor \u2014 the single reading every channel is driven from.",
+      },
+    ],
+    implementTagline:
+      "From CAD to a working prototype at PP Campus — the same loop shown in the design, now running on real hardware.",
+    footageLabel: "The Rig in Operation",
+    videos: [
+      {
+        src: "/campus/campus-operation-front.mp4",
+        poster: "/campus/campus-operation-front-poster.jpg",
+        title: "In operation \u2014 front",
+        caption: "The spray cycle running, viewed from the front.",
+      },
+      {
+        src: "/campus/campus-operation-side.mp4",
+        poster: "/campus/campus-operation-side-poster.jpg",
+        title: "In operation \u2014 side",
+        caption: "The same cycle from the side, showing coverage across the bed.",
+      },
+    ],
+  },
+};
+
+function siteContent(farm: string) {
+  return SITE_CONTENT[farm] ?? SITE_CONTENT.kampot;
+}
+
+function CadGallery({ images }: { images: CadImage[] }) {
   const [active, setActive] = useState<number | null>(null);
+
+  // Reset when the farm changes — index 6 of Kampot's eight renders does not
+  // exist in campus's four, and a stale index would open the wrong image or
+  // crash the lightbox.
+  useEffect(() => { setActive(null); }, [images]);
 
   const close = useCallback(() => setActive(null), []);
   const step  = useCallback((d: number) => {
-    setActive((cur) => (cur === null ? null : (cur + d + CAD_IMAGES.length) % CAD_IMAGES.length));
-  }, []);
+    setActive((cur) => (cur === null ? null : (cur + d + images.length) % images.length));
+  }, [images.length]);
 
   useEffect(() => {
     if (active === null) return;
@@ -183,7 +307,7 @@ function CadGallery() {
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {CAD_IMAGES.map((img, i) => (
+        {images.map((img, i) => (
           <button
             key={img.src}
             onClick={() => setActive(i)}
@@ -213,8 +337,8 @@ function CadGallery() {
           <div className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
             <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
               <Image
-                src={CAD_IMAGES[active].src}
-                alt={CAD_IMAGES[active].title}
+                src={images[active].src}
+                alt={images[active].title}
                 fill
                 sizes="90vw"
                 className="object-contain"
@@ -223,8 +347,8 @@ function CadGallery() {
             </div>
             <div className="flex items-start justify-between mt-3 gap-4">
               <div>
-                <p className="text-base font-semibold text-white">{CAD_IMAGES[active].title}</p>
-                <p className="text-sm text-slate-400 mt-1">{CAD_IMAGES[active].caption}</p>
+                <p className="text-base font-semibold text-white">{images[active].title}</p>
+                <p className="text-sm text-slate-400 mt-1">{images[active].caption}</p>
               </div>
               <button onClick={close} className="shrink-0 text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10">
                 <X size={18} />
@@ -234,7 +358,7 @@ function CadGallery() {
               <button onClick={() => step(-1)} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10">
                 <ChevronLeft size={18} />
               </button>
-              <span className="text-xs text-slate-500 tabular-nums">{active + 1} / {CAD_IMAGES.length}</span>
+              <span className="text-xs text-slate-500 tabular-nums">{active + 1} / {images.length}</span>
               <button onClick={() => step(1)} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10">
                 <ChevronRight size={18} />
               </button>
@@ -247,25 +371,20 @@ function CadGallery() {
 }
 
 function DesignSection() {
+  const { farm } = useFarmSelection();
+  const content = siteContent(farm);
   return (
     <section className="space-y-4">
       <PhaseHeader
         n="02"
         phase="Design"
         title="Engineering the solution"
-        tagline="A chilled-water misting system, sized and modelled in CAD before a single pipe was cut."
+        tagline={content.designTagline}
       />
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <p className="text-base text-slate-400 leading-relaxed">
-          The design goal was to cool the crop without constant manual attention: a chilled-water
-          misting loop for direct evaporative cooling, driven by a single temperature and humidity
-          reading so the system responds to the heat event rather than to somebody noticing it. One
-          tank, one pump, one sensor, and a grid of nozzles over the growing area &mdash; deliberately
-          few moving parts, because every one of them is something that can fail unattended.
-          The renders below are the CAD model the PP Campus rig was built from.
-        </p>
+        <p className="text-base text-slate-400 leading-relaxed">{content.designBody}</p>
       </div>
-      <CadGallery />
+      <CadGallery images={content.cad} />
     </section>
   );
 }
@@ -361,20 +480,6 @@ function VideoCard({ src, poster, title, caption }: {
 // of the file — so the browser had to download the whole clip before it could
 // show a single frame. These are real MP4, faststart, with a poster so the card
 // shows something before anyone presses play.
-const VIDEOS = [
-  {
-    src: "/campus/campus-operation-front.mp4",
-    poster: "/campus/campus-operation-front-poster.jpg",
-    title: "In operation — front",
-    caption: "The spray cycle running, viewed from the front.",
-  },
-  {
-    src: "/campus/campus-operation-side.mp4",
-    poster: "/campus/campus-operation-side-poster.jpg",
-    title: "In operation — side",
-    caption: "The same cycle from the side, showing coverage across the bed.",
-  },
-];
 
 const PID_SRC = "/P&ID System Diagram.png";
 const PID_ALT = "Piping & Instrumentation Diagram — water source tank, solar chiller, buffer tanks, and field sprinklers";
@@ -448,6 +553,7 @@ function PidDiagram() {
 
 function ImplementSection() {
   const { farm } = useFarmSelection();
+  const content = siteContent(farm);
   const { data: latest } = useSWR<LatestResponse>(
     `/api/sensors/latest?farm=${farm}`, swrFetcher, { refreshInterval: 15_000 },
   );
@@ -461,7 +567,7 @@ function ImplementSection() {
         n="03"
         phase="Implement"
         title="Building it"
-        tagline="From CAD to a working prototype at PP Campus — the same loop shown in the design, now running on real hardware."
+        tagline={content.implementTagline}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -490,10 +596,10 @@ function ImplementSection() {
 
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          The Rig in Operation
+          {content.footageLabel}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {VIDEOS.map((v) => <VideoCard key={v.src} {...v} />)}
+          {content.videos.map((v) => <VideoCard key={v.src} {...v} />)}
         </div>
       </div>
     </section>
