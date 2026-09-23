@@ -23,5 +23,13 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   // Everything except Next internals and static files under /public.
-  matcher: ["/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|mov)$).*)"],
+  // Static assets are excluded by extension, plus /draco/ and /models/ by path.
+  // The 3D viewer fetches the model and the Draco decoder itself, and routing
+  // those through an auth redirect makes them fail in a way that looks like a
+  // broken model rather than a redirect. The decoder's glue file is plain .js,
+  // which is why the directory is named rather than the extension — excluding
+  // all .js would be far broader than needed.
+  matcher: [
+    "/((?!_next/static|_next/image|draco|models|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|mov|glb|gltf|wasm)$).*)",
+  ],
 };

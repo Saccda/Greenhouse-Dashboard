@@ -22,6 +22,7 @@ import { swrFetcher } from "@/lib/api";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
 import { deriveConnectionStatus } from "@/lib/connection";
 import Header from "@/components/layout/Header";
+import CampusModelViewer from "@/components/site/CampusModelViewer";
 import type { LatestResponse } from "@/types";
 
 const SITE_FARM = "campus";
@@ -70,21 +71,11 @@ export default function SitePage() {
                   <Box size={15} className="text-sky-400" /> 3D model
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 mb-4 max-w-2xl leading-relaxed">
-                  The CAD assembly, bound to live channel state — a sprinkler that lights up when
-                  CH2 is actually running.
+                  The CAD assembly of the rig, from the SolidWorks model. Binding it to live
+                  channel state — a misting line that lights up when CH2 is actually running —
+                  needs a parts-preserving export; this build is a single mesh.
                 </p>
-                <div className="rounded-xl bg-surface-base ring-1 ring-surface-border px-6 py-10 text-center">
-                  <Box size={26} className="text-slate-500 mx-auto" />
-                  <p className="text-sm font-medium text-slate-300 mt-3">Model not uploaded yet</p>
-                  <p className="text-[12px] text-slate-500 mt-2 max-w-lg mx-auto leading-relaxed">
-                    A STEP file cannot be loaded in a browser — it stores parametric surfaces, not
-                    triangles. Convert it to glTF first, then drop the result at{" "}
-                    <code className="text-slate-400">public/models/campus.glb</code>.
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-3">
-                    Target under 5 MB after Draco compression.
-                  </p>
-                </div>
+                <CampusModelViewer />
               </section>
             </>
           ) : (
