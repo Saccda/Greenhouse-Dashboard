@@ -45,7 +45,7 @@ const ROLE_GLOW: Record<string, string> = {
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
-  // 22 degrees azimuth, 42 elevation. Arrived at by eye against the reference
+  // 22 degrees azimuth, 45 elevation. Arrived at by eye against the reference
   // CAD view, not from theory. This pair was very nearly right before the panel
   // was enlarged; what spoiled it was the tighter Bounds margin pulling the
   // camera in, not the angle, so the angle is restored here and the fov below
@@ -54,7 +54,7 @@ export const VIEWS = {
   //
   // The readout in the viewer's bottom bar reports these two angles live, so a
   // better pair can be found by orbiting rather than by guessing from here.
-  iso:   [0.60, 1.45, 1.49],
+  iso:   [0.60, 1.61, 1.49],
   front: [0, 0.18, 1],
   side:  [1, 0.18, 0],
   top:   [0.01, 1, 0.01],
