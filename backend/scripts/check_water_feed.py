@@ -135,7 +135,22 @@ def check_postgres() -> int:
             )
             rows = cur.fetchall()
     except Exception as e:
-        print(f"   could not query: {e}")
+        msg = str(e)
+        # These are different faults with different fixes, and calling both
+        # "unreachable" sends someone to check the network when the database
+        # answered perfectly well and simply said no.
+        if "permission denied" in msg:
+            print(f"   CONNECTED, but this role may not read the table:")
+            print(f"     {msg.strip()}")
+            print("   POSTGRES_URL is the read-only analysis role. The bridge")
+            print("   creates the table as its own write role, and a table belongs")
+            print("   to its creator, so the read role needs granting access once:")
+            print(f'     GRANT SELECT ON "{config.POSTGRES_CAMPUS_TABLE}" TO <read_role>;')
+            print(f"   Until then this section cannot see the archive, but the")
+            print(f"   BRIDGE still writes to it fine — the two use different roles.")
+            return -2
+        print(f"   could not connect: {msg.strip()}")
+        return -1
         return -1
     if not rows:
         print(f"   no water_* rows in '{config.POSTGRES_CAMPUS_TABLE}'.")
@@ -143,6 +158,59 @@ def check_postgres() -> int:
     for field, n, newest in rows:
         print(f"     {field:26s} {n:4d} row(s), newest {newest}")
     return sum(n for _, n, _ in rows)
+
+
+def check_bridge_log() -> int:
+    """
+    What the RUNNING bridge actually subscribed to.
+
+    This is the question the other sections cannot answer. An MQTT subscription
+    happens once, on connect, so a process started before the water topic was
+    added is not listening to it however long it stays up and however correct
+    the code on disk is. The subscribe line in its log is the only record of
+    what the live process asked for.
+
+    Returns 1 if the water topic is there, 0 if the line names only the status
+    topic, -1 if no log could be read.
+    """
+    print("")
+    print("0. BRIDGE — what the running process subscribed to")
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidates = [
+        os.path.join(here, "data", "campus-bridge.log"),
+        os.path.join(here, "data", "campus-bridge-out.log"),
+        os.path.join(here, "data", "service-out.log"),
+    ]
+    path = next((c for c in candidates if os.path.exists(c)), None)
+    if not path:
+        print("   no bridge log found. Looked in backend/data for:")
+        for c in candidates:
+            print("     " + os.path.basename(c))
+        print("   If the service writes elsewhere, check its subscribe line by hand:")
+        print("     nssm.exe get CampusMqttBridge AppStdout")
+        return -1
+
+    last = None
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                if "subscribing to" in line:
+                    last = line.strip()
+    except Exception as e:
+        print(f"   could not read {path}: {e}")
+        return -1
+
+    if not last:
+        print(f"   {os.path.basename(path)} has no 'subscribing to' line yet.")
+        return -1
+    print(f"   {last}")
+    if config.CAMPUS_WATER_MQTT_TOPIC in last:
+        print("   The running process IS subscribed to the water topic.")
+        return 1
+    print("   The water topic is NOT in that line. The running process predates")
+    print("   the change, so restarting is what makes it take effect:")
+    print("     nssm.exe restart CampusMqttBridge")
+    return 0
 
 
 def main() -> int:
@@ -159,22 +227,35 @@ def main() -> int:
     print(f"  unit  : {meter.get('unit_label')} ({meter.get('liters_per_unit')} L each)")
     print("=" * 70)
 
+    subscribed = check_bridge_log()
     check_broker(args.wait)
     influx = check_influx()
     postgres = check_postgres()
 
     print("\n4. WHAT THIS MEANS")
     if postgres == -1:
-        print("   (Postgres was not reachable from here, so only the broker and")
-        print("    InfluxDB are being judged. Run this on the lab desktop, where")
-        print("    the archive lives, to check that half.)")
+        print("   (Postgres could not be reached from here, so only the broker")
+        print("    and InfluxDB are being judged.)")
+    elif postgres == -2:
+        print("   (The archive exists but this role cannot read it. That blocks")
+        print("    THIS CHECK only — the bridge writes with a different role.)")
     if influx == 0 and postgres <= 0:
         print("   Nothing has been stored anywhere yet.")
-        print("   Most likely the bridge has not been RESTARTED since the water")
-        print("   topic was added — a subscription is not retroactive, so a")
-        print("   process that started before the change is not listening to")
-        print("   this topic at all, however long it stays up.")
-        print("   Restart the campus bridge service, then run this again.")
+        if subscribed == 0:
+            print("   Section 0 found the cause: the running bridge is not")
+            print("   subscribed to the water topic. Restart it.")
+        elif subscribed == 1:
+            print("   The bridge IS subscribed, and nothing is retained on the")
+            print("   broker, so the meter has not published since it connected.")
+            print("   That is expected for a once-a-day topic and is not a fault")
+            print("   yet. Give it a day, then run this again.")
+            print("   To settle it sooner, trigger a publish from the ESP32 while")
+            print("   this is listening, or ask for the retain flag below.")
+        else:
+            print("   Could not read the bridge log, so it is unknown whether the")
+            print("   running process is subscribed to the water topic at all.")
+            print("   Check its subscribe line, then restart it if the water topic")
+            print("   is missing: nssm.exe restart CampusMqttBridge")
     elif influx > 0 and postgres == 0:
         print("   InfluxDB has it, Postgres does not. The bridge IS receiving the")
         print("   messages; only the archive write is failing. That is by design —")
