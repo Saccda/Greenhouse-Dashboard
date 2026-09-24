@@ -1,6 +1,10 @@
 "use client";
 /**
- * /site — the PP Campus 3D twin.
+ * /site — "Digital 3D Model": the PP Campus twin.
+ *
+ * The ROUTE stays /site. Renaming it would break any bookmark or link
+ * already pointing here for the sake of a label, and the two can be changed
+ * independently whenever that trade looks worth making.
  *
  * CAMPUS ONLY, by design rather than by omission. Campus is our own development
  * platform; Kampot is a working farm someone depends on. The sidebar only offers
@@ -51,8 +55,8 @@ export default function SitePage() {
 
           <PageHeader
             icon={Camera}
-            title="PP Campus — Automated Cooling and Spraying System"
-            description="The hardware behind the readings on every other page: what it looks like, and what it does when a channel switches on."
+            title="Digital 3D Model"
+            description="The PP Campus Automated Cooling and Spraying System, as built: the CAD assembly bound to live channel state, alongside photographs and footage of the real hardware."
           >
             <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-sky-400/15 text-sky-400">
               <MapPin size={10} /> Development site
