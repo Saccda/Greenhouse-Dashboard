@@ -11,11 +11,12 @@
  * costs far more framerate than the download costs patience. So
  * scripts/split-model.mjs produces:
  *
- *   campus-backdrop.glb  everything we never touch, merged flat   2.72 MB
- *   campus-parts.glb     the 75 bodies that light up, separate    0.96 MB
+ *   campus-backdrop.glb  everything we never touch, merged flat   2.73 MB
+ *   campus-parts.glb     the bodies that light up, kept separate   0.92 MB
  *
- * 1,025 draw calls total against 18,903 unsplit, and the only parts we can
- * address are the only ones we ever wanted to.
+ * About a thousand draw calls against 18,903 unsplit, and the only parts we can
+ * address are the only ones we ever wanted to. The exact body list lives in
+ * scripts/split-model.mjs, which is also what campusParts.json records.
  *
  * Part names carry their role and their SolidWorks body number — "ch2_spray__23"
  * — so a mis-picked body can be traced back to the CAD without guesswork, and

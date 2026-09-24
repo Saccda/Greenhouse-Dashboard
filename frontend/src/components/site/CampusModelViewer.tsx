@@ -256,7 +256,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           </div>
           {picked.length === 0 ? (
             <p className="text-[11px] text-slate-300 leading-relaxed">
-              Only the 14 mapped bodies are clickable — the rest of the rig is merged into one mesh
+              Only the mapped bodies are clickable — the rest of the rig is merged into one mesh
               for performance. Each name carries its SolidWorks body number, so anything wrong here
               can be traced straight back to the CAD.
             </p>

@@ -50,12 +50,6 @@ const PARTS = {
     154, 161, 164, 166, 176, 178, 182, 186, 187, 188, 194, 196, 210, 213, 214,
     215, 218, 219, 220, 222, 223, 242, 256, 259, 264, 268, 270, 272, 287, 291,
     295, 305, 309,
-    // Confirmed by the farm team as nozzle heads, though they sit 3.2 m away
-    // vertically from the other 68 and are two orders larger (400x400x700 and
-    // 489x1200x500 mm). Most likely the drop-pipe assemblies rather than the
-    // heads themselves. Kept because the people who drew it say so; the preview
-    // control in the viewer is there to settle questions like this by looking.
-    46, 116,
   ],
   // Tank panel, plate and rod on the cooling skid. Deliberately left at three:
   // the cooling unit beside the tank is made of many small bodies, and pulling
@@ -70,9 +64,7 @@ const PARTS = {
 
 // Bodies originally supplied as CH2 whose position argues against it: they sit
 // within ~2 m of each other at the cooling skid rather than running along the
-// rig. [46] and [116] were in this list until the farm team confirmed them as
-// nozzle parts, which is a fair warning that position alone is not proof — so
-// these are parked rather than discarded, pending a look through the viewer's
+// rig. Parked rather than discarded, pending a look through the viewer's
 // preview control.
 const UNVERIFIED = [
   294, 258, 253, 244, 245, 239, 221, 208, 207, 183, 157, 149, 140, 125,
@@ -80,6 +72,13 @@ const UNVERIFIED = [
   // end-of-rail fittings, not nozzle heads: they sit at the rail end and do not
   // fit the two-body pattern
   76, 80, 115,
+  // Ruled out by eye once the preview actually rendered — previously bound to
+  // CH2 on the farm team's say-so, which was worth more than my inference until
+  // it could be checked visually. The measurements are emphatic: all 68 real
+  // nozzles sit in a 1 cm band on the rail axis, while these two are 3.1 and
+  // 3.2 m off it, 7.6x and 13x the largest nozzle dimension, and 690x and
+  // 1808x the mean nozzle volume. They are plant near the cooling skid.
+  46, 116,
 ];
 
 /**
