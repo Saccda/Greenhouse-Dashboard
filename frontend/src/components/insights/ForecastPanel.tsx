@@ -158,7 +158,7 @@ export default function ForecastPanel({ farm, tempWarn }: { farm: string; tempWa
                   className={clsx(
                     "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
                     focus === m
-                      ? "bg-sky-500 text-white shadow-sm"
+                      ? "bg-sky-700 text-white shadow-sm"
                       : "text-slate-400 hover:text-slate-200",
                   )}
                 >

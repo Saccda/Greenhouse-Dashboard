@@ -20,6 +20,7 @@ import { join, relative } from "node:path";
 import twColors from "tailwindcss/colors.js";
 
 const SRC = "src";
+const NL = String.fromCharCode(10);
 // The dark theme is built but switched off (see hooks/useTheme.ts), so by
 // default this measures only what actually ships. --both brings dark back into
 // the report, which is what to run before re-enabling the toggle.
@@ -135,7 +136,7 @@ function resolveBg(cls, theme, under) {
  * reporting those as failures against a surface they never touch.
  */
 const findings = new Map();   // key -> {cls, bgLabel, theme, ratio, files:Set, assumed}
-function record(cls, bgLabel, bgOf, files, assumed) {
+function record(cls, bgLabel, bgOf, files, assumed, iconOnly) {
   let worst = { ratio: Infinity };
   for (const theme of THEMES) {
     const [base, alphaStr] = cls.split("/");
@@ -151,15 +152,28 @@ function record(cls, bgLabel, bgOf, files, assumed) {
   if (worst.ratio === Infinity) return;
   const key = `${cls}|${bgLabel}`;
   const prev = findings.get(key);
-  if (prev) { for (const f of files) prev.files.add(f); return; }
-  findings.set(key, { cls, bgLabel, ...worst, files: new Set(files), assumed });
+  if (prev) {
+    for (const f of files) prev.files.add(f);
+    // A class used on both an icon and a text node is judged as text.
+    prev.iconOnly = prev.iconOnly && iconOnly;
+    return;
+  }
+  findings.set(key, { cls, bgLabel, ...worst, files: new Set(files), assumed, iconOnly });
 }
 
 for (const file of walk(SRC)) {
   const src = readFileSync(file, "utf8");
   const rel = relative(SRC, file).split(String.fromCharCode(92)).join("/");
   // Every quoted string and template chunk is a candidate class list.
-  for (const [literal] of src.matchAll(/"[^"\n]*"|`[^`]*`/g)) {
+  const srcLines = src.split(NL);
+  for (const m of src.matchAll(/"[^"\n]*"|`[^`]*`/g)) {
+    const literal = m[0];
+    // A lucide icon always carries size= or strokeWidth; no text node does.
+    // WCAG asks 3:1 of a meaningful mark and 4.5:1 of body copy, so judging
+    // icons at 4.5 buries the real text failures underneath them.
+    const lineNo = src.slice(0, m.index).split(NL).length - 1;
+    const nearby = srcLines.slice(Math.max(0, lineNo - 2), lineNo + 3).join(NL);
+    const isIcon = /size=[{]|strokeWidth/.test(nearby);
     const texts = [...literal.matchAll(TEXT_RE)].map((m) => m[0]).filter((c) => !NON_COLOUR.test(c));
     if (!texts.length) continue;
     const bgs = [...literal.matchAll(BG_RE)].map((m) => m[0])
@@ -167,12 +181,12 @@ for (const file of walk(SRC)) {
     for (const cls of texts) {
       if (bgs.length) {
         for (const bg of bgs) {
-          record(cls, bg, (theme) => resolveBg(bg, theme, surfaces(theme)["surface-card"]), [rel], false);
+          record(cls, bg, (theme) => resolveBg(bg, theme, surfaces(theme)["surface-card"]), [rel], false, isIcon);
         }
       } else {
         // No background beside it: it inherits a container. surface-card is by
         // far the most common one, so that is the assumption, flagged as such.
-        record(cls, "surface-card*", (theme) => surfaces(theme)["surface-card"], [rel], true);
+        record(cls, "surface-card*", (theme) => surfaces(theme)["surface-card"], [rel], true, isIcon);
       }
     }
   }
@@ -181,16 +195,18 @@ for (const file of walk(SRC)) {
 // ── report ─────────────────────────────────────────────────────────────────
 const showAll = process.argv.includes("--all");
 const rows = [...findings.values()].sort((a, b) => a.ratio - b.ratio);
-const failing = rows.filter((r) => r.ratio < AA_NORMAL);
+const failing = rows.filter((r) => r.ratio < (r.iconOnly ? AA_LARGE : AA_NORMAL));
 const print = showAll ? rows : failing;
 
 console.log(`${rows.length} text-on-background pairs across ${walk(SRC).length} files.`);
 console.log(`Themes measured: ${THEMES.join(", ")}. * = background assumed, not declared beside the text.\n`);
-console.log("  ratio  bar   text                        on background            theme  used in");
+console.log("  ratio  bar   kind  class                          on background          used in");
 for (const r of print) {
-  const bar = r.ratio >= AA_NORMAL ? "AA " : r.ratio >= AA_LARGE ? "lg " : "FAIL";
+  const need = r.iconOnly ? AA_LARGE : AA_NORMAL;
+  const bar = r.ratio >= need ? "AA " : "FAIL";
+  const kind = r.iconOnly ? "icon" : "text";
   const files = [...r.files].slice(0, 2).join(", ") + (r.files.size > 2 ? ` +${r.files.size - 2}` : "");
-  console.log(`  ${r.ratio.toFixed(2).padStart(5)}  ${bar}  ${r.cls.padEnd(26)} ${r.bgLabel.padEnd(24)} ${r.theme.padEnd(6)} ${files}`);
+  console.log(`  ${r.ratio.toFixed(2).padStart(5)}  ${bar}  ${kind}  ${r.cls.padEnd(30)} ${r.bgLabel.padEnd(22)} ${files}`);
 }
 console.log(`\n${failing.length} of ${rows.length} pairs fall below ${AA_NORMAL}:1 in at least one theme.`);
 console.log(`"lg" clears ${AA_LARGE}:1 — enough for large or bold text and for icons, not for body copy.`);

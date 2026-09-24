@@ -49,7 +49,7 @@ function SprayStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-surface-hover rounded-lg px-4 py-3 text-center border border-surface-border">
       <p className="text-[11px] text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-lg font-bold font-mono-num text-cyan-400">{value}</p>
+      <p className="text-lg font-bold font-mono-num text-cyan-800">{value}</p>
     </div>
   );
 }

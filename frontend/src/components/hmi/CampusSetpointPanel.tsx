@@ -130,7 +130,7 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[10px] uppercase tracking-widest text-slate-500">High</label>
-                <span className="text-xs font-mono-num text-orange-500">
+                <span className="text-xs font-mono-num text-orange-800">
                   {values[zone.highKey]}{zone.unit}
                 </span>
               </div>

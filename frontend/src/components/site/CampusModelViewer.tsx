@@ -42,7 +42,7 @@ const CampusModelScene = dynamic(() => import("./CampusModelScene"), {
 const CHANNEL_ROLE: Record<string, { role: string; label: string; tint: string }> = {
   CH1: { role: "ch1_enable", label: "System enable", tint: "text-brand-green" },
   CH2: { role: "ch2_spray",  label: "Spraying",     tint: "text-[color:var(--info-ink)]" },
-  CH4: { role: "ch4_cool",   label: "Cooling",      tint: "text-cyan-400" },
+  CH4: { role: "ch4_cool",   label: "Cooling",      tint: "text-cyan-800" },
 };
 
 class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -173,7 +173,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
             className={clsx(
               "p-2 rounded-lg backdrop-blur ring-1 transition-colors",
               pickMode
-                ? "bg-sky-500 text-white ring-sky-400"
+                ? "bg-sky-700 text-white ring-sky-400"
                 : "bg-surface-card/85 ring-surface-border text-slate-200 hover:text-slate-200",
             )}
           >
@@ -210,7 +210,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
               aria-pressed={view.name === v}
               className={clsx(
                 "px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                view.name === v ? "bg-sky-500 text-white" : "text-slate-200 hover:text-slate-200",
+                view.name === v ? "bg-sky-700 text-white" : "text-slate-200 hover:text-slate-200",
               )}
             >
               {v}

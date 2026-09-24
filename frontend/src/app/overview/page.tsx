@@ -411,7 +411,7 @@ function DesignSection() {
 const LOOPS = [
   {
     icon: Thermometer,
-    color: "text-orange-400",
+    color: "text-orange-800",
     title: "Cooling loop",
     body: "The temperature sensor (TT-101) reports ambient conditions to the controller. When the reading rises above the high setpoint, the controller energizes Relay 1, running the cooling fan unit until the temperature drops back below the low setpoint.",
   },
@@ -429,7 +429,7 @@ const LOOPS = [
   },
   {
     icon: Radio,
-    color: "text-violet-400",
+    color: "text-violet-800",
     title: "From sensor to screen",
     body: "The on-site controller publishes readings over MQTT to Node-RED, which writes them into InfluxDB. The FastAPI backend reads that data, runs the alert logic, and serves it to this dashboard over a Cloudflare Tunnel — the same path a setpoint change travels in reverse.",
   },
@@ -741,7 +741,7 @@ const FUTURE_SENSE = [
   {
     slug: "fertilizer",
     icon: FlaskConical,
-    color: "text-violet-400",
+    color: "text-violet-800",
     hover: "hover:bg-violet-500/10 hover:border-violet-500/40",
     title: "Fertilizer input",
     body: "Every N-P-K application logged against the soil readings before and after it — the first real record of whether a feeding schedule is under-, over-, or right-dosing the crop.",
@@ -749,7 +749,7 @@ const FUTURE_SENSE = [
   {
     slug: "plant-visual",
     icon: Camera,
-    color: "text-rose-400",
+    color: "text-rose-800",
     hover: "hover:bg-rose-500/10 hover:border-rose-500/40",
     title: "Plant Visual",
     body: "Live imaging of stem, leaf, and berry clusters — aimed first at Phytophthora foot rot and pollu beetle damage, the two production risks that do more damage to black pepper worldwide than heat alone.",
@@ -757,7 +757,7 @@ const FUTURE_SENSE = [
   {
     slug: "ambient",
     icon: Gauge,
-    color: "text-orange-400",
+    color: "text-orange-800",
     hover: "hover:bg-orange-500/10 hover:border-orange-500/40",
     title: "Ambient",
     body: "Today's temperature and humidity, expanding to CO2 and light intensity — the same sensor category the cooling and spray loops already run on, just measuring more of what the plant feels.",

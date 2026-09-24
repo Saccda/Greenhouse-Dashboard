@@ -567,7 +567,7 @@ export default function SettingsPage() {
               </div>
             )}
             <p className="text-[11px] text-slate-600 mt-auto pt-4">
-              To add farms, update <code className="bg-surface-bright px-1 rounded text-slate-400">config.py → FARMS</code>.
+              To add farms, update <code className="bg-surface-bright px-1 rounded text-slate-200">config.py → FARMS</code>.
             </p>
           </Section>
 
@@ -580,7 +580,7 @@ export default function SettingsPage() {
             <InfoRow label="Live data refresh"       value="15 s" mono />
             <InfoRow label="History / stats refresh" value="30 s" mono />
             <p className="text-[11px] text-slate-600 mt-auto pt-4">
-              Alert thresholds are set in <code className="bg-surface-bright px-1 rounded text-slate-400">backend/.env</code> or fall back to config.py defaults.
+              Alert thresholds are set in <code className="bg-surface-bright px-1 rounded text-slate-200">backend/.env</code> or fall back to config.py defaults.
             </p>
           </Section>
 

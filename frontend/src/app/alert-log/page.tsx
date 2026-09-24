@@ -46,8 +46,8 @@ const EVENT_STYLE: Record<string, string> = {
 };
 
 const TYPE_STYLE: Record<string, string> = {
-  temperature: "text-orange-400",
-  humidity:    "text-blue-400",
+  temperature: "text-orange-800",
+  humidity:    "text-blue-800",
   empty_tank:  "text-[color:var(--danger-ink)]",
   long_spray:  "text-[color:var(--warn-ink)]",
 };

@@ -140,7 +140,10 @@
   /* Analytics chart palette — light-mode steps (validated separately against
      the light surface; worst adjacent pair ΔE 17.4 protan). */
   --chart-optimal:  #15803d;
-  --chart-warning:  #f59e0b;
+  /* Darker than amber-500 because the stacked band in TimeInRangeBar carries a
+     white label directly on it: #f59e0b measured 2.15:1 against white, this
+     measures 5.02:1. Optimal and Critical already cleared it at 5.02 and 4.83. */
+  --chart-warning:  #b45309;
   --chart-critical: #dc2626;
   --chart-temp:     #ea7317;
   --chart-hum:      #2b7fd4;

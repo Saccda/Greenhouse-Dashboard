@@ -184,12 +184,12 @@ export default function ControlPage() {
             <ThresholdInput
               label="Temperature warning trigger"
               value={tempWarn} unit="°C" min={20} max={50} step={0.5}
-              color="text-orange-400" onChange={setTempWarn}
+              color="text-orange-800" onChange={setTempWarn}
             />
             <ThresholdInput
               label="Humidity warning trigger"
               value={humWarn} unit="%" min={30} max={100} step={1}
-              color="text-blue-400" onChange={setHumWarn}
+              color="text-blue-800" onChange={setHumWarn}
             />
           </div>
           <div className="mt-6 flex items-center gap-3">

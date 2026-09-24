@@ -92,7 +92,7 @@ export default function SitePage() {
                   <button
                     type="button"
                     onClick={() => setFarm(SITE_FARM)}
-                    className="mt-4 px-3.5 py-2 rounded-lg text-xs font-semibold bg-sky-500 text-white hover:bg-sky-600 transition-colors"
+                    className="mt-4 px-3.5 py-2 rounded-lg text-xs font-semibold bg-sky-700 text-white hover:bg-sky-700 transition-colors"
                   >
                     Switch to PP Campus
                   </button>

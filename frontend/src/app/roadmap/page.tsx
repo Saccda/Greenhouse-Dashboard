@@ -196,7 +196,7 @@ function FertilizerSection() {
   return (
     <SectionShell
       id="fertilizer"
-      icon={FlaskConical} color="text-violet-400" bg="bg-violet-500/10" border="border-violet-500/30"
+      icon={FlaskConical} color="text-violet-800" bg="bg-violet-500/10" border="border-violet-500/30"
       title="Fertilizer input" description="Every N-P-K application logged against the soil readings before and after it — the first real record of whether a feeding schedule is under-, over-, or right-dosing the crop."
     >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -320,7 +320,7 @@ function PlantVisualSection() {
   return (
     <SectionShell
       id="plant-visual"
-      icon={Camera} color="text-rose-400" bg="bg-rose-500/10" border="border-rose-500/30"
+      icon={Camera} color="text-rose-800" bg="bg-rose-500/10" border="border-rose-500/30"
       title="Plant Visual" description="Live imaging of stem, leaf, and berry clusters — aimed first at Phytophthora foot rot and pollu beetle damage, the two production risks that do more damage to black pepper worldwide than heat alone."
     >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -385,7 +385,7 @@ function AmbientSection() {
   return (
     <SectionShell
       id="ambient"
-      icon={Gauge} color="text-orange-400" bg="bg-orange-500/10" border="border-orange-500/30"
+      icon={Gauge} color="text-orange-800" bg="bg-orange-500/10" border="border-orange-500/30"
       title="Ambient" description="Today's temperature and humidity, expanding to CO2 and light intensity — the same sensor category the cooling and spray loops already run on, just measuring more of what the plant feels."
     >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

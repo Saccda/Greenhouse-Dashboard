@@ -303,7 +303,7 @@ export default function HomePage() {
           >
             <Bell size={18} strokeWidth={1.8} />
             {alertCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow shadow-red-500/40">
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-700 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow shadow-red-500/40">
                 {alertCount > 99 ? "99+" : alertCount}
               </span>
             )}
@@ -396,7 +396,7 @@ export default function HomePage() {
                   <div className="relative z-10 flex flex-col items-center justify-center h-full gap-5">
                     <div className={clsx(
                       "w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 transition-colors",
-                      isDark ? "bg-sky-500/20 group-hover:bg-white/20" : "bg-blue-50 group-hover:bg-white/30",
+                      isDark ? "bg-sky-700/20 group-hover:bg-white/20" : "bg-blue-50 group-hover:bg-white/30",
                     )}>
                       <Icon size={34} strokeWidth={1.4} className="text-sky-400 group-hover:text-white transition-colors" />
                     </div>
@@ -417,7 +417,7 @@ export default function HomePage() {
                   </div>
 
                   {isAlertLog && alertCount > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md shadow-red-500/40 z-20">
+                    <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-700 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md shadow-red-500/40 z-20">
                       {alertCount > 99 ? "99+" : alertCount}
                     </span>
                   )}

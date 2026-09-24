@@ -162,7 +162,7 @@ export default function SetpointPanel({ farm, canWrite, className }: SetpointPan
             <input
               type="number" min={cfg.min} max={cfg.max} step={cfg.step} value={highSP}
               onChange={(e) => setHighSP(Number(e.target.value))}
-              className="w-16 text-orange-500 text-xs font-mono-num text-right px-2 py-1.5 rounded-lg focus:outline-none border bg-surface-hover border-surface-border"
+              className="w-16 text-orange-800 text-xs font-mono-num text-right px-2 py-1.5 rounded-lg focus:outline-none border bg-surface-hover border-surface-border"
             />
             {cfg.unit && <span className="text-xs font-mono-num text-slate-400">{cfg.unit}</span>}
           </div>
