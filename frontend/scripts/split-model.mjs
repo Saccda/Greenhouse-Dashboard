@@ -64,9 +64,17 @@ const PARTS = {
   // a black panel. Only [126], the 15 x 15 x 129 mm wire, was right, which is
   // why the channel appeared to light the wiring and nothing else.
   ch4_cool: [121, 153, 126],
-  // 24 x 24 x 60 mm on the wall panel: an indicator lamp, which is exactly the
-  // right thing to light for "system enabled".
-  ch1_enable: [50],
+  // [297] is the control enclosure: a 517 x 600 x 339 mm plain white box of only
+  // 620 triangles, which is what a simple cabinet shell looks like in a model
+  // where comparable volumes run to tens of thousands. It is the only body of
+  // that description near the skid.
+  //
+  // [50] came from the farm team. It is 24 x 24 x 60 mm and I described it as a
+  // wall-mounted indicator lamp, which was wrong — its centre is INSIDE the
+  // tank's bounding box, so it is a fitting on the tank, not on a panel. Kept,
+  // because it was supplied rather than inferred, but it is far too small to
+  // read as "the system is enabled" on its own.
+  ch1_enable: [297, 50],
   // Context only, never bound: the water storage tank.
   storage: [35],
 };

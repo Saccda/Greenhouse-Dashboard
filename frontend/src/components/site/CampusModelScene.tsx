@@ -222,7 +222,7 @@ function Loading() {
     <Html center>
       <div className="flex flex-col items-center gap-2">
         <div className="w-6 h-6 rounded-full border-2 border-sky-400/30 border-t-sky-400 animate-spin" />
-        <p className="text-[11px] text-slate-400 whitespace-nowrap">Loading model…</p>
+        <p className="text-[11px] text-slate-200 whitespace-nowrap">Loading model…</p>
       </div>
     </Html>
   );

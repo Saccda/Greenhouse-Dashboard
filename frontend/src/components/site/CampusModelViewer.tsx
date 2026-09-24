@@ -32,7 +32,7 @@ const CampusModelScene = dynamic(() => import("./CampusModelScene"), {
     <div className="absolute inset-0 flex items-center justify-center">
       <div className="flex flex-col items-center gap-2">
         <div className="w-6 h-6 rounded-full border-2 border-sky-400/30 border-t-sky-400 animate-spin" />
-        <p className="text-[11px] text-slate-400">Loading viewer…</p>
+        <p className="text-[11px] text-slate-200">Loading viewer…</p>
       </div>
     </div>
   ),
@@ -54,8 +54,8 @@ class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean
       <div className="absolute inset-0 flex items-center justify-center px-6">
         <div className="text-center max-w-sm">
           <AlertTriangle size={24} className="text-[color:var(--warn-ink)] mx-auto" />
-          <p className="text-sm font-medium text-slate-300 mt-3">The 3D view could not start</p>
-          <p className="text-[12px] text-slate-400 mt-1.5 leading-relaxed">
+          <p className="text-sm font-medium text-slate-100 mt-3">The 3D view could not start</p>
+          <p className="text-[12px] text-slate-200 mt-1.5 leading-relaxed">
             WebGL is unavailable — usually an older graphics card or hardware acceleration turned
             off. The photographs on the Overview page show the same rig.
           </p>
@@ -146,9 +146,9 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
                   on ? "bg-current animate-pulse" : "bg-surface-border",
                   on && tint,
                 )} />
-                <span className={clsx("font-mono-num", on ? tint : "text-slate-400")}>{ch}</span>
-                <span className={on ? "text-slate-300" : "text-slate-400"}>{label}</span>
-                <Eye size={9} className={isPreview ? "text-sky-400" : "text-slate-400"} />
+                <span className={clsx("font-mono-num", on ? tint : "text-slate-200")}>{ch}</span>
+                <span className={on ? "text-slate-100" : "text-slate-200"}>{label}</span>
+                <Eye size={9} className={isPreview ? "text-sky-400" : "text-slate-200"} />
               </button>
             );
           })}
@@ -174,7 +174,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
               "p-2 rounded-lg backdrop-blur ring-1 transition-colors",
               pickMode
                 ? "bg-sky-500 text-white ring-sky-400"
-                : "bg-surface-card/85 ring-surface-border text-slate-400 hover:text-slate-200",
+                : "bg-surface-card/85 ring-surface-border text-slate-200 hover:text-slate-200",
             )}
           >
             <Crosshair size={14} />
@@ -184,7 +184,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
             onClick={() => setView((cur) => ({ name: cur.name, nonce: cur.nonce + 1 }))}
             title="Reset view"
             aria-label="Reset view"
-            className="p-2 rounded-lg bg-surface-card/85 backdrop-blur ring-1 ring-surface-border text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 rounded-lg bg-surface-card/85 backdrop-blur ring-1 ring-surface-border text-slate-200 hover:text-slate-200 transition-colors"
           >
             <RotateCcw size={14} />
           </button>
@@ -193,7 +193,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
             onClick={() => setExpanded((e) => !e)}
             title={expanded ? "Shrink" : "Expand"}
             aria-pressed={expanded}
-            className="p-2 rounded-lg bg-surface-card/85 backdrop-blur ring-1 ring-surface-border text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 rounded-lg bg-surface-card/85 backdrop-blur ring-1 ring-surface-border text-slate-200 hover:text-slate-200 transition-colors"
           >
             <Maximize2 size={14} />
           </button>
@@ -210,7 +210,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
               aria-pressed={view.name === v}
               className={clsx(
                 "px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                view.name === v ? "bg-sky-500 text-white" : "text-slate-400 hover:text-slate-200",
+                view.name === v ? "bg-sky-500 text-white" : "text-slate-200 hover:text-slate-200",
               )}
             >
               {v}
@@ -218,7 +218,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           ))}
         </div>
 
-        <div className="absolute bottom-3 left-3 flex items-center gap-2.5 text-[10px] text-slate-400 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
+        <div className="absolute bottom-3 left-3 flex items-center gap-2.5 text-[10px] text-slate-200 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
           <span className="flex items-center gap-1.5">
             <Box size={11} />
             {pickMode ? "click a highlighted part to identify it" : "drag to rotate · scroll to zoom · right-drag to pan"}
@@ -226,7 +226,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           {angles && (
             <span
               title="Camera angle. Orbit to a framing you like and quote these two numbers to set it as the default."
-              className="font-mono-num text-slate-400 border-l border-surface-border pl-2.5"
+              className="font-mono-num text-slate-200 border-l border-surface-border pl-2.5"
             >
               az {angles[0].toFixed(0)}° · el {angles[1].toFixed(0)}°
             </span>
@@ -237,7 +237,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
       {pickMode && (
         <div className="rounded-xl bg-surface-hover ring-1 ring-surface-border p-3.5">
           <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-100">
               Identified parts
             </p>
             {picked.length > 0 && (
@@ -248,14 +248,14 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1500);
                 }}
-                className="flex items-center gap-1 text-[10px] text-slate-300 hover:text-slate-200 transition-colors"
+                className="flex items-center gap-1 text-[10px] text-slate-100 hover:text-slate-200 transition-colors"
               >
                 {copied ? <Check size={11} /> : <Copy size={11} />} {copied ? "Copied" : "Copy"}
               </button>
             )}
           </div>
           {picked.length === 0 ? (
-            <p className="text-[11px] text-slate-300 leading-relaxed">
+            <p className="text-[11px] text-slate-100 leading-relaxed">
               Only the mapped bodies are clickable — the rest of the rig is merged into one mesh
               for performance. Each name carries its SolidWorks body number, so anything wrong here
               can be traced straight back to the CAD.
@@ -263,7 +263,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {picked.map((p) => (
-                <span key={p} className="text-[10px] font-mono-num px-2 py-1 rounded bg-surface-card text-slate-300 ring-1 ring-surface-border">
+                <span key={p} className="text-[10px] font-mono-num px-2 py-1 rounded bg-surface-card text-slate-100 ring-1 ring-surface-border">
                   {p}
                 </span>
               ))}

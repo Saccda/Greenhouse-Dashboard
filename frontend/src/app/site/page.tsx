@@ -70,10 +70,11 @@ export default function SitePage() {
                 <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                   <Box size={15} className="text-sky-400" /> 3D model
                 </h2>
-                <p className="text-xs text-slate-500 mt-1 mb-4 max-w-2xl leading-relaxed">
-                  The CAD assembly of the rig, from the SolidWorks model. Binding it to live
-                  channel state — a misting line that lights up when CH2 is actually running —
-                  needs a parts-preserving export; this build is a single mesh.
+                <p className="text-xs text-slate-200 mt-1 mb-4 max-w-2xl leading-relaxed">
+                  The CAD assembly of the rig, from the SolidWorks model, bound to live channel
+                  state: the nozzle run lights when CH2 is actually spraying, and the chilled-water
+                  tank and its copper coil when CH4 is cooling. Nothing lights while the feed is
+                  stale, because the channel states are then unknown rather than off.
                 </p>
                 <CampusModelViewer />
               </section>
