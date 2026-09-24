@@ -25,6 +25,7 @@ Read-only. It subscribes and queries; it never publishes and never writes.
 import argparse
 import os
 import sys
+import time
 from datetime import datetime, timedelta
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -66,9 +67,25 @@ def check_broker(wait: int) -> bool:
         print(f"   could not reach the broker: {e}")
         return False
     client.loop_start()
+    # sleep, not a spin. The original loop was `while ...: pass`, which pegs a
+    # CPU core for the whole wait — rude anywhere, worse on the lab desktop
+    # where this shares a machine with the bridge and Postgres.
+    #
+    # It also prints a countdown. A silent 60-second wait is indistinguishable
+    # from a hang, and the first thing anyone does to a program that looks hung
+    # is kill it — which here means killing it a second before the answer.
     deadline = datetime.now() + timedelta(seconds=wait)
+    last_left = None
     while datetime.now() < deadline and not seen:
-        pass
+        left = int((deadline - datetime.now()).total_seconds())
+        # Redraw only when the whole second changes. Polling at 4 Hz and
+        # reprinting the same text four times over is noise in a captured log.
+        if left != last_left:
+            last_left = left
+            print("   waiting... " + str(left) + "s left (Ctrl-C to stop early)",
+                  end=chr(13), flush=True)
+        time.sleep(0.25)
+    print(chr(13) + " " * 60 + chr(13), end="", flush=True)
     client.loop_stop()
     client.disconnect()
 
