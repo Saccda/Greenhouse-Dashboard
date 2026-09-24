@@ -75,17 +75,9 @@ CAMPUS_WATER_MQTT_TOPIC = os.getenv(
     "CAMPUS_WATER_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/water_data"
 )
 
-# Confirmed with the farm team: the totalizer counts CUBIC METRES. So the
-# example payload {"Start_totalizer": 15, "Last_totalizer": 17,
-# "Day_consumption": 2} is 2 m3 in a day, i.e. 2,000 litres.
-#
-# The litres factor is not cosmetic. The "estimated water use" figure on the
-# Historical page is in LITRES, derived from spray runtime and nozzle flow
-# rate, and the whole point of showing the measured figure beside it is that a
-# gap between them means a blocked nozzle or a leak. Two numbers a thousand
-# times apart would make that comparison useless, so the API converts and
-# reports both: the meter's own reading for checking against the physical
-# dial, and litres for comparing with the estimate.
+# The meter's unit lives on the farm entry (FARMS[...]["water_meter"]) rather
+# than here, because having one is a property OF A FARM, not of the system.
+# These remain only as the campus meter's configurable values.
 CAMPUS_WATER_UNIT = os.getenv("CAMPUS_WATER_UNIT", "m3")
 CAMPUS_WATER_UNIT_LABEL = os.getenv("CAMPUS_WATER_UNIT_LABEL", "m³")
 CAMPUS_WATER_LITERS_PER_UNIT = float(os.getenv("CAMPUS_WATER_LITERS_PER_UNIT", "1000"))
@@ -176,6 +168,17 @@ COOKIE_SECURE = FLASK_ENV != "development"
 # the whole manifold with no per-line control. Leave a farm's fogger_spec as
 # None until its line/fogger count and per-fogger flow rate are confirmed —
 # the API returns estimated_water_liters=null rather than guessing.
+#
+# water_meter is the same idea for a physical flow meter. ONLY PP CAMPUS HAS
+# ONE — it is a development-stage installation on our own test system, not
+# something deployed to the working farms. Kampot and Kep are None, and the
+# API says "this farm has no water meter" rather than "the meter has not
+# reported", which are different facts and would otherwise be indistinguishable
+# from an empty result.
+#
+# Confirmed with the farm team: the campus totalizer counts CUBIC METRES, so
+# {"Day_consumption": 2} is 2,000 litres. liters_per_unit is what lets the
+# measured figure be compared with the litre-denominated runtime estimate.
 FARMS: dict[str, dict] = {
     "kampot": {
         "display_name": "Kampot Farm",
@@ -184,6 +187,7 @@ FARMS: dict[str, dict] = {
         "latitude":     10.6104,
         "longitude":    104.1811,
         "fogger_spec":  {"lines": 9, "foggers_per_line": 18, "flow_lpm_per_fogger": 3.0},
+        "water_meter":  None,   # no flow meter installed at Kampot
     },
     "kep": {
         "display_name": "Kep Farm",
@@ -192,6 +196,7 @@ FARMS: dict[str, dict] = {
         "latitude":     10.4831,
         "longitude":    104.3167,
         "fogger_spec":  None,  # TODO: confirm Kep's line/fogger layout and per-fogger flow rate
+        "water_meter":  None,  # no flow meter installed at Kep
     },
     "campus": {
         "display_name": "PP Campus",
@@ -210,6 +215,12 @@ FARMS: dict[str, dict] = {
         "latitude":     11.5564,
         "longitude":    104.9282,
         "fogger_spec":  None,
+        "water_meter":  {
+            "unit":            CAMPUS_WATER_UNIT,
+            "unit_label":      CAMPUS_WATER_UNIT_LABEL,
+            "liters_per_unit": CAMPUS_WATER_LITERS_PER_UNIT,
+            "topic":           CAMPUS_WATER_MQTT_TOPIC,
+        },
     },
 }
 DEFAULT_FARM = "kampot"

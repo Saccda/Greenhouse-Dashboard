@@ -147,11 +147,13 @@ export interface WaterReading {
 
 export interface WaterResponse {
   farm:           string;
-  /** The meter's own unit, e.g. "m3". */
-  unit:            string;
+  /** Only PP Campus has a meter; it is a development-stage installation. */
+  has_meter:       boolean;
+  /** The meter's own unit, e.g. "m3". null when the farm has no meter. */
+  unit:            string | null;
   /** Display form of the same, e.g. "m³". */
-  unit_label:      string;
-  liters_per_unit: number;
+  unit_label:      string | null;
+  liters_per_unit: number | null;
   /** Whether the unit was confirmed against the hardware, or is an assumption. */
   unit_confirmed:  boolean;
   readings:       WaterReading[];

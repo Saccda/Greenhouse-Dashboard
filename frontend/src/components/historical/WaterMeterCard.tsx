@@ -21,16 +21,24 @@ import type { WaterResponse } from "@/types";
  * unconverted beside it, because that is the number on the physical dial and
  * the one to check the installation against.
  *
- * Renders nothing at all when the farm has no meter. A farm without one is a
- * normal state, and an empty card that says "no data" for Kampot forever is
- * worse than no card.
+ * Renders nothing at all when the farm has no meter. Only PP Campus has one —
+ * it is a development-stage installation on our own test system, not something
+ * deployed to the working farms. A card reading "no data" on Kampot forever
+ * would be worse than no card, because it implies a fault where there is only
+ * an absence.
  */
 export default function WaterMeterCard({ farm }: { farm: string }) {
   const { data } = useSWR<WaterResponse>(
     `/api/sensors/water?farm=${farm}`, swrFetcher, { refreshInterval: 300_000 },
   );
 
-  if (!data || data.readings.length === 0) return null;
+  // has_meter is checked as well as the readings, so "no meter here" and "the
+  // meter has not reported" stay distinguishable. They render the same today,
+  // but the second is a fault someone should chase and deserves a message once
+  // there is somewhere sensible to put one.
+  if (!data || !data.has_meter || data.readings.length === 0) return null;
+  const unitLabel = data.unit_label ?? "";
+  const perUnit = data.liters_per_unit ?? 1000;
 
   const days = data.readings;
   const latest = days[0];
@@ -42,7 +50,7 @@ export default function WaterMeterCard({ farm }: { farm: string }) {
   // saying "eight hundred litres" but "twelve cubic metres".
   const volume = (liters: number) =>
     liters >= 1000
-      ? `${Number((liters / data.liters_per_unit).toFixed(2))} ${data.unit_label}`
+      ? `${Number((liters / perUnit).toFixed(2))} ${unitLabel}`
       : `${Number(liters.toFixed(0))} L`;
 
   return (
@@ -70,7 +78,7 @@ export default function WaterMeterCard({ farm }: { farm: string }) {
             number to check the installation against. */}
         <Tile label="Meter reading" value={
           latest.last_totalizer != null
-            ? `${latest.last_totalizer} ${data.unit_label}`
+            ? `${latest.last_totalizer} ${unitLabel}`
             : "—"
         } />
         <Tile label="Last report" value={

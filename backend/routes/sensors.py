@@ -192,12 +192,31 @@ def water(farm: str = Query(...), user: dict = Depends(auth_service.require_auth
     exist: an estimate that disagrees with the meter is worth seeing, because it
     is how a blocked nozzle or a leak shows up.
 
-    Only campus has a meter. Other farms return readings=[] and a reason,
-    rather than a 404 — a farm with no meter is a normal state, not an error.
+    ONLY PP CAMPUS HAS A METER. It is a development-stage installation on our
+    own test system, not something deployed to the working farms. A farm
+    without one returns readings=[] and says so, rather than 404 — not having
+    a meter is a normal state, not an error.
+
+    The two empty cases are reported differently on purpose. "No meter here"
+    and "the meter has not reported yet" are different facts: the first is
+    permanent and expected, the second is a fault worth chasing. An empty list
+    alone cannot tell them apart, and collapsing them is how a dead feed hides
+    behind a farm that never had a sensor.
     """
     auth_service.require_farm_access(user, farm)
     if farm not in config.FARMS:
         raise HTTPException(status_code=404, detail=f"Unknown farm '{farm}'")
+
+    meter = config.FARMS[farm].get("water_meter")
+    if not meter:
+        # Return before querying. Asking InfluxDB for water fields on a farm
+        # with no meter is a guaranteed-empty round trip on every poll.
+        return {
+            "farm": farm, "unit": None, "unit_label": None,
+            "liters_per_unit": None, "unit_confirmed": False,
+            "has_meter": False, "readings": [],
+            "reason": f"{config.FARMS[farm]['display_name']} has no water meter installed",
+        }
 
     measurement = config.FARMS[farm]["measurement"]
     df = db.get_water_history(measurement)
@@ -225,16 +244,17 @@ def water(farm: str = Query(...), user: dict = Depends(auth_service.require_auth
                 # estimated_water_liters on /spray-stats. Converted here rather
                 # than in the UI so there is one place the factor lives.
                 "consumption_liters": None if consumption is None else
-                                      consumption * config.CAMPUS_WATER_LITERS_PER_UNIT,
+                                      consumption * meter["liters_per_unit"],
                 "meter_reset":     bool(reset),
             })
         readings.reverse()
 
     return {
         "farm": farm,
-        "unit": config.CAMPUS_WATER_UNIT,
-        "unit_label": config.CAMPUS_WATER_UNIT_LABEL,
-        "liters_per_unit": config.CAMPUS_WATER_LITERS_PER_UNIT,
+        "unit": meter["unit"],
+        "unit_label": meter["unit_label"],
+        "liters_per_unit": meter["liters_per_unit"],
+        "has_meter": True,
         # Confirmed with the farm team: cubic metres. Kept as a field rather
         # than dropped, because a second site with a different meter would need
         # it again, and a reader should not have to guess whether the label is
@@ -242,6 +262,6 @@ def water(farm: str = Query(...), user: dict = Depends(auth_service.require_auth
         "unit_confirmed": True,
         "readings": readings,
         "reason": None if readings else (
-            "No water meter has published for this farm yet"
+            "The water meter has not reported yet"
         ),
     }
