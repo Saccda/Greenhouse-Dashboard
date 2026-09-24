@@ -38,6 +38,31 @@ const config: Config = {
           info:    "#60a5fa",
         },
       },
+      // The text scale, driven by the same variables globals.css defines.
+      //
+      // textColor, NOT colors.slate: that would drag bg-slate-* and
+      // border-slate-* along with it, and those legitimately use the real
+      // Tailwind palette — bg-slate-100 is a pale chip, while --t100 is
+      // near-black in light mode.
+      //
+      // Same reason the surfaces moved: a `.light .text-slate-100` override
+      // matches the bare class and nothing else, so hover:text-slate-100 and
+      // its 38 siblings fell through to raw Tailwind slate. That put white
+      // text on the sidebar's pale hover fill.
+      //
+      // Steps 50 and 700-950 are left as Tailwind ships them; nothing uses
+      // them as themed text.
+      textColor: {
+        slate: {
+          100: "rgb(var(--t100) / <alpha-value>)",
+          200: "rgb(var(--t200) / <alpha-value>)",
+          300: "rgb(var(--t300) / <alpha-value>)",
+          400: "rgb(var(--t400) / <alpha-value>)",
+          500: "rgb(var(--t500) / <alpha-value>)",
+          600: "rgb(var(--t600) / <alpha-value>)",
+        },
+      },
+
       // Borders take their own scale. In dark mode an edge matches its fill, but
       // on a near-white card it has to stay darker than the surface to be seen
       // at all — border-surface-card is #e0eee2 against a #ffffff fill.

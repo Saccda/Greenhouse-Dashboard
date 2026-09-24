@@ -193,23 +193,10 @@ html, body {
    Specificity (.dark .text-slate-X = 0-2-0) beats Tailwind (0-1-0).
 ═══════════════════════════════════════════════════════════════════════════ */
 
-.dark  .text-slate-100,
-.light .text-slate-100 { color: rgb(var(--t100)); }
-
-.dark  .text-slate-200,
-.light .text-slate-200 { color: rgb(var(--t200)); }
-
-.dark  .text-slate-300,
-.light .text-slate-300 { color: rgb(var(--t300)); }
-
-.dark  .text-slate-400,
-.light .text-slate-400 { color: rgb(var(--t400)); }
-
-.dark  .text-slate-500,
-.light .text-slate-500 { color: rgb(var(--t500)); }
-
-.dark  .text-slate-600,
-.light .text-slate-600 { color: rgb(var(--t600)); }
+/* The .dark/.light .text-slate-* overrides that stood here are gone. Text
+   resolves through the same variables via Tailwind's textColor scale, so every
+   variant follows the theme — hover:, group-hover:, focus: and the alpha steps
+   — instead of only the bare class. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LIGHT MODE — SURFACE HANDLING
