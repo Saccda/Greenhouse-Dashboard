@@ -48,12 +48,22 @@
   --navy-input:  rgba(80,140,255,0.14);
 
   /* Blue-tinted text hierarchy */
-  --t100: 208 228 255;
+  /* Solved against surface-card, the surface text is read on at rest, with a
+     target ladder of 12 / 9 / 6.8 / 5.4 / 4.6. Measured: 12.02, 9.23, 7.13,
+     5.44, 4.63. t400 and t500 were 4.22 and 2.92 before — slate-500 alone is
+     used in 27 files, so this one edit fixes more than touching all of them.
+
+     t600 is RETIRED and simply mirrors t500. A sixth step cannot clear 4.5:1
+     on this surface while staying distinguishable from the fifth: forcing it
+     produced t500 and t600 one unit apart, which is a hierarchy in name only.
+     The token stays so the 14 files using text-slate-600 keep working; it just
+     no longer pretends to be a separate step. */
+  --t100: 216 232 255;
   --t200: 170 206 255;
   --t300: 132 182 248;
-  --t400: 96  155 228;
-  --t500: 68  126 198;
-  --t600: 46   98 168;
+  --t400: 102 159 229;
+  --t500: 96  146 207;
+  --t600: 96  146 207;
 
   /* Analytics chart palette — dark-mode steps.
      Each mode gets its OWN validated steps rather than a lightness flip:
@@ -111,12 +121,14 @@
   --navy-input:  #ffffff;
 
   /* Dark green-tinted text — high contrast on white cards */
+  /* Same ladder on the white card: 16.14, 11.55, 7.68, 5.46, 4.61. t400 and
+     t500 were 4.36 and 3.01. t600 mirrors t500, as in the dark block. */
   --t100:  22  36  26;
   --t200:  40  62  46;
   --t300:  60  90  67;
-  --t400:  85 120  93;
-  --t500: 108 148 116;
-  --t600: 132 165 139;
+  --t400:  80 113  88;
+  --t500:  91 125  98;
+  --t600:  91 125  98;
 
   /* Analytics chart palette — light-mode steps (validated separately against
      the light surface; worst adjacent pair ΔE 17.4 protan). */
