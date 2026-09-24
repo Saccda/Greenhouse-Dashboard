@@ -24,6 +24,7 @@ import {
   Target, TrendingUp, Timer,
 } from "lucide-react";
 
+import PageHeader from "@/components/ui/PageHeader";
 import { swrFetcher } from "@/lib/api";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
 import Header from "@/components/layout/Header";
@@ -152,6 +153,8 @@ export default function AnalyticsPage() {
 
       <main className="flex-1 overflow-y-auto p-5">
         <div className="max-w-screen-2xl mx-auto space-y-8">
+
+          <PageHeader icon={BarChart3} title="Analytics" description="How the environment behaved over the selected window: how often each parameter sat outside its target band, and what the spread looked like. Figures are computed from stored readings, not live ones." />
 
           {/* Range selector */}
           <div className="flex items-center gap-2 flex-wrap">

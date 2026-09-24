@@ -18,6 +18,7 @@
 import useSWR from "swr";
 import { Box, Camera, MapPin } from "lucide-react";
 
+import PageHeader from "@/components/ui/PageHeader";
 import { swrFetcher } from "@/lib/api";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
 import { deriveConnectionStatus } from "@/lib/connection";
@@ -48,20 +49,15 @@ export default function SitePage() {
       <main className="flex-1 overflow-y-auto p-5">
         <div className="max-w-screen-2xl mx-auto space-y-5">
 
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-                <Camera size={17} className="text-sky-400" /> PP Campus — the rig
-              </h1>
-              <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-                The hardware behind the readings on every other page: what it looks like, and what
-                it does when a channel switches on.
-              </p>
-            </div>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-sky-400/15 text-sky-400 shrink-0">
+          <PageHeader
+            icon={Camera}
+            title="PP Campus — the rig"
+            description="The hardware behind the readings on every other page: what it looks like, and what it does when a channel switches on."
+          >
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-sky-400/15 text-sky-400">
               <MapPin size={10} /> Development site
             </span>
-          </div>
+          </PageHeader>
 
           {isCampus ? (
             <>

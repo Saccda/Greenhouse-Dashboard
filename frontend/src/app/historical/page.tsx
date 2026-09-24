@@ -2,8 +2,11 @@
 import { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import { format, subDays, parseISO } from "date-fns";
-import { CalendarDays, CloudDrizzle } from "lucide-react";
+import {
+  CalendarDays, CloudDrizzle, History,
+} from "lucide-react";
 
+import PageHeader from "@/components/ui/PageHeader";
 import { swrFetcher } from "@/lib/api";
 import Header from "@/components/layout/Header";
 import SensorChart from "@/components/charts/SensorChart";
@@ -107,6 +110,8 @@ export default function HistoricalPage() {
 
       <main className="flex-1 overflow-y-auto p-5">
         <div className="max-w-screen-2xl mx-auto space-y-5">
+
+          <PageHeader icon={History} title="Historical" description="Sensor readings over a date range you choose. Longer ranges are averaged into wider buckets so the chart stays readable — the aggregation in use is shown with the controls below." />
 
         {/* Date range controls */}
         <section className="bg-surface-card border border-surface-border rounded-xl p-4">

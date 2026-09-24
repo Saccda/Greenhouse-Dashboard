@@ -14,6 +14,7 @@
 import useSWR from "swr";
 import { Sparkles, Lock } from "lucide-react";
 
+import PageHeader from "@/components/ui/PageHeader";
 import { swrFetcher } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
@@ -54,17 +55,11 @@ export default function InsightsPage() {
       <main className="flex-1 overflow-y-auto p-5">
         <div className="max-w-screen-2xl mx-auto space-y-5">
 
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-                <Sparkles size={17} className="text-sky-400" /> Insights
-              </h1>
-              <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-                Sensor health and short-horizon forecasting. Both are validated against days the
-                methods never saw — the figures here are measured, not asserted.
-              </p>
-            </div>
-          </div>
+          <PageHeader
+            icon={Sparkles}
+            title="Insights"
+            description="Sensor health and short-horizon forecasting. Both are validated against days the methods never saw — the figures here are measured, not asserted."
+          />
 
           {loading ? (
             <div className="h-64 rounded-2xl bg-surface-hover animate-pulse" />

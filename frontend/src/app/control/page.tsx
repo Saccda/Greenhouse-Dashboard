@@ -6,6 +6,7 @@ import { Sliders, Save, Cpu, AlertTriangle, CheckCircle, LogIn } from "lucide-re
 import { clsx } from "clsx";
 import { format } from "date-fns";
 
+import PageHeader from "@/components/ui/PageHeader";
 import { swrFetcher, API_BASE } from "@/lib/api";
 import { useSettings, syncThresholdsToBackend } from "@/hooks/useSettings";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
@@ -140,6 +141,8 @@ export default function ControlPage() {
 
       <main className="flex-1 overflow-y-auto p-5">
         <div className="max-w-screen-2xl mx-auto space-y-5">
+
+          <PageHeader icon={Sliders} title="Control" description="Relay state and setpoints for the selected farm. Changes here are written to the hardware, so they take effect on the next control cycle rather than immediately." />
 
         {/* ── Section 1: Live relay status cards ─────────────────────── */}
         <section>
