@@ -51,10 +51,19 @@ const PARTS = {
     215, 218, 219, 220, 222, 223, 242, 256, 259, 264, 268, 270, 272, 287, 291,
     295, 305, 309,
   ],
-  // Tank panel, plate and rod on the cooling skid. Deliberately left at three:
-  // the cooling unit beside the tank is made of many small bodies, and pulling
-  // them all in would cost draw calls for a part that reads fine as a hint.
-  ch4_cool: [126, 119, 282],
+  // The chilled-water tank, the copper coil inside it, and the wire running in.
+  //
+  // Identified from the model rather than picked by eye. [121] is a 646 x 630 x
+  // 600 mm white body on the skid; [153] sits INSIDE it, is 208,692 triangles
+  // for 95 litres, and is the ONLY body in all 313 whose sole material colour
+  // is copper rgb(87,36,8) — a tube coiled in a vessel has exactly that
+  // signature, and nothing else in the model does.
+  //
+  // The previous set was [126, 119, 282] and was close to arbitrary: [119] is
+  // one slat out of seventeen identical 192 x 514 x 25 mm bodies, and [282] is
+  // a black panel. Only [126], the 15 x 15 x 129 mm wire, was right, which is
+  // why the channel appeared to light the wiring and nothing else.
+  ch4_cool: [121, 153, 126],
   // 24 x 24 x 60 mm on the wall panel: an indicator lamp, which is exactly the
   // right thing to light for "system enabled".
   ch1_enable: [50],
@@ -72,6 +81,9 @@ const UNVERIFIED = [
   // end-of-rail fittings, not nozzle heads: they sit at the rail end and do not
   // fit the two-body pattern
   76, 80, 115,
+  // dropped from CH4: [119] is one of seventeen identical slats and [282] is a
+  // panel, neither of which is cooling plant
+  119, 282,
   // Ruled out by eye once the preview actually rendered — previously bound to
   // CH2 on the farm team's say-so, which was worth more than my inference until
   // it could be checked visually. The measurements are emphatic: all 68 real
