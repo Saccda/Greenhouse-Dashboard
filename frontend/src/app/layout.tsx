@@ -9,8 +9,13 @@ export const metadata: Metadata = {
   description: "Mechanical Engineering — Real-time IoT monitoring for pepper farms",
   // Tells iOS to drop Safari's chrome once added to the home screen. Android
   // and desktop read the equivalent from manifest.ts instead.
+  //
+  // No `icons` field here on purpose. Next emits <link rel="icon"> from
+  // src/app/icon.png and <link rel="apple-touch-icon"> from
+  // src/app/apple-icon.png by file convention, but declaring metadata.icons
+  // REPLACES that whole set instead of adding to it — an `apple` entry alone
+  // removed the favicon from every tab.
   appleWebApp: { capable: true, title: "FarmOS", statusBarStyle: "default" },
-  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

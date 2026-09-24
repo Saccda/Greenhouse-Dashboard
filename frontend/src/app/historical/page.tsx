@@ -209,17 +209,19 @@ export default function HistoricalPage() {
                 </thead>
                 <tbody>
                   {tableRows.map(([time, vals]) => (
-                    <tr
-                      key={time}
-                      className="group even:bg-surface-hover/40 hover:bg-surface-hover transition-colors"
-                    >
-                      <td className="py-2.5 pr-4 text-slate-300 font-mono-num whitespace-nowrap rounded-l-md">
+                    <tr key={time} className="hover:bg-surface-hover transition-colors">
+                      {/* Plain throughout. The columns are already labelled and
+                          the units are in the header, so colour would be
+                          decoration that has to clear a contrast bar to earn
+                          its place. The readings carry the brighter step
+                          because they are what the page is for. */}
+                      <td className="py-2.5 pr-4 text-slate-300 font-mono-num whitespace-nowrap border-b border-surface-border/40">
                         {format(parseISO(time), "yyyy-MM-dd HH:mm")}
                       </td>
-                      <td className="py-2.5 pr-4 font-mono-num text-right tabular-nums text-[color:var(--temp-ink)]">
+                      <td className="py-2.5 pr-4 text-slate-100 font-mono-num text-right tabular-nums border-b border-surface-border/40">
                         {vals.temp != null ? vals.temp.toFixed(1) : "—"}
                       </td>
-                      <td className="py-2.5 font-mono-num text-right tabular-nums text-[color:var(--hum-ink)] rounded-r-md">
+                      <td className="py-2.5 text-slate-100 font-mono-num text-right tabular-nums border-b border-surface-border/40">
                         {vals.hum != null ? vals.hum.toFixed(1) : "—"}
                       </td>
                     </tr>
