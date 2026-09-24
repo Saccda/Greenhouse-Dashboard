@@ -57,6 +57,9 @@ function SprayStat({ label, value }: { label: string; value: string }) {
 
 export default function HistoricalPage() {
   const { farm, setFarm, farms } = useFarmSelection();
+  // "measured" means a flow meter is installed and the WaterMeterCard below
+  // carries the figure; the runtime estimate is then redundant.
+  const waterSource = farms.find((f) => f.id === farm)?.water_source ?? "none";
   const [start, setStart] = useState(nDaysAgo(6));
   const [end,   setEnd]   = useState(today());
   const [aggMode, setAggMode] = useState<"auto" | Aggregation>("auto");
@@ -163,11 +166,19 @@ export default function HistoricalPage() {
                   : `${fmt(stats.total_spray_minutes / 60, 1)}h`
               } />
               <SprayStat label="Avg Duration"    value={`${fmt(stats.avg_spray_minutes, 1)}m`} />
-              <SprayStat label="Est. Water Use"  value={
-                stats.estimated_water_liters != null
-                  ? `${fmt(stats.estimated_water_liters, 0)} L`
-                  : "Not configured"
-              } />
+              {/* The estimate is a stand-in for a meter, so it is only shown
+                  where there is no meter. On a farm that has one, the measured
+                  card below carries the number, and repeating a guess beside a
+                  measurement would only invite the reader to wonder which to
+                  believe. "Not configured" was actively misleading there — it
+                  reads as an oversight when the truth is that it is measured. */}
+              {waterSource !== "measured" && (
+                <SprayStat label="Est. Water Use" value={
+                  stats.estimated_water_liters != null
+                    ? `${fmt(stats.estimated_water_liters, 0)} L`
+                    : "Not configured"
+                } />
+              )}
             </div>
           )}
 

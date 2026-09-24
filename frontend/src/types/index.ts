@@ -85,6 +85,12 @@ export interface Farm {
   // rather than another site's forecast.
   latitude?:    number | null;
   longitude?:   number | null;
+  /**
+   * How this farm's water figure is obtained. Alternatives, not a hierarchy:
+   * the runtime estimate exists BECAUSE there is no meter, so a farm with one
+   * does not want both.
+   */
+  water_source?: "measured" | "estimated" | "none";
 }
 
 export interface FarmsResponse {

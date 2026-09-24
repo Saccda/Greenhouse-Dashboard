@@ -95,6 +95,15 @@ class FarmInfo(BaseModel):
     # site's forecast.
     latitude:     Optional[float] = None
     longitude:    Optional[float] = None
+    # How this farm's water figure is obtained. "measured" when a flow meter is
+    # installed, "estimated" when there is none and the figure is derived from
+    # spray runtime and nozzle flow rate, "none" when neither is available.
+    #
+    # These are alternatives, not a hierarchy to climb. The estimate exists
+    # BECAUSE there is no meter; a farm that has one does not want both, and a
+    # farm showing "Not configured" where it is actually measured is worse than
+    # showing nothing.
+    water_source: str = "none"
 
 
 class FarmsResponse(BaseModel):

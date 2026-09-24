@@ -8,18 +8,17 @@ import type { WaterResponse } from "@/types";
 /**
  * Measured water use, from the flow meter's own daily totals.
  *
- * Distinct from the "Est. Water Use" tile above it, which multiplies spray
- * runtime by a nozzle flow rate. Showing both is the point: the estimate
- * assumes every nozzle flows at its rated figure, so a persistent gap between
- * the two is how a blocked nozzle or a leak announces itself. One number would
- * hide that.
+ * This REPLACES the "Est. Water Use" tile rather than sitting beside it. That
+ * estimate multiplies spray runtime by a rated nozzle flow, and it exists only
+ * because the farms it covers have no meter. Where one is installed the guess
+ * adds nothing, and showing both would only ask the reader to decide which
+ * number to trust — so the Historical page hides the estimate when the farm
+ * reports water_source "measured".
  *
- * Which is why the headline figure here is in LITRES even though the meter
- * counts cubic metres. The estimate is in litres, and two numbers a thousand
- * times apart cannot be compared at a glance — the comparison is the whole
- * reason the card sits where it does. The meter's own reading is shown
- * unconverted beside it, because that is the number on the physical dial and
- * the one to check the installation against.
+ * The figure is still reported in litres as well as the meter's own cubic
+ * metres, via consumption_liters. Litres is the unit the rest of the dashboard
+ * talks in, and keeping both means a Kampot figure and a campus figure can be
+ * put side by side later without anyone rediscovering the factor of a thousand.
  *
  * Renders nothing at all when the farm has no meter. Only PP Campus has one —
  * it is a development-stage installation on our own test system, not something

@@ -7,6 +7,16 @@ import config
 from schemas import FarmInfo, FarmsResponse
 from services import auth_service
 
+
+def _water_source(info: dict) -> str:
+    """Measured beats estimated; the estimate is only there when no meter is."""
+    if info.get("water_meter"):
+        return "measured"
+    if info.get("fogger_spec"):
+        return "estimated"
+    return "none"
+
+
 router = APIRouter(
     prefix="/api/farms",
     tags=["farms"],
@@ -25,6 +35,7 @@ def list_farms(user: dict = Depends(auth_service.require_auth)) -> FarmsResponse
             measurement=info["measurement"],
             latitude=info.get("latitude"),
             longitude=info.get("longitude"),
+            water_source=_water_source(info),
         )
         for farm_id, info in config.FARMS.items()
         if allowed is None or farm_id in allowed

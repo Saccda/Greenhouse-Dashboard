@@ -162,7 +162,17 @@ COOKIE_SECURE = FLASK_ENV != "development"
 # Each farm maps to a distinct InfluxDB measurement.
 # Add more farms here — the frontend picks them up automatically.
 # ---------------------------------------------------------------------------
-# fogger_spec drives the "estimated water use" figure on the Historical page:
+# fogger_spec is a STAND-IN FOR A FLOW METER. It exists so a farm with no meter
+# can still show roughly how much water it used, by multiplying spray runtime by
+# the manifold's rated flow. Where a meter is installed, the estimate is not
+# wanted alongside it — the meter is simply better, and two water figures on one
+# page invites the reader to wonder which to believe.
+#
+# So the two are alternatives: see water_meter below, and _water_source() in
+# routes/farms.py, which picks measured over estimated and tells the frontend
+# which it is getting. Do not add a fogger_spec to a farm that has a meter.
+#
+# It drives the "estimated water use" figure on the Historical page:
 #   total_spray_minutes * lines * foggers_per_line * flow_lpm_per_fogger
 # All foggers are assumed to fire together, since a single relay/pump drives
 # the whole manifold with no per-line control. Leave a farm's fogger_spec as
