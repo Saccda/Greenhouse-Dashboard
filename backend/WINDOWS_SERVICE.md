@@ -76,7 +76,97 @@ C:\nssm\nssm-2.24\win64\nssm.exe remove GreenhouseBackend confirm   # uninstall 
 
 Or use the GUI: `services.msc` → find "GreenhouseBackend" → right-click for Start/Stop/Restart.
 
-## 5. Cloudflare Tunnel
+## 5. The campus MQTT bridge
+
+`scripts/campus_mqtt_bridge.py` is a **second, separate always-on process**. It subscribes to the
+PP Campus controller's MQTT topics and writes to InfluxDB and Postgres. It is deliberately not part
+of `GreenhouseBackend`: a crash or restart here must never affect the API serving live Kampot and
+Kep dashboards.
+
+It was set up before this section existed, so **the service name on the lab desktop may differ from
+the one below**. Find it with:
+
+```powershell
+Get-Service | Where-Object { $_.Name -match "campus|bridge|mqtt" }
+```
+
+If nothing comes back it is not installed as a service, and is either running in a console window or
+not running at all. Install it the same way as the backend:
+
+```powershell
+C:
+ssm
+ssm-2.24\win64
+ssm.exe install CampusMqttBridge "D:\GreenhouseDashboardackend\.venv\Scripts\python.exe" "scripts\campus_mqtt_bridge.py"
+C:
+ssm
+ssm-2.24\win64
+ssm.exe set CampusMqttBridge AppDirectory "D:\GreenhouseDashboardackend"
+C:
+ssm
+ssm-2.24\win64
+ssm.exe set CampusMqttBridge AppStdout "D:\GreenhouseDashboardackend\data\campus-bridge.log"
+C:
+ssm
+ssm-2.24\win64
+ssm.exe set CampusMqttBridge AppStderr "D:\GreenhouseDashboardackend\data\campus-bridge.log"
+C:
+ssm
+ssm-2.24\win64
+ssm.exe set CampusMqttBridge AppRotateFiles 1
+C:
+ssm
+ssm-2.24\win64
+ssm.exe set CampusMqttBridge AppRotateBytes 1048576
+C:
+ssm
+ssm-2.24\win64
+ssm.exe set CampusMqttBridge Start SERVICE_AUTO_START
+C:
+ssm
+ssm-2.24\win64
+ssm.exe start CampusMqttBridge
+```
+
+### It must be restarted after a topic change
+
+**An MQTT subscription is not retroactive.** The bridge subscribes on connect, so a process that
+started before a topic was added to the code is not listening to that topic at all, however long it
+stays up. Restarting is not optional housekeeping after a change like that — it is the change taking
+effect.
+
+```powershell
+git pull
+C:
+ssm
+ssm-2.24\win64
+ssm.exe restart CampusMqttBridge
+```
+
+The log should then show both topics on the subscribe line:
+
+```
+[campus-mqtt-bridge] connected ... subscribing to RUPP_CAMPUS_1/phnom_penh/infor/status and RUPP_CAMPUS_1/phnom_penh/water_data
+```
+
+If only one topic appears, the running code is older than the pull.
+
+### Checking the water feed
+
+```powershell
+cd D:\GreenhouseDashboardackend
+.venv\Scripts\python.exe scripts\check_water_feed.py --wait 60
+```
+
+It reports the broker, InfluxDB and Postgres in the order a message travels, so data landing in one
+store and not the other points at a single write path rather than "the water thing is broken". Run
+it on THIS machine rather than a laptop — Postgres is loopback-only, so the archive half can only be
+checked from here.
+
+Note that the meter publishes roughly once a day. An empty result is the normal state most of the
+time and only means trouble if it persists for a day or two after a confirmed restart.
+
+## 6. Cloudflare Tunnel
 
 Already wired up — `api.farmos-mechanicalengineering.com` is in `config.yml`'s ingress rules
 pointing at `http://localhost:8000` (see [CLOUDFLARE_TUNNEL.md](../CLOUDFLARE_TUNNEL.md)), and the
