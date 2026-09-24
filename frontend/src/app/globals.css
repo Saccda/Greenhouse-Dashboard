@@ -57,6 +57,15 @@
      way the bg-brand-green/NN tints are. */
   --ok-ink: #4ade80;
 
+  /* Temperature and humidity TEXT. Same trap as --warn-ink: orange-400 and
+     blue-400 are picked for a dark surface and measure 6.60:1 and 5.87:1 there,
+     but only 2.26:1 and 2.54:1 on the white light-mode card — the readings
+     table's own numbers were the least readable thing on the page. Hue is kept
+     so temperature stays orange and humidity blue across both themes; only
+     lightness moves. */
+  --temp-ink: #fdba74;
+  --hum-ink:  #93c5fd;
+
   color-scheme: dark;
 }
 
@@ -96,6 +105,11 @@
   /* Darker green so success text clears 4.5:1 on the pale green surface
      (6.3:1 here, against 2.0:1 for the brand green). */
   --ok-ink: #166534;
+
+  /* Darker steps so the readings clear 4.5:1 on the white card: 7.31:1 and
+     8.72:1 measured. */
+  --temp-ink: #9a3412;
+  --hum-ink:  #1e40af;
 
   color-scheme: light;
 }

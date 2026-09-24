@@ -175,37 +175,51 @@ export default function HistoricalPage() {
 
         {/* Readings table */}
         <section className="bg-surface-card border border-surface-border rounded-xl p-4">
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+          <h2 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-4">
             Readings (latest 100)
           </h2>
           {isLoading && !history ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-8 bg-surface-hover animate-pulse rounded" />
+                <div key={i} className="h-11 bg-surface-hover animate-pulse rounded" />
               ))}
             </div>
           ) : tableRows.length === 0 ? (
-            <p className="text-sm text-slate-600 text-center py-6">No data for this range</p>
+            <p className="text-sm text-slate-400 text-center py-6">No data for this range</p>
           ) : (
-            <div className="overflow-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-slate-600 border-b border-surface-border">
-                    <th className="pb-2 pr-4 font-medium">Timestamp</th>
-                    <th className="pb-2 pr-4 font-medium">Temperature (°C)</th>
-                    <th className="pb-2 font-medium">Humidity (%)</th>
+            // Bounded height rather than growing to 100 rows, so the header can
+            // stick to the top of its own scroll area instead of scrolling away
+            // and leaving three unlabelled columns of numbers.
+            <div className="overflow-auto max-h-[28rem] -mx-1 px-1">
+              <table className="w-full text-sm border-separate border-spacing-0">
+                <thead className="sticky top-0 z-10">
+                  <tr className="text-left text-slate-300">
+                    <th className="bg-surface-card border-b border-surface-border py-2.5 pr-4 font-semibold text-xs uppercase tracking-wider">
+                      Timestamp
+                    </th>
+                    {/* Numbers right-aligned so the decimal points line up and a
+                        column can be compared by eye down its length. */}
+                    <th className="bg-surface-card border-b border-surface-border py-2.5 pr-4 font-semibold text-xs uppercase tracking-wider text-right">
+                      Temp (°C)
+                    </th>
+                    <th className="bg-surface-card border-b border-surface-border py-2.5 font-semibold text-xs uppercase tracking-wider text-right">
+                      Humidity (%)
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {tableRows.map(([time, vals]) => (
-                    <tr key={time} className="border-b border-surface-border/40 last:border-0">
-                      <td className="py-1.5 pr-4 text-slate-400 font-mono-num">
+                    <tr
+                      key={time}
+                      className="group even:bg-surface-hover/40 hover:bg-surface-hover transition-colors"
+                    >
+                      <td className="py-2.5 pr-4 text-slate-300 font-mono-num whitespace-nowrap rounded-l-md">
                         {format(parseISO(time), "yyyy-MM-dd HH:mm")}
                       </td>
-                      <td className="py-1.5 pr-4 font-mono-num text-orange-400">
+                      <td className="py-2.5 pr-4 font-mono-num text-right tabular-nums text-[color:var(--temp-ink)]">
                         {vals.temp != null ? vals.temp.toFixed(1) : "—"}
                       </td>
-                      <td className="py-1.5 font-mono-num text-blue-400">
+                      <td className="py-2.5 font-mono-num text-right tabular-nums text-[color:var(--hum-ink)] rounded-r-md">
                         {vals.hum != null ? vals.hum.toFixed(1) : "—"}
                       </td>
                     </tr>
