@@ -93,7 +93,7 @@ function Notice({
   icon: typeof Lock; title: string; body: string;
 }) {
   return (
-    <section className="rounded-2xl border border-surface-border bg-surface-card p-8">
+    <section className="rounded-xl border border-surface-border bg-surface-card p-8">
       <div className="flex items-start gap-4 max-w-2xl">
         <div className="w-10 h-10 rounded-xl bg-surface-hover flex items-center justify-center shrink-0">
           <Icon size={18} className="text-slate-400" />

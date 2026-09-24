@@ -62,7 +62,7 @@ export default function SitePage() {
           {isCampus ? (
             <>
               {/* ── 3D twin slot ──────────────────────────────────── */}
-              <section className="rounded-2xl border border-surface-border bg-surface-card p-5">
+              <section className="rounded-xl border border-surface-border bg-surface-card p-4">
                 <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                   <Box size={15} className="text-sky-400" /> 3D model
                 </h2>
@@ -76,7 +76,7 @@ export default function SitePage() {
               </section>
             </>
           ) : (
-            <section className="rounded-2xl border border-surface-border bg-surface-card p-8">
+            <section className="rounded-xl border border-surface-border bg-surface-card p-8">
               <div className="flex items-start gap-4 max-w-2xl">
                 <div className="w-10 h-10 rounded-xl bg-surface-hover flex items-center justify-center shrink-0">
                   <MapPin size={18} className="text-slate-400" />

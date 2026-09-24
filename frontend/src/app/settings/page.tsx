@@ -97,7 +97,7 @@ function Section({ title, icon: Icon, children, className }: {
   title: string; icon: React.ElementType; children: React.ReactNode; className?: string;
 }) {
   return (
-    <section className={clsx("bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col h-full", className)}>
+    <section className={clsx("bg-surface-card border border-surface-border rounded-xl p-4 flex flex-col h-full", className)}>
       <h2 className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5 shrink-0">
         <Icon size={13} />
         {title}

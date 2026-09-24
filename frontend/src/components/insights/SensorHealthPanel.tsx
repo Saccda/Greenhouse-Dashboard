@@ -79,7 +79,7 @@ export default function SensorHealthPanel({ farm }: { farm: string }) {
   const healthy = data?.status === "ok" && faultCount === 0;
 
   return (
-    <section className="rounded-2xl border border-surface-border bg-surface-card p-5">
+    <section className="rounded-xl border border-surface-border bg-surface-card p-4">
       {/* ── One-glance verdict ─────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">

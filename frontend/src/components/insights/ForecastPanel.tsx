@@ -107,7 +107,7 @@ export default function ForecastPanel({ farm, tempWarn }: { farm: string; tempWa
     : "No live reading, so there is no band to draw — a forecast projected from stale data could never be checked. The chart shows the last session; the band returns when the rig does.";
 
   return (
-    <section className="rounded-2xl border border-surface-border bg-surface-card overflow-hidden">
+    <section className="rounded-xl border border-surface-border bg-surface-card overflow-hidden">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4 flex-wrap">
         <div>

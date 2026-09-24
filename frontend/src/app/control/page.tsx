@@ -176,7 +176,7 @@ export default function ControlPage() {
         </section>
 
         {/* ── Section 2: Alert thresholds ─────────────────────────────── */}
-        <section className="bg-surface-card border border-surface-border rounded-xl p-5">
+        <section className="bg-surface-card border border-surface-border rounded-xl p-4">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5 flex items-center gap-2">
             <Sliders size={13} /> Alert Thresholds
           </h2>

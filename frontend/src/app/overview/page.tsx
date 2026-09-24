@@ -71,7 +71,7 @@ function ConceiveSection() {
         title="Why this project exists"
         tagline="Every design choice downstream starts from one problem: heat is cutting into the pepper harvest, and nobody can watch the crop around the clock."
       />
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5 space-y-4">
+      <div className="bg-surface-card border border-surface-border rounded-xl p-4 space-y-4">
         <div className="flex items-start gap-3">
           <ThermometerSun size={22} className="text-orange-400 shrink-0 mt-0.5" />
           <div className="space-y-3 text-base text-slate-400 leading-relaxed">
@@ -396,7 +396,7 @@ function DesignSection() {
         title="Engineering the solution"
         tagline={content.designTagline}
       />
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+      <div className="bg-surface-card border border-surface-border rounded-xl p-4">
         <p className="text-base text-slate-400 leading-relaxed">{content.designBody}</p>
       </div>
       <CadGallery images={content.cad} />
@@ -694,7 +694,7 @@ function OperateSection() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-4">
         <DataFlowStrip />
       </div>
-      <div className="bg-surface-card border border-brand-green/30 rounded-xl p-5">
+      <div className="bg-surface-card border border-brand-green/30 rounded-xl p-4">
         <p className="text-base text-slate-300 leading-relaxed">
           What started as a response to one problem — heat stress with no one watching — is now a
           running prototype with real telemetry, real alerting, and a real farm depending on it. The

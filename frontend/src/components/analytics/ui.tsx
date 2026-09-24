@@ -58,7 +58,7 @@ export function Panel({
   return (
     <div
       className={clsx(
-        "relative rounded-2xl border border-surface-border bg-surface-card overflow-hidden",
+        "relative rounded-xl border border-surface-border bg-surface-card overflow-hidden",
         "transition-all duration-300",
         interactive && "hover:border-slate-600/70",
         className,

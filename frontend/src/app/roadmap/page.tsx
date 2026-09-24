@@ -41,7 +41,7 @@ function SectionShell({
 
 function TripleStat({ title, items }: { title: string; items: { label: string; value: string; color: string }[] }) {
   return (
-    <div className="bg-surface-card border border-surface-border rounded-2xl p-5 min-h-[10rem] flex flex-col">
+    <div className="bg-surface-card border border-surface-border rounded-xl p-4 min-h-[10rem] flex flex-col">
       <p className="text-base font-semibold leading-tight text-slate-300">{title}</p>
       <div className="flex-1 grid grid-cols-3 gap-2 mt-3">
         {items.map((it) => (
