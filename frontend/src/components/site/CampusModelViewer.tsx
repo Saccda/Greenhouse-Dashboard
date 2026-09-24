@@ -41,7 +41,7 @@ const CampusModelScene = dynamic(() => import("./CampusModelScene"), {
 /** Which relay drives which group of parts in the model. */
 const CHANNEL_ROLE: Record<string, { role: string; label: string; tint: string }> = {
   CH1: { role: "ch1_enable", label: "System enable", tint: "text-brand-green" },
-  CH2: { role: "ch2_spray",  label: "Spraying",     tint: "text-sky-400" },
+  CH2: { role: "ch2_spray",  label: "Spraying",     tint: "text-[color:var(--info-ink)]" },
   CH4: { role: "ch4_cool",   label: "Cooling",      tint: "text-cyan-400" },
 };
 
@@ -153,7 +153,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
             );
           })}
           {preview && (
-            <p className="text-[10px] text-sky-400 bg-sky-400/10 px-2.5 py-1.5 rounded-lg ring-1 ring-sky-400/25 max-w-[190px] leading-snug">
+            <p className="text-[10px] text-[color:var(--info-ink)] bg-sky-400/10 px-2.5 py-1.5 rounded-lg ring-1 ring-sky-400/25 max-w-[190px] leading-snug">
               Preview — showing which parts this channel covers, not live state.
             </p>
           )}

@@ -123,7 +123,7 @@ export default function KPICard({
           ) : (
             <>
               <div className="flex items-baseline justify-center gap-2">
-                <span className="text-5xl font-extrabold tabular-nums tracking-tight leading-none text-sky-400 group-hover:text-white transition-colors duration-300">
+                <span className="text-5xl font-extrabold tabular-nums tracking-tight leading-none text-[color:var(--info-ink)] group-hover:text-white transition-colors duration-300">
                   {displayValue}
                 </span>
                 {unit && (
@@ -133,7 +133,7 @@ export default function KPICard({
                 )}
               </div>
               {badge && (
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-400/15 text-sky-400 group-hover:bg-white group-hover:text-sky-600 transition-all duration-300">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-400/15 text-[color:var(--info-ink)] group-hover:bg-white group-hover:text-[color:var(--info-ink)] transition-all duration-300">
                   {badge}
                 </span>
               )}

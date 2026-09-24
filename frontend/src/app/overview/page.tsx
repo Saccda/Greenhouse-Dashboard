@@ -417,13 +417,13 @@ const LOOPS = [
   },
   {
     icon: Droplets,
-    color: "text-sky-400",
+    color: "text-[color:var(--info-ink)]",
     title: "Spray loop",
     body: "The same sensor feeds a second, independent loop: when farm temperature exceeds its own high setpoint, Relay 3 starts the spray pump, drawing chilled water through the manifold to cool the plants by evaporation, stopping once the low setpoint is reached.",
   },
   {
     icon: Database,
-    color: "text-emerald-400",
+    color: "text-[color:var(--ok-ink)]",
     title: "Water supply",
     body: "The spray pump draws from a chilled-water reservoir, cooled and buffered upstream, through a single supply line — the cooling fan is a separate, standalone air mover with no plumbing tie-in. The two loops share a sensor and a controller, not a pipe.",
   },
@@ -717,7 +717,7 @@ const FUTURE_SENSE = [
   {
     slug: "water",
     icon: Droplets,
-    color: "text-sky-400",
+    color: "text-[color:var(--info-ink)]",
     hover: "hover:bg-sky-500/10 hover:border-sky-500/40",
     title: "Water",
     body: "A flow meter on the supply line — usage per spray cycle, and an anomaly signature that can catch a leak long before anyone notices standing water.",
@@ -725,7 +725,7 @@ const FUTURE_SENSE = [
   {
     slug: "energy",
     icon: Zap,
-    color: "text-amber-400",
+    color: "text-[color:var(--warn-ink)]",
     hover: "hover:bg-amber-500/10 hover:border-amber-500/40",
     title: "Energy",
     body: "Solar generation, battery state of charge, and battery health over time — the off-grid system the pumps already depend on, finally visible instead of assumed.",
@@ -733,7 +733,7 @@ const FUTURE_SENSE = [
   {
     slug: "soil",
     icon: Sprout,
-    color: "text-emerald-400",
+    color: "text-[color:var(--ok-ink)]",
     hover: "hover:bg-emerald-500/10 hover:border-emerald-500/40",
     title: "Soil",
     body: "Soil temperature, moisture, and N-P-K at the root zone — irrigation and feeding decisions grounded in what the roots actually experience, not just canopy air readings.",
@@ -784,7 +784,7 @@ function FutureWorkSection() {
           <Rocket size={20} className="text-sky-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-sky-400 uppercase tracking-widest">What&rsquo;s Next</p>
+          <p className="text-xs font-semibold text-[color:var(--info-ink)] uppercase tracking-widest">What&rsquo;s Next</p>
           <h2 className="text-xl font-semibold text-slate-100 mt-0.5">Closing the loop — the next iteration</h2>
           <p className="text-base text-slate-500 mt-1">
             Operate feeds back into Conceive. This is what the next pass adds — more of the farm

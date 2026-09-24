@@ -19,10 +19,10 @@ import type { SprayEffect, WaterEfficiency, EffectVerdict } from "@/types/analyt
 
 const VERDICT_STYLE: Record<EffectVerdict, { cls: string; Icon: typeof Info }> = {
   insufficient_data:    { cls: "border-surface-border bg-surface-hover text-slate-400", Icon: HelpCircle },
-  underpowered:         { cls: "border-amber-500/40 bg-amber-500/10 text-amber-500",    Icon: AlertTriangle },
+  underpowered:         { cls: "border-amber-500/40 bg-amber-500/10 text-[color:var(--warn-ink)]",    Icon: AlertTriangle },
   no_detectable_effect: { cls: "border-surface-border bg-surface-hover text-slate-300", Icon: Info },
   cooling_detected:     { cls: "border-brand-green/40 bg-brand-green/10 text-brand-green", Icon: TrendingDown },
-  warming_detected:     { cls: "border-amber-500/40 bg-amber-500/10 text-amber-500",    Icon: TrendingUp },
+  warming_detected:     { cls: "border-amber-500/40 bg-amber-500/10 text-[color:var(--warn-ink)]",    Icon: TrendingUp },
 };
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -152,7 +152,7 @@ export default function SprayEffectPanel({
                   <td
                     className={clsx(
                       "py-1.5 text-right font-mono-num font-semibold",
-                      p.difference < 0 ? "text-brand-green" : "text-amber-500",
+                      p.difference < 0 ? "text-brand-green" : "text-[color:var(--warn-ink)]",
                     )}
                   >
                     {fmt(p.difference, 2, true)}

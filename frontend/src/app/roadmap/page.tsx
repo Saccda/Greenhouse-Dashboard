@@ -71,7 +71,7 @@ function WaterSection() {
   return (
     <SectionShell
       id="water"
-      icon={Droplets} color="text-sky-400" bg="bg-sky-500/10" border="border-sky-500/30"
+      icon={Droplets} color="text-[color:var(--info-ink)]" bg="bg-sky-500/10" border="border-sky-500/30"
       title="Water" description="A flow meter on the supply line — usage per cycle, and an anomaly signature that can catch a leak long before anyone notices standing water."
     >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -106,7 +106,7 @@ function EnergySection() {
   return (
     <SectionShell
       id="energy"
-      icon={Zap} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/30"
+      icon={Zap} color="text-[color:var(--warn-ink)]" bg="bg-amber-500/10" border="border-amber-500/30"
       title="Energy" description="Solar generation, battery state of charge, and battery health over time — the off-grid system the pumps already depend on, finally visible instead of assumed."
     >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -146,7 +146,7 @@ function SoilSection() {
   return (
     <SectionShell
       id="soil"
-      icon={Sprout} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/30"
+      icon={Sprout} color="text-[color:var(--ok-ink)]" bg="bg-emerald-500/10" border="border-emerald-500/30"
       title="Soil" description="Soil temperature, moisture, and N-P-K at the root zone — irrigation and feeding decisions grounded in what the roots actually experience, not just canopy air readings."
     >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -440,7 +440,7 @@ export default function RoadmapPage() {
           <Rocket size={16} className="text-slate-400" />
           <h1 className="text-sm font-semibold text-slate-200">Roadmap Preview</h1>
         </div>
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-full">
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-[color:var(--warn-ink)] bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-full">
           Simulated data — preview only
         </span>
       </header>

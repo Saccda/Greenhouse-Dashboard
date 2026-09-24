@@ -83,7 +83,7 @@ function FarmAccessPicker({ farms, mode, selected, onModeChange, onToggle }: {
             </label>
           ))}
           {selected.length === 0 && (
-            <span className="text-[11px] text-amber-500">No farms selected — this account will see nothing.</span>
+            <span className="text-[11px] text-[color:var(--warn-ink)]">No farms selected — this account will see nothing.</span>
           )}
         </div>
       )}
@@ -426,7 +426,7 @@ export default function SettingsPage() {
                   {saved ? "Saved!" : "Save Settings"}
                 </button>
               ) : user ? (
-                <p className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-amber-500 bg-amber-500/10 border border-amber-500/30">
+                <p className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-[color:var(--warn-ink)] bg-amber-500/10 border border-amber-500/30">
                   Awaiting owner approval
                 </p>
               ) : (
@@ -454,7 +454,7 @@ export default function SettingsPage() {
                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium",
                 notif?.telegram_configured
                   ? "bg-brand-green/10 text-brand-green"
-                  : "bg-amber-500/10 text-amber-400",
+                  : "bg-amber-500/10 text-[color:var(--warn-ink)]",
               )}>
                 <span className={clsx(
                   "w-1.5 h-1.5 rounded-full",
@@ -465,7 +465,7 @@ export default function SettingsPage() {
             </div>
 
             {!notif?.telegram_configured && (
-              <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg text-[11px] text-amber-400/80 space-y-1">
+              <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg text-[11px] text-[color:var(--warn-ink)] space-y-1">
                 <p className="font-semibold">Setup required:</p>
                 <ol className="list-decimal list-inside space-y-0.5">
                   <li>Open Telegram → search <span className="font-mono-num">@BotFather</span> → /newbot</li>
@@ -487,12 +487,12 @@ export default function SettingsPage() {
 
             {notif && Object.keys(notif.active_alerts).length > 0 && (
               <div className="mt-3 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
-                <p className="text-[11px] font-semibold text-red-400 mb-2">Currently active</p>
+                <p className="text-[11px] font-semibold text-[color:var(--danger-ink)] mb-2">Currently active</p>
                 <div className="space-y-1">
                   {Object.entries(notif.active_alerts).map(([key, info]) => (
                     <div key={key} className="flex items-center justify-between py-0.5 text-[11px]">
-                      <span className="text-red-300 font-mono-num">{key}</span>
-                      <span className="text-red-400/70 font-mono-num">{info.minutes} min</span>
+                      <span className="text-[color:var(--danger-ink)] font-mono-num">{key}</span>
+                      <span className="text-[color:var(--danger-ink)] font-mono-num">{info.minutes} min</span>
                     </div>
                   ))}
                 </div>
@@ -515,7 +515,7 @@ export default function SettingsPage() {
                     : testState === "ok"
                     ? "border-brand-green/30 bg-brand-green/10 text-brand-green"
                     : testState === "fail"
-                    ? "border-red-500/30 bg-red-500/10 text-red-400"
+                    ? "border-red-500/30 bg-red-500/10 text-[color:var(--danger-ink)]"
                     : "border-surface-bright text-slate-300 hover:text-slate-100 hover:border-brand-green/40",
                 )}
               >
@@ -648,7 +648,7 @@ export default function SettingsPage() {
                   )}
                 </div>
 
-                {usersError && <p className="text-xs text-red-400">Could not load users.</p>}
+                {usersError && <p className="text-xs text-[color:var(--danger-ink)]">Could not load users.</p>}
                 {!usersData && !usersError && <p className="text-xs text-slate-500">Loading users…</p>}
 
                 {/* Pending approval */}
@@ -675,7 +675,7 @@ export default function SettingsPage() {
                               // Unrestricted is the concerning state for a not-yet-reviewed
                               // account — "No farms" is the correct, safe default here.
                               u.farms === null
-                                ? "border-amber-500/40 text-amber-500 bg-amber-500/5"
+                                ? "border-amber-500/40 text-[color:var(--warn-ink)] bg-amber-500/5"
                                 : "border-surface-bright text-slate-400 hover:text-slate-200 hover:bg-surface-hover",
                             )}
                           >
@@ -739,7 +739,7 @@ export default function SettingsPage() {
                             className={clsx(
                               "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors max-w-[13rem]",
                               u.farms !== null && u.farms.length === 0
-                                ? "border-amber-500/40 text-amber-500 bg-amber-500/5"
+                                ? "border-amber-500/40 text-[color:var(--warn-ink)] bg-amber-500/5"
                                 : "border-surface-bright text-slate-400 hover:text-slate-200 hover:bg-surface-hover",
                             )}
                           >
@@ -795,7 +795,7 @@ export default function SettingsPage() {
                         Cancel
                       </button>
                     </form>
-                    {resetError && <p className="text-xs text-red-400 mt-2">{resetError}</p>}
+                    {resetError && <p className="text-xs text-[color:var(--danger-ink)] mt-2">{resetError}</p>}
                   </div>
                 )}
 

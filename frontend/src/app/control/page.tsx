@@ -207,7 +207,7 @@ export default function ControlPage() {
                 <p className="text-[11px] text-slate-600">Synced to backend — alert bot uses these values</p>
               </>
             ) : user ? (
-              <p className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-amber-500 bg-amber-500/10 border border-amber-500/30">
+              <p className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-[color:var(--warn-ink)] bg-amber-500/10 border border-amber-500/30">
                 Your account is awaiting approval from a farm owner
               </p>
             ) : (
@@ -244,7 +244,7 @@ export default function ControlPage() {
               <div className="w-2.5 h-2.5 rounded-full bg-red-400 shrink-0 animate-pulse" />
               <div className="flex gap-6">
                 {alarms.map((a, i) => (
-                  <span key={i} className="text-xs font-mono text-red-300 whitespace-nowrap">{a}</span>
+                  <span key={i} className="text-xs font-mono text-[color:var(--danger-ink)] whitespace-nowrap">{a}</span>
                 ))}
               </div>
             </div>
@@ -284,7 +284,7 @@ export default function ControlPage() {
                 )} />
                 <span className={clsx(
                   "text-sm font-mono font-bold uppercase tracking-widest",
-                  isOnline ? "text-green-500" : "text-red-500",
+                  isOnline ? "text-[color:var(--ok-ink)]" : "text-[color:var(--danger-ink)]",
                 )}>
                   {isOnline ? "ONLINE" : "OFFLINE"}
                 </span>
@@ -341,7 +341,7 @@ export default function ControlPage() {
                 ) : (
                   alarms.map((a, i) => (
                     <div key={i}
-                      className="flex items-center gap-2 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs font-mono text-red-500">
+                      className="flex items-center gap-2 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs font-mono text-[color:var(--danger-ink)]">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse" />
                       {a}
                     </div>

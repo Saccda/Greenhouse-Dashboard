@@ -297,7 +297,7 @@ function BoxPlotStrip({
         {(hasLowOutliers || hasHighOutliers) ? (
           <>
             {" "}The amber stub{hasLowOutliers && hasHighOutliers ? "s mark" : " marks"}{" "}
-            <span className="text-amber-500 font-semibold">
+            <span className="text-[color:var(--warn-ink)] font-semibold">
               {(outliersLow + outliersHigh).toLocaleString()} outlier
               {outliersLow + outliersHigh === 1 ? "" : "s"}
             </span>{" "}

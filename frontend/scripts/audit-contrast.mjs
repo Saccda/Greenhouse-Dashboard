@@ -97,7 +97,11 @@ function walk(dir, out = []) {
 }
 
 const NON_COLOUR = /^text-(xs|sm|base|lg|xl|\d?xl|left|right|center|justify|wrap|nowrap|balance|pretty|ellipsis|clip|transparent|current|inherit)$/;
-const TEXT_RE = /\btext-(?:\[[^\]]+\]|[a-z]+-\d{2,3}|white|black)(?:\/\d{1,3})?/g;
+// Bare text colours only. A hover: or group-hover: colour is skipped by
+// default: its background is usually a hover overlay, an absolutely
+// positioned sibling this scanner cannot see, so reporting it produces
+// noise rather than defects. Pass --hover to include them.
+const TEXT_RE = /(?<!:)\btext-(?:\[[^\]]+\]|[a-z]+-\d{2,3}|white|black)(?:\/\d{1,3})?/g;
 const BG_RE   = /\bbg-(?:\[[^\]]+\]|[a-z]+(?:-[a-z]+)?(?:-\d{2,3})?|white|black)(?:\/\d{1,3})?/g;
 
 /** Resolve a bg-* class to RGB, compositing any alpha over `under`. */

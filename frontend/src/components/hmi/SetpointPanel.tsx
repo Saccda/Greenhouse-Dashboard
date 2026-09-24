@@ -142,7 +142,7 @@ export default function SetpointPanel({ farm, canWrite, className }: SetpointPan
             <input
               type="number" min={cfg.min} max={cfg.max} step={cfg.step} value={lowSP}
               onChange={(e) => setLowSP(Number(e.target.value))}
-              className="w-16 text-green-500 text-xs font-mono-num text-right px-2 py-1.5 rounded-lg focus:outline-none border bg-surface-hover border-surface-border"
+              className="w-16 text-[color:var(--ok-ink)] text-xs font-mono-num text-right px-2 py-1.5 rounded-lg focus:outline-none border bg-surface-hover border-surface-border"
             />
             {cfg.unit && <span className="text-xs font-mono-num text-slate-400">{cfg.unit}</span>}
           </div>
@@ -173,7 +173,7 @@ export default function SetpointPanel({ farm, canWrite, className }: SetpointPan
       </div>
 
       {lowSP >= highSP && (
-        <p className="text-xs font-mono text-amber-500">
+        <p className="text-xs font-mono text-[color:var(--warn-ink)]">
           ⚠ Low must be less than high
         </p>
       )}
@@ -186,9 +186,9 @@ export default function SetpointPanel({ farm, canWrite, className }: SetpointPan
           className={clsx(
             "mt-auto w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase transition-all active:scale-[0.98] border",
             spStatus === "sent"
-              ? "bg-green-500/15 text-green-600 border-green-500/30"
+              ? "bg-green-500/15 text-[color:var(--ok-ink)] border-green-500/30"
               : spStatus === "error" || spStatus === "unauthorized"
-              ? "bg-red-500/15 text-red-600 border-red-500/30"
+              ? "bg-red-500/15 text-[color:var(--danger-ink)] border-red-500/30"
               : spStatus === "sending" || lowSP >= highSP
               ? "bg-surface-hover border-surface-border text-slate-400 cursor-not-allowed"
               : "bg-brand-green text-black hover:bg-brand-green/90 border-transparent",
@@ -201,7 +201,7 @@ export default function SetpointPanel({ farm, canWrite, className }: SetpointPan
           :                              "Send to Controller"}
         </button>
       ) : user ? (
-        <p className="mt-auto w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase text-center text-amber-500 bg-amber-500/10 border border-amber-500/30">
+        <p className="mt-auto w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase text-center text-[color:var(--warn-ink)] bg-amber-500/10 border border-amber-500/30">
           Awaiting owner approval
         </p>
       ) : (

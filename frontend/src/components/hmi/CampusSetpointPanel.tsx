@@ -116,7 +116,7 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[10px] uppercase tracking-widest text-slate-500">Low</label>
-                <span className="text-xs font-mono-num text-green-500">
+                <span className="text-xs font-mono-num text-[color:var(--ok-ink)]">
                   {values[zone.lowKey]}{zone.unit}
                 </span>
               </div>
@@ -144,7 +144,7 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
           </div>
 
           {values[zone.lowKey] >= values[zone.highKey] && (
-            <p className="text-[11px] font-mono text-amber-500">⚠ Low must be less than high</p>
+            <p className="text-[11px] font-mono text-[color:var(--warn-ink)]">⚠ Low must be less than high</p>
           )}
         </div>
       ))}
@@ -156,9 +156,9 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
           className={clsx(
             "w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase transition-all active:scale-[0.98] border",
             spStatus === "sent"
-              ? "bg-green-500/15 text-green-600 border-green-500/30"
+              ? "bg-green-500/15 text-[color:var(--ok-ink)] border-green-500/30"
               : spStatus === "error" || spStatus === "unauthorized"
-              ? "bg-red-500/15 text-red-600 border-red-500/30"
+              ? "bg-red-500/15 text-[color:var(--danger-ink)] border-red-500/30"
               : spStatus === "sending" || hasInvalidZone
               ? "bg-surface-hover border-surface-border text-slate-400 cursor-not-allowed"
               : "bg-brand-green text-black hover:bg-brand-green/90 border-transparent",
@@ -171,7 +171,7 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
           :                               "Send to Controller"}
         </button>
       ) : user ? (
-        <p className="w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase text-center text-amber-500 bg-amber-500/10 border border-amber-500/30">
+        <p className="w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase text-center text-[color:var(--warn-ink)] bg-amber-500/10 border border-amber-500/30">
           Awaiting owner approval
         </p>
       ) : (

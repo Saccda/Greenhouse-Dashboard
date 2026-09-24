@@ -90,6 +90,13 @@
      way the bg-brand-green/NN tints are. */
   --ok-ink: #4ade80;
 
+  /* The other two members of the same family. Dark values are the colours
+     already in use, so this changes nothing in dark mode; only the light
+     values move, which is where every one of these was failing. Measured on
+     the card and on /10 and /15 tints of their own hue, worst case 5.00:1. */
+  --info-ink:   #38bdf8;
+  --danger-ink: #f87171;
+
 
   color-scheme: dark;
 }
@@ -146,6 +153,11 @@
   /* Darker green so success text clears 4.5:1 on the pale green surface
      (6.3:1 here, against 2.0:1 for the brand green). */
   --ok-ink: #166534;
+
+  /* Light counterparts, dark enough to read on a white card: 7.56:1 and
+     8.31:1, and 6.73:1 / 6.84:1 on the strongest tint they sit on. */
+  --info-ink:   #075985;
+  --danger-ink: #991b1b;
 
 
   color-scheme: light;

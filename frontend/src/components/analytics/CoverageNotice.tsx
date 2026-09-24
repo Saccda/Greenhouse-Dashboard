@@ -70,7 +70,7 @@ export default function CoverageNotice({ coverage }: { coverage: Coverage }) {
           </p>
 
           {partial && (
-            <p className="text-sm text-amber-500/90 mt-2 leading-relaxed">
+            <p className="text-sm text-[color:var(--warn-ink)] mt-2 leading-relaxed">
               Every percentage and probability on this page is therefore{" "}
               <strong>conditional on the monitored hours</strong>, not the full
               day. Because those hours are the warmest part of the day, a figure

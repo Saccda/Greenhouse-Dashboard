@@ -40,16 +40,16 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const EVENT_STYLE: Record<string, string> = {
-  alert:    "bg-red-500/15 text-red-400 border-red-500/30",
-  reminder: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  alert:    "bg-red-500/15 text-[color:var(--danger-ink)] border-red-500/30",
+  reminder: "bg-amber-500/15 text-[color:var(--warn-ink)] border-amber-500/30",
   resolved: "bg-brand-green/15 text-brand-green border-brand-green/30",
 };
 
 const TYPE_STYLE: Record<string, string> = {
   temperature: "text-orange-400",
   humidity:    "text-blue-400",
-  empty_tank:  "text-red-400",
-  long_spray:  "text-amber-400",
+  empty_tank:  "text-[color:var(--danger-ink)]",
+  long_spray:  "text-[color:var(--warn-ink)]",
 };
 
 function unitFor(type: string) {
@@ -300,7 +300,7 @@ export default function AlertLogPage() {
                     <td className="px-4 py-2.5 font-mono-num text-right">
                       {row.duration_min != null ? (
                         <span
-                          className="text-amber-400"
+                          className="text-[color:var(--warn-ink)]"
                           title={row.gap_minutes
                             ? `Approximate — excludes ${row.gap_minutes.toFixed(0)} min of connectivity gaps`
                             : "Exact duration"}

@@ -65,7 +65,7 @@ function FarmAnnotation({ farm }: { farm: Farm }) {
         </div>
         <span className={clsx(
           "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full mt-0.5 shrink-0",
-          online ? "bg-green-50 text-green-600" : "bg-slate-100 text-slate-400",
+          online ? "bg-green-50 text-[color:var(--ok-ink)]" : "bg-slate-100 text-slate-400",
         )}>
           <span className={clsx(
             "w-1.5 h-1.5 rounded-full",
@@ -82,7 +82,7 @@ function FarmAnnotation({ farm }: { farm: Farm }) {
           </p>
           <p className={clsx(
             "text-xl font-extrabold font-mono-num leading-none",
-            temp != null && temp >= 35 ? "text-red-500" : "text-slate-900",
+            temp != null && temp >= 35 ? "text-[color:var(--danger-ink)]" : "text-slate-900",
           )}>
             {temp != null ? `${temp.toFixed(1)}°` : "—"}
           </p>
@@ -112,8 +112,8 @@ function FarmAnnotation({ farm }: { farm: Farm }) {
                 <span className="text-[11px] text-slate-600 truncate pr-2">{relay.label}</span>
                 <span className={clsx(
                   "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
-                  relay.state === "ON"        ? "bg-green-50 text-green-600"
-                  : relay.state === "UNKNOWN" ? "bg-amber-50 text-amber-500"
+                  relay.state === "ON"        ? "bg-green-50 text-[color:var(--ok-ink)]"
+                  : relay.state === "UNKNOWN" ? "bg-amber-50 text-[color:var(--warn-ink)]"
                   :                             "bg-slate-100 text-slate-500",
                 )}>
                   {relay.state}
@@ -257,8 +257,8 @@ export default function HomePage() {
               "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border",
               isOnline
                 ? isDark
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  : "bg-emerald-50 text-emerald-600 border-emerald-200"
+                  ? "bg-emerald-500/10 text-[color:var(--ok-ink)] border-emerald-500/20"
+                  : "bg-emerald-50 text-[color:var(--ok-ink)] border-emerald-200"
                 : isDark
                   ? "bg-slate-500/10 text-slate-400 border-slate-600/30"
                   : "bg-slate-100 text-slate-500 border-slate-300",

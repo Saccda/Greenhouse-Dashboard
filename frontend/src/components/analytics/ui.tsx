@@ -28,10 +28,10 @@ export type Tone = "neutral" | "good" | "warn" | "bad";
 
 /** Value colour. Neutral matches KPICard's sky accent so the pages agree. */
 const TONE_VALUE: Record<Tone, string> = {
-  neutral: "text-sky-400",
+  neutral: "text-[color:var(--info-ink)]",
   good:    "text-brand-green",
-  warn:    "text-amber-500",
-  bad:     "text-red-400",
+  warn:    "text-[color:var(--warn-ink)]",
+  bad:     "text-[color:var(--danger-ink)]",
 };
 
 /** Left-edge accent, mirroring KPICard's status border. */
@@ -43,10 +43,10 @@ const TONE_ACCENT: Record<Tone, string> = {
 };
 
 const TONE_BADGE: Record<Tone, string> = {
-  neutral: "bg-sky-400/15 text-sky-400 group-hover:bg-white group-hover:text-sky-600",
+  neutral: "bg-sky-400/15 text-[color:var(--info-ink)] group-hover:bg-white group-hover:text-[color:var(--info-ink)]",
   good:    "bg-brand-green/15 text-brand-green group-hover:bg-white group-hover:text-green-700",
-  warn:    "bg-amber-500/15 text-amber-500 group-hover:bg-white group-hover:text-amber-700",
-  bad:     "bg-red-500/15 text-red-400 group-hover:bg-white group-hover:text-red-700",
+  warn:    "bg-amber-500/15 text-[color:var(--warn-ink)] group-hover:bg-white group-hover:text-amber-700",
+  bad:     "bg-red-500/15 text-[color:var(--danger-ink)] group-hover:bg-white group-hover:text-[color:var(--danger-ink)]",
 };
 
 /** Base surface, matching the Dashboard card shell. */
