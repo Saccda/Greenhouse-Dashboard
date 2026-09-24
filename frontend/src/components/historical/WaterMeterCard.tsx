@@ -14,6 +14,13 @@ import type { WaterResponse } from "@/types";
  * the two is how a blocked nozzle or a leak announces itself. One number would
  * hide that.
  *
+ * Which is why the headline figure here is in LITRES even though the meter
+ * counts cubic metres. The estimate is in litres, and two numbers a thousand
+ * times apart cannot be compared at a glance — the comparison is the whole
+ * reason the card sits where it does. The meter's own reading is shown
+ * unconverted beside it, because that is the number on the physical dial and
+ * the one to check the installation against.
+ *
  * Renders nothing at all when the farm has no meter. A farm without one is a
  * normal state, and an empty card that says "no data" for Kampot forever is
  * worse than no card.
@@ -27,9 +34,16 @@ export default function WaterMeterCard({ farm }: { farm: string }) {
 
   const days = data.readings;
   const latest = days[0];
-  const usable = days.filter((d) => d.consumption != null);
-  const total = usable.reduce((sum, d) => sum + (d.consumption ?? 0), 0);
+  const usable = days.filter((d) => d.consumption_liters != null);
+  const totalLiters = usable.reduce((sum, d) => sum + (d.consumption_liters ?? 0), 0);
   const resets = days.filter((d) => d.meter_reset).length;
+
+  // Litres below a thousand, cubic metres above — the same choice anyone makes
+  // saying "eight hundred litres" but "twelve cubic metres".
+  const volume = (liters: number) =>
+    liters >= 1000
+      ? `${Number((liters / data.liters_per_unit).toFixed(2))} ${data.unit_label}`
+      : `${Number(liters.toFixed(0))} L`;
 
   return (
     <section className="bg-surface-card border border-surface-border rounded-xl p-4">
@@ -38,7 +52,7 @@ export default function WaterMeterCard({ farm }: { farm: string }) {
         Water Meter — measured
         {!data.unit_confirmed && (
           <span
-            title={`Readings are stored exactly as the meter reports them. The unit is labelled ${data.unit} but has not been confirmed against the hardware, so treat the label — not the numbers — as provisional.`}
+            title={`Readings are stored exactly as the meter reports them, but the unit has not been confirmed against the hardware. Treat the label — not the numbers — as provisional.`}
             className="inline-flex items-center gap-1 normal-case tracking-normal font-medium text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-[color:var(--warn-ink)]"
           >
             <HelpCircle size={10} /> unit unconfirmed
@@ -48,12 +62,16 @@ export default function WaterMeterCard({ farm }: { farm: string }) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Tile label="Latest day" value={
-          latest.consumption != null ? `${latest.consumption} ${data.unit}` : "—"
+          latest.consumption_liters != null ? volume(latest.consumption_liters) : "—"
         } />
         <Tile label={`Total, ${usable.length} day${usable.length === 1 ? "" : "s"}`}
-              value={`${Number(total.toFixed(1))} ${data.unit}`} />
+              value={volume(totalLiters)} />
+        {/* Unconverted: this is what the dial on the meter reads, so it is the
+            number to check the installation against. */}
         <Tile label="Meter reading" value={
-          latest.last_totalizer != null ? String(latest.last_totalizer) : "—"
+          latest.last_totalizer != null
+            ? `${latest.last_totalizer} ${data.unit_label}`
+            : "—"
         } />
         <Tile label="Last report" value={
           new Date(latest.timestamp).toLocaleDateString(undefined,

@@ -139,16 +139,21 @@ export interface WaterReading {
   start_totalizer:  number | null;
   last_totalizer:   number | null;
   /** null when the meter reset that day — the figure would measure the reset. */
-  consumption:      number | null;
-  meter_reset:      boolean;
+  consumption:        number | null;
+  /** The same figure in litres, for comparison with the runtime estimate. */
+  consumption_liters: number | null;
+  meter_reset:        boolean;
 }
 
 export interface WaterResponse {
   farm:           string;
-  /** Label only. See unit_confirmed. */
-  unit:           string;
-  /** False until someone confirms what the totalizer actually counts in. */
-  unit_confirmed: boolean;
+  /** The meter's own unit, e.g. "m3". */
+  unit:            string;
+  /** Display form of the same, e.g. "m³". */
+  unit_label:      string;
+  liters_per_unit: number;
+  /** Whether the unit was confirmed against the hardware, or is an assumption. */
+  unit_confirmed:  boolean;
   readings:       WaterReading[];
   /** Why readings is empty, when it is. */
   reason:         string | null;

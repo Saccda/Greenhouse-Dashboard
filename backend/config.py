@@ -75,16 +75,20 @@ CAMPUS_WATER_MQTT_TOPIC = os.getenv(
     "CAMPUS_WATER_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/water_data"
 )
 
-# UNCONFIRMED. The totalizer's unit is not in the payload and has not been
-# stated by the firmware. Litres is the assumption because it is what small
-# inline flow meters normally count in, and because the observed values are
-# plausible as litres for a test system that runs a few minutes a day.
+# Confirmed with the farm team: the totalizer counts CUBIC METRES. So the
+# example payload {"Start_totalizer": 15, "Last_totalizer": 17,
+# "Day_consumption": 2} is 2 m3 in a day, i.e. 2,000 litres.
 #
-# It is deliberately a setting rather than a hardcoded string: if it turns out
-# to be m3 or gallons, every stored number stays correct and only the label
-# changes. The API returns the raw totalizer readings alongside the daily
-# figure precisely so a wrong unit is visible rather than silently wrong.
-CAMPUS_WATER_UNIT = os.getenv("CAMPUS_WATER_UNIT", "L")
+# The litres factor is not cosmetic. The "estimated water use" figure on the
+# Historical page is in LITRES, derived from spray runtime and nozzle flow
+# rate, and the whole point of showing the measured figure beside it is that a
+# gap between them means a blocked nozzle or a leak. Two numbers a thousand
+# times apart would make that comparison useless, so the API converts and
+# reports both: the meter's own reading for checking against the physical
+# dial, and litres for comparing with the estimate.
+CAMPUS_WATER_UNIT = os.getenv("CAMPUS_WATER_UNIT", "m3")
+CAMPUS_WATER_UNIT_LABEL = os.getenv("CAMPUS_WATER_UNIT_LABEL", "m³")
+CAMPUS_WATER_LITERS_PER_UNIT = float(os.getenv("CAMPUS_WATER_LITERS_PER_UNIT", "1000"))
 
 # Command topic the controller subscribes to for direct manual relay control —
 # publish {"CH1": 1} to turn CH1 on, etc. (see routes/campus.py). Distinct from

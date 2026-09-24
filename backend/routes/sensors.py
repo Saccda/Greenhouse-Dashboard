@@ -214,11 +214,18 @@ def water(farm: str = Query(...), user: dict = Depends(auth_service.require_auth
             # negative or a spike that never happened.
             reset = start is not None and last is not None and not pd.isna(start)                 and not pd.isna(last) and float(last) < float(start)
 
+            consumption = None if reset or day is None or pd.isna(day) else float(day)
             readings.append({
                 "timestamp":       row["_time"].isoformat(),
                 "start_totalizer": None if start is None or pd.isna(start) else float(start),
                 "last_totalizer":  None if last  is None or pd.isna(last)  else float(last),
-                "consumption":     None if reset or day is None or pd.isna(day) else float(day),
+                # The meter's own number, in the meter's own unit.
+                "consumption":     consumption,
+                # The same figure in litres, so it can be compared directly with
+                # estimated_water_liters on /spray-stats. Converted here rather
+                # than in the UI so there is one place the factor lives.
+                "consumption_liters": None if consumption is None else
+                                      consumption * config.CAMPUS_WATER_LITERS_PER_UNIT,
                 "meter_reset":     bool(reset),
             })
         readings.reverse()
@@ -226,10 +233,13 @@ def water(farm: str = Query(...), user: dict = Depends(auth_service.require_auth
     return {
         "farm": farm,
         "unit": config.CAMPUS_WATER_UNIT,
-        # Stated plainly rather than buried: the meter does not publish its unit
-        # and nobody has confirmed it, so the label is an assumption. The raw
-        # totalizer readings are returned alongside so a wrong one is visible.
-        "unit_confirmed": False,
+        "unit_label": config.CAMPUS_WATER_UNIT_LABEL,
+        "liters_per_unit": config.CAMPUS_WATER_LITERS_PER_UNIT,
+        # Confirmed with the farm team: cubic metres. Kept as a field rather
+        # than dropped, because a second site with a different meter would need
+        # it again, and a reader should not have to guess whether the label is
+        # a fact or a placeholder.
+        "unit_confirmed": True,
         "readings": readings,
         "reason": None if readings else (
             "No water meter has published for this farm yet"
