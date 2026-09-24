@@ -10,14 +10,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Dark industrial palette — unchanged (light mode handled via CSS overrides)
+        // Driven by CSS variables in globals.css, NOT hex. <alpha-value> is what
+        // lets bg-surface-card/85 and friends work: Tailwind substitutes the
+        // opacity into the rgb() itself, so every variant a class can take
+        // resolves per theme automatically. Baking hex in here is what forced
+        // the hand-written `.light .bg-surface-*` overrides, which could only
+        // ever cover the variants somebody remembered to write.
         surface: {
-          DEFAULT: "#001040",
-          base:    "#001040",
-          card:    "#002068",
-          hover:   "#002d88",
-          border:  "#0d3a8a",
-          bright:  "#1a52b0",
+          DEFAULT: "rgb(var(--surface-base) / <alpha-value>)",
+          base:    "rgb(var(--surface-base) / <alpha-value>)",
+          card:    "rgb(var(--surface-card) / <alpha-value>)",
+          hover:   "rgb(var(--surface-hover) / <alpha-value>)",
+          border:  "rgb(var(--surface-border) / <alpha-value>)",
+          bright:  "rgb(var(--surface-bright) / <alpha-value>)",
         },
         brand: {
           green: "#22c55e",
@@ -31,6 +36,19 @@ const config: Config = {
           danger:  "#f87171",
           offline: "#6b7280",
           info:    "#60a5fa",
+        },
+      },
+      // Borders take their own scale. In dark mode an edge matches its fill, but
+      // on a near-white card it has to stay darker than the surface to be seen
+      // at all — border-surface-card is #e0eee2 against a #ffffff fill.
+      borderColor: {
+        surface: {
+          DEFAULT: "rgb(var(--edge-base) / <alpha-value>)",
+          base:    "rgb(var(--edge-base) / <alpha-value>)",
+          card:    "rgb(var(--edge-card) / <alpha-value>)",
+          hover:   "rgb(var(--edge-hover) / <alpha-value>)",
+          border:  "rgb(var(--edge-border) / <alpha-value>)",
+          bright:  "rgb(var(--edge-bright) / <alpha-value>)",
         },
       },
       fontFamily: {

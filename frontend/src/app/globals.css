@@ -17,6 +17,29 @@
   --body-bg:  #001040;
   --body-fg:  #d0e4ff;
 
+  /* Surfaces, as RGB triples so Tailwind can apply <alpha-value> to them.
+     These MUST be variables rather than hex baked into the generated utility
+     classes. Tailwind emits a separate class per variant — bg-surface-hover,
+     hover:bg-surface-hover, bg-surface-card/85 are three different selectors —
+     and a `.light .bg-surface-hover` override reaches exactly one of them. The
+     app has 22 surface variants in use; hand-writing an override per variant
+     leaks by construction, and did twice: the viewer's pills rendered dark in
+     light mode, then a hovered table row turned navy under near-black text. */
+  --surface-base:   0 16 64;
+  --surface-card:   0 32 104;
+  --surface-hover:  0 45 136;
+  --surface-border: 13 58 138;
+  --surface-bright: 26 82 176;
+
+  /* Borders track the fill in dark mode but not in light, where an edge has to
+     stay visible against a near-white card. Kept as their own tokens and wired
+     to Tailwind's borderColor scale rather than forced to match. */
+  --edge-base:   0 16 64;
+  --edge-card:   0 32 104;
+  --edge-hover:  0 45 136;
+  --edge-border: 13 58 138;
+  --edge-bright: 26 82 176;
+
   /* Landing page + sidebar context */
   --navy-bg:     #000a2e;
   --navy-border: rgba(80,140,255,0.15);
@@ -65,6 +88,20 @@
 .light {
   --body-bg:  #f2f7f3;
   --body-fg:  #162419;
+
+  /* Light counterparts. Values carried over unchanged from the .light
+     override block these replace. */
+  --surface-base:   242 247 243;
+  --surface-card:   255 255 255;
+  --surface-hover:  232 243 234;
+  --surface-border: 204 224 208;
+  --surface-bright: 179 208 184;
+
+  --edge-base:   200 220 203;
+  --edge-card:   224 238 226;
+  --edge-hover:  232 243 234;
+  --edge-border: 200 220 203;
+  --edge-bright: 179 208 184;
 
   /* Sidebar + landing page — light counterpart */
   --navy-bg:     #f1f5f9;
@@ -148,35 +185,19 @@ html, body {
 .light .text-slate-600 { color: rgb(var(--t600)); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LIGHT MODE — SURFACE BACKGROUND OVERRIDES
-   Tailwind hard-codes dark hex into the generated utility classes.
-   We override every surface-* bg and border class here.
+   LIGHT MODE — SURFACE HANDLING
+   Surfaces are driven by the CSS variables at the top of this file, so the
+   light theme needs almost nothing here. See the note below.
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Backgrounds */
-.light .bg-surface,
-.light .bg-surface-base    { background-color: #f2f7f3; }
-.light .bg-surface-card    { background-color: #ffffff; }
-.light .bg-surface-hover   { background-color: #e8f3ea; }
-.light .bg-surface-border  { background-color: #cce0d0; }
-.light .bg-surface-bright  { background-color: #b3d0b8; }
+/* The surface rules that used to live here are gone: every bg-surface-* and
+   border-surface-* utility now resolves through the CSS variables above, in
+   every variant, without a rule per class.
 
-/* Borders */
-.light .border-surface-border { border-color: #c8dccb; }
-.light .border-surface-bright { border-color: #b3d0b8; }
-.light .border-surface-card   { border-color: #e0eee2; }
-.light .border-surface,
-.light .border-surface-base   { border-color: #c8dccb; }
-
-/* The frosted overlay in Control page */
-.light .bg-surface-base\/60 { background-color: rgba(242, 247, 243, 0.80); }
-
-/* The floating pills over the 3D viewer. Every opacity variant needs its own
-   entry: the rules above only cover the bare bg-surface-* classes, because
-   Tailwind generates a SEPARATE class for each opacity step and none of them
-   inherit the override. Without this, .light remapped the text to near-black
-   while the pill kept Tailwind's dark #002068, so the labels vanished. */
-.light .bg-surface-card\/85 { background-color: rgba(255, 255, 255, 0.85); }
+   One exception remains, and it is a real one. A variable cannot express a
+   different ALPHA per theme, only a different colour, and the Control page's
+   frosted overlay genuinely needs more opacity on the pale surface to read. */
+.light .bg-surface-base\/60 { background-color: rgb(var(--surface-base) / 0.80); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LIGHT MODE — COMPONENT-SPECIFIC OVERRIDES
