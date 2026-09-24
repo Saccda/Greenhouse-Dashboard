@@ -20,6 +20,10 @@ import { join, relative } from "node:path";
 import twColors from "tailwindcss/colors.js";
 
 const SRC = "src";
+// The dark theme is built but switched off (see hooks/useTheme.ts), so by
+// default this measures only what actually ships. --both brings dark back into
+// the report, which is what to run before re-enabling the toggle.
+const THEMES = process.argv.includes("--both") ? ["dark", "light"] : ["light"];
 const AA_NORMAL = 4.5;
 const AA_LARGE = 3.0;
 
@@ -133,7 +137,7 @@ function resolveBg(cls, theme, under) {
 const findings = new Map();   // key -> {cls, bgLabel, theme, ratio, files:Set, assumed}
 function record(cls, bgLabel, bgOf, files, assumed) {
   let worst = { ratio: Infinity };
-  for (const theme of ["dark", "light"]) {
+  for (const theme of THEMES) {
     const [base, alphaStr] = cls.split("/");
     const alpha = alphaStr ? Number(alphaStr) / 100 : 1;
     const bg = bgOf(theme);
@@ -181,7 +185,7 @@ const failing = rows.filter((r) => r.ratio < AA_NORMAL);
 const print = showAll ? rows : failing;
 
 console.log(`${rows.length} text-on-background pairs across ${walk(SRC).length} files.`);
-console.log(`Ratio is the WORSE of the two themes. * = background assumed, not declared beside the text.\n`);
+console.log(`Themes measured: ${THEMES.join(", ")}. * = background assumed, not declared beside the text.\n`);
 console.log("  ratio  bar   text                        on background            theme  used in");
 for (const r of print) {
   const bar = r.ratio >= AA_NORMAL ? "AA " : r.ratio >= AA_LARGE ? "lg " : "FAIL";

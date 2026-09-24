@@ -30,9 +30,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="light">
       <head>
+        {/* Pinned to light while the dark option is off. This deliberately
+            ignores any stored gh_theme: the preference stays in localStorage
+            so it can be honoured again later, but reading it now would strand
+            anyone who had chosen dark in a dark interface with no toggle left
+            to escape it. The script still runs so theme-color tracks it. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('gh_theme')||'light';document.documentElement.className=t;var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='dark'?'#001040':'#f2f7f3');})()`,
+            __html: `(function(){var t='light';document.documentElement.className=t;var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='dark'?'#001040':'#f2f7f3');})()`,
           }}
         />
       </head>

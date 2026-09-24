@@ -13,8 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Sun,
-  Moon,
   LogIn,
   LogOut,
   Info,
@@ -23,7 +21,6 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import FullscreenToggle from "./FullscreenToggle";
-import { useTheme } from "@/hooks/useTheme";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
@@ -64,7 +61,6 @@ export default function Sidebar() {
   const pathname  = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen]   = useState(false);
-  const { toggle, isDark } = useTheme();
   const { settings } = useSettings();
   const { user, logout } = useAuth();
   const { farm } = useFarmSelection();
@@ -136,24 +132,9 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* ── Full screen + theme ──────────────────────────────── */}
+      {/* ── Full screen ───────────────────────────── */}
       <div className="pb-3 px-3">
         <FullscreenToggle collapsed={collapsed} />
-        <button
-          onClick={toggle}
-          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          title={isDark ? "Light Mode" : "Dark Mode"}
-          className={clsx(
-            "flex items-center w-full rounded-xl font-medium transition-all duration-150",
-            collapsed ? "justify-center p-3" : "gap-3 px-4 py-2.5",
-            "text-slate-400 hover:bg-surface-hover hover:text-slate-100",
-          )}
-        >
-          {isDark
-            ? <Sun  size={18} className="shrink-0 text-amber-500" />
-            : <Moon size={18} className="shrink-0 text-indigo-500" />}
-          {!collapsed && <span className="text-[13px]">{isDark ? "Light Mode" : "Dark Mode"}</span>}
-        </button>
       </div>
 
       {/* ── Collapse toggle ──────────────────────────────────── */}
