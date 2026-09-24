@@ -68,6 +68,24 @@ MQTT_USERNAME     = os.getenv("MQTT_USERNAME", "")
 MQTT_PASSWORD     = os.getenv("MQTT_PASSWORD", "")
 CAMPUS_MQTT_TOPIC = os.getenv("CAMPUS_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/infor/status")
 
+# The campus flow meter publishes on its own topic, on its own schedule (daily
+# totals, not the per-reading cadence of the status topic):
+#     {"Start_totalizer": 15, "Last_totalizer": 17, "Day_consumption": 2}
+CAMPUS_WATER_MQTT_TOPIC = os.getenv(
+    "CAMPUS_WATER_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/water_data"
+)
+
+# UNCONFIRMED. The totalizer's unit is not in the payload and has not been
+# stated by the firmware. Litres is the assumption because it is what small
+# inline flow meters normally count in, and because the observed values are
+# plausible as litres for a test system that runs a few minutes a day.
+#
+# It is deliberately a setting rather than a hardcoded string: if it turns out
+# to be m3 or gallons, every stored number stays correct and only the label
+# changes. The API returns the raw totalizer readings alongside the daily
+# figure precisely so a wrong unit is visible rather than silently wrong.
+CAMPUS_WATER_UNIT = os.getenv("CAMPUS_WATER_UNIT", "L")
+
 # Command topic the controller subscribes to for direct manual relay control —
 # publish {"CH1": 1} to turn CH1 on, etc. (see routes/campus.py). Distinct from
 # Kampot/Kep's low/high threshold model (routes/setpoint.py, proxied through

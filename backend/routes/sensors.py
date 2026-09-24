@@ -2,6 +2,8 @@
 /api/sensors  — live readings, history, spray stats, health
 """
 from datetime import datetime
+
+import pandas as pd
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 import config
@@ -178,3 +180,58 @@ def sensor_health() -> HealthResponse:
         influxdb="connected" if ok else "unreachable",
         timestamp=datetime.now(config.TIMEZONE).isoformat(),
     )
+
+
+@router.get("/water")
+def water(farm: str = Query(...), user: dict = Depends(auth_service.require_auth)) -> dict:
+    """
+    Measured water use from the flow meter, newest day first.
+
+    This is MEASURED, unlike the estimated_water_liters on /spray-stats, which
+    multiplies spray runtime by a nozzle flow rate. Both are reported where both
+    exist: an estimate that disagrees with the meter is worth seeing, because it
+    is how a blocked nozzle or a leak shows up.
+
+    Only campus has a meter. Other farms return readings=[] and a reason,
+    rather than a 404 — a farm with no meter is a normal state, not an error.
+    """
+    auth_service.require_farm_access(user, farm)
+    if farm not in config.FARMS:
+        raise HTTPException(status_code=404, detail=f"Unknown farm '{farm}'")
+
+    measurement = config.FARMS[farm]["measurement"]
+    df = db.get_water_history(measurement)
+
+    readings = []
+    if not df.empty:
+        for _, row in df.iterrows():
+            start = row.get("water_start_totalizer")
+            last  = row.get("water_last_totalizer")
+            day   = row.get("water_day_consumption")
+
+            # A reset makes the day's figure meaningless — it measures the
+            # reset, not the water. Report it as such rather than charting a
+            # negative or a spike that never happened.
+            reset = start is not None and last is not None and not pd.isna(start)                 and not pd.isna(last) and float(last) < float(start)
+
+            readings.append({
+                "timestamp":       row["_time"].isoformat(),
+                "start_totalizer": None if start is None or pd.isna(start) else float(start),
+                "last_totalizer":  None if last  is None or pd.isna(last)  else float(last),
+                "consumption":     None if reset or day is None or pd.isna(day) else float(day),
+                "meter_reset":     bool(reset),
+            })
+        readings.reverse()
+
+    return {
+        "farm": farm,
+        "unit": config.CAMPUS_WATER_UNIT,
+        # Stated plainly rather than buried: the meter does not publish its unit
+        # and nobody has confirmed it, so the label is an assumption. The raw
+        # totalizer readings are returned alongside so a wrong one is visible.
+        "unit_confirmed": False,
+        "readings": readings,
+        "reason": None if readings else (
+            "No water meter has published for this farm yet"
+        ),
+    }

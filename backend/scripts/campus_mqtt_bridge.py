@@ -11,9 +11,17 @@ affect the GreenhouseBackend API serving live Kampot/Kep dashboards.
     cd backend
     python scripts/campus_mqtt_bridge.py
 
-Expects one MQTT message per campus topic publish, shaped like:
+Subscribes to two topics.
+
+Status (config.CAMPUS_MQTT_TOPIC), one message per publish:
     {"ID": "Device01", "CH1": 1, "CH2": 0, ..., "CH8": 0,
      "Temperature": 35.2, "Humidity": 60.5}
+
+Water (config.CAMPUS_WATER_MQTT_TOPIC), roughly one a day from the flow meter:
+    {"Start_totalizer": 15, "Last_totalizer": 17, "Day_consumption": 2}
+
+They are routed by TOPIC, not by guessing from the payload's keys, so a
+firmware change that adds a field cannot misfile a message.
 
 Writes one InfluxDB point per message to config.FARMS["campus"]["measurement"]:
   - "ID" becomes a tag (indexed identifier), not a field — it isn't a
@@ -65,6 +73,21 @@ CHANNEL_FIELDS  = list(config.FARM_CHANNELS["campus"].keys())  # CH1..CH8, liter
 # lowercase convention Kampot/Kep already use; channels keep their literal name.
 RENAMED_FIELDS  = [("Temperature", "temperature"), ("Humidity", "humidity")]
 LITERAL_FIELDS  = [(k, k) for k in CHANNEL_FIELDS]
+
+# The flow meter's own topic. Daily totals, not per-reading values, so these
+# arrive far less often than the status topic and are stored as their own
+# fields rather than merged into a reading.
+#
+# All three are kept, not just the daily figure. Day_consumption is what the
+# device computed; the two totalizer readings are what it computed it FROM.
+# Storing only the answer would make a meter reset or a firmware change
+# indistinguishable from a day of heavy use — with both endpoints recorded,
+# the arithmetic can be checked after the fact.
+WATER_FIELDS = [
+    ("Start_totalizer", "water_start_totalizer"),
+    ("Last_totalizer",  "water_last_totalizer"),
+    ("Day_consumption", "water_day_consumption"),
+]
 
 
 # ── Postgres archive ────────────────────────────────────────────────────────
@@ -169,8 +192,15 @@ def _ensure_schema(conn, table: str) -> None:
             )
 
 
-def _write_postgres(payload: dict, ts: datetime) -> None:
-    """Archive one message. Raises on failure; the caller swallows it."""
+def _write_postgres(payload: dict, ts: datetime, spec: list[tuple[str, str]] | None = None) -> None:
+    """
+    Archive one message. Raises on failure; the caller swallows it.
+
+    `spec` names the fields to take. The archive needs NO schema change for the
+    water topic: the table is long format, (time, farm, device_id, field,
+    value), so a new field is a new row rather than a new column. That was the
+    second reason given for choosing long format, and this is it being cashed in.
+    """
     global _pg_conn
     if _pg_disabled or not config.POSTGRES_WRITE_URL:
         return
@@ -179,7 +209,7 @@ def _write_postgres(payload: dict, ts: datetime) -> None:
     device_id = str(device_id) if device_id is not None else None
 
     rows = []
-    for payload_key, field in RENAMED_FIELDS + LITERAL_FIELDS:
+    for payload_key, field in (spec if spec is not None else RENAMED_FIELDS + LITERAL_FIELDS):
         value = payload.get(payload_key)
         if value is not None:
             # double precision throughout, channels included. Postgres does not
@@ -212,7 +242,31 @@ def _write_postgres(payload: dict, ts: datetime) -> None:
         raise
 
 
-def _write_point(payload: dict) -> None:
+def _write_point(payload: dict, spec: list[tuple[str, str]] | None = None) -> None:
+    """
+    Write one point. `spec` names the float fields to take from the payload;
+    None means the status topic's own fields.
+    """
+    if spec is not None:
+        point = Point(MEASUREMENT)
+        wrote = False
+        for payload_key, influx_field in spec:
+            value = payload.get(payload_key)
+            if value is not None:
+                # float for the same reason as below: InfluxDB locks a field's
+                # type on first write, and a totalizer that happens to read a
+                # whole number would otherwise lock these to integer and reject
+                # every fractional reading afterwards.
+                point = point.field(influx_field, float(value))
+                wrote = True
+        if not wrote:
+            print(f"[campus-mqtt-bridge] water payload had no known fields, skipped: {payload}")
+            return
+        with InfluxDBClient(url=config.INFLUXDB_URL, token=config.INFLUXDB_TOKEN, org=config.INFLUXDB_ORG) as client:
+            client.write_api(write_options=SYNCHRONOUS).write(bucket=config.INFLUXDB_BUCKET, record=point)
+        print(f"[campus-mqtt-bridge] wrote water point ({MEASUREMENT}): {payload}")
+        return
+
     point = Point(MEASUREMENT)
 
     device_id = payload.get("ID")
@@ -257,15 +311,57 @@ def _on_connect(client: mqtt.Client, userdata, flags, reason_code, properties=No
         # subscribe is required again even with clean_session=False.
         print(
             f"[campus-mqtt-bridge] connected to {config.MQTT_BROKER_HOST} "
-            f"(session_present={flags.session_present}), subscribing to {config.CAMPUS_MQTT_TOPIC}"
+            f"(session_present={flags.session_present}), subscribing to "
+            f"{config.CAMPUS_MQTT_TOPIC} and {config.CAMPUS_WATER_MQTT_TOPIC}"
         )
-        client.subscribe(config.CAMPUS_MQTT_TOPIC, qos=1)
+        # Both at QoS 1 on the same persistent session. The water topic matters
+        # more for this than the status one: it publishes roughly once a day, so
+        # a missed message is a missing DAY, not a missing sample among many.
+        client.subscribe([(config.CAMPUS_MQTT_TOPIC, 1),
+                          (config.CAMPUS_WATER_MQTT_TOPIC, 1)])
     else:
         print(f"[campus-mqtt-bridge] connect failed: {reason_code}")
 
 
 def _on_disconnect(client: mqtt.Client, userdata, flags, reason_code, properties=None) -> None:
     print(f"[campus-mqtt-bridge] disconnected: {reason_code} — paho will auto-reconnect")
+
+
+def _check_water_arithmetic(payload: dict) -> None:
+    """
+    Warn when the daily figure does not match the two readings it came from.
+
+    Not a rejection. The device is the source of truth and its number is stored
+    either way — but a mismatch is worth seeing in the log, because it means one
+    of three things, and they look identical in a chart:
+
+      Last < Start       the totalizer wrapped or was reset, so the day's figure
+                         is measuring the reset, not the water
+      difference off     the daily counter and the totalizers are not being read
+                         at the same moment, or one is stale
+      agreement          nothing to say
+
+    Silence here would let a meter swap show up as a record-breaking day.
+    """
+    start = payload.get("Start_totalizer")
+    last = payload.get("Last_totalizer")
+    day = payload.get("Day_consumption")
+    if start is None or last is None or day is None:
+        return
+    try:
+        start, last, day = float(start), float(last), float(day)
+    except (TypeError, ValueError):
+        return
+    if last < start:
+        print(f"[campus-mqtt-bridge] WARNING water totalizer went BACKWARDS "
+              f"({start} -> {last}): meter reset or replaced. Day_consumption="
+              f"{day} describes the reset, not usage.")
+        return
+    # A tolerance rather than equality: the two are read at slightly different
+    # moments, so a trickle between the reads is expected and meaningless.
+    if abs((last - start) - day) > 0.5:
+        print(f"[campus-mqtt-bridge] WARNING water arithmetic disagrees: "
+              f"{last} - {start} = {last - start}, but Day_consumption={day}")
 
 
 def _on_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage) -> None:
@@ -275,15 +371,22 @@ def _on_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage) -> None:
         print(f"[campus-mqtt-bridge] bad payload on {msg.topic}: {e}")
         return
 
+    # Route on the topic, not on the payload's shape. Guessing from the keys
+    # would misfile a message the moment the firmware adds a field.
+    is_water = msg.topic == config.CAMPUS_WATER_MQTT_TOPIC
+    spec = WATER_FIELDS if is_water else None
+    if is_water:
+        _check_water_arithmetic(payload)
+
     # InfluxDB first: the live dashboard reads from it. The archive is
     # secondary and is never allowed to interfere with the write above.
     try:
-        _write_point(payload)
+        _write_point(payload, spec)
     except Exception as e:
         print(f"[campus-mqtt-bridge] InfluxDB write failed: {e}")
 
     try:
-        _write_postgres(payload, datetime.now(config.TIMEZONE))
+        _write_postgres(payload, datetime.now(config.TIMEZONE), spec)
     except Exception as e:
         print(f"[campus-mqtt-bridge] Postgres archive write failed (live feed "
               f"unaffected): {e}")

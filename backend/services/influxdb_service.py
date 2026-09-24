@@ -312,3 +312,34 @@ def get_alerts(latest: dict, temp_warn: float, hum_warn: float) -> list[dict]:
         })
 
     return alerts
+
+
+# ── Water meter ─────────────────────────────────────────────────────────────
+
+WATER_FIELDS = ["water_start_totalizer", "water_last_totalizer", "water_day_consumption"]
+
+
+def get_water_history(measurement: str, days: int = 30) -> pd.DataFrame:
+    """
+    Daily water-meter rows for a measurement, newest last.
+
+    A longer range than the sensor queries use on purpose. The flow meter
+    publishes about once a day, so -6h would usually return nothing at all and
+    make a working meter look broken.
+
+    Returns a DataFrame with _time plus whichever of WATER_FIELDS are present,
+    or an empty frame when the meter has never published.
+    """
+    flux = f'''
+from(bucket: "{config.INFLUXDB_BUCKET}")
+  |> range(start: -{int(days)}d)
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => {_field_filter(WATER_FIELDS)})
+  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> sort(columns: ["_time"])
+'''
+    try:
+        return _run_query(flux)
+    except Exception as e:
+        print(f"[InfluxDB] get_water_history failed: {e}")
+        return pd.DataFrame()

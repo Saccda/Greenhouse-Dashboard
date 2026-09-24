@@ -132,3 +132,24 @@ export const TIME_RANGE_OPTIONS: TimeRangeOption[] = [
   { label: "7 Days",   value: "-7d",  defaultAgg: "1h"  },
   { label: "30 Days",  value: "-30d", defaultAgg: "1d"  },
 ];
+
+/** One day as reported by the flow meter. */
+export interface WaterReading {
+  timestamp:        string;
+  start_totalizer:  number | null;
+  last_totalizer:   number | null;
+  /** null when the meter reset that day — the figure would measure the reset. */
+  consumption:      number | null;
+  meter_reset:      boolean;
+}
+
+export interface WaterResponse {
+  farm:           string;
+  /** Label only. See unit_confirmed. */
+  unit:           string;
+  /** False until someone confirms what the totalizer actually counts in. */
+  unit_confirmed: boolean;
+  readings:       WaterReading[];
+  /** Why readings is empty, when it is. */
+  reason:         string | null;
+}

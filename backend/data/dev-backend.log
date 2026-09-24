@@ -1,0 +1,45 @@
+INFO:     Will watch for changes in these directories: ['D:\\Greenhouse_Dashboard\\backend']
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+INFO:     Started reloader process [29376] using WatchFiles
+INFO:     Started server process [20436]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[AlertLog] DB ready at D:\Greenhouse_Dashboard\backend\data\alerts.db
+[Scheduler] Alert checker started — running every 5 min
+INFO:     127.0.0.1:56730 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52575 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52575 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53340 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52575 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64312 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59755 - "GET /api/notifications/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64312 - "GET /api/farms/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59755 - "GET /api/farms/ HTTP/1.1" 200 OK
+[AlertChecker] Running at 23:06:26
+INFO:     127.0.0.1:51272 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56007 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56007 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56689 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56007 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56007 - "GET /api/sensors/latest?farm=kampot&temp_warn=30&hum_warn=70 HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:61092 - "GET /api/sensors/spray-stats?farm=kampot HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:58939 - "GET /api/sensors/history?farm=kampot&range=-24h&agg=15m HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:61092 - "GET /api/sensors/latest?farm=kampot&temp_warn=30&hum_warn=70 HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:56007 - "GET /api/sensors/history?farm=kampot&range=-24h&agg=15m HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:58939 - "GET /api/farms/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61092 - "GET /api/sensors/spray-stats?farm=kampot HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:56007 - "GET /api/farms/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56007 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61092 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61092 - "GET /api/setpoint?farm=kampot HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:56007 - "GET /api/sensors/latest?farm=kampot HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:58939 - "GET /api/farms/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /api/farms/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51552 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51552 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /api/sensors/latest?farm=kampot HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:51552 - "GET /api/notifications/log?days=1&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51552 - "GET /api/farms/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51552 - "GET /api/farms/ HTTP/1.1" 200 OK

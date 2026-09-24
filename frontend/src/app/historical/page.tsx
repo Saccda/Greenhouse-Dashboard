@@ -6,6 +6,7 @@ import {
   CalendarDays, CloudDrizzle, History,
 } from "lucide-react";
 
+import WaterMeterCard from "@/components/historical/WaterMeterCard";
 import PageHeader from "@/components/ui/PageHeader";
 import { swrFetcher } from "@/lib/api";
 import Header from "@/components/layout/Header";
@@ -177,6 +178,11 @@ export default function HistoricalPage() {
             emptyText="No spray events in this date range"
           />
         </section>
+
+        {/* Measured water, where a meter exists. Placed directly under the
+            spray card so the meter's figure sits beside the estimate derived
+            from runtime — the two disagreeing is the useful signal. */}
+        <WaterMeterCard farm={farm} />
 
         {/* Readings table */}
         <section className="bg-surface-card border border-surface-border rounded-xl p-4">
