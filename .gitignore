@@ -44,3 +44,6 @@ backend/models/
 # every deploy. Only the optimised model in public/models/ is committed.
 frontend/public/*.glb
 !frontend/public/models/*.glb
+
+# Local dev server log — noise, and it can contain request details
+backend/data/*.log
