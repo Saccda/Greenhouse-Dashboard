@@ -83,7 +83,7 @@ export default function Sidebar() {
     <aside
       className={clsx(
         "relative flex flex-col shrink-0 min-h-screen",
-        "bg-white border-r border-gray-100",
+        "bg-surface-card border-r border-surface-border",
         "transition-all duration-300 ease-in-out",
         collapsed ? "w-[68px]" : "w-56",
       )}
@@ -94,7 +94,7 @@ export default function Sidebar() {
         href="/"
         aria-label="Go to home"
         className={clsx(
-          "group flex items-center justify-center border-b border-gray-100",
+          "group flex items-center justify-center border-b border-surface-border",
           collapsed ? "py-4" : "py-5",
         )}
       >
@@ -125,8 +125,8 @@ export default function Sidebar() {
                 "flex items-center rounded-xl transition-all duration-150",
                 collapsed ? "justify-center p-3" : "gap-3 px-4 py-2.5",
                 active
-                  ? "bg-sky-600 text-white font-semibold shadow-md shadow-sky-200"
-                  : "text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-800",
+                  ? "bg-sky-600 text-white font-semibold shadow-md shadow-sky-500/20"
+                  : "text-slate-400 font-medium hover:bg-surface-hover hover:text-slate-100",
               )}
             >
               <Icon size={20} className="shrink-0" />
@@ -146,7 +146,7 @@ export default function Sidebar() {
           className={clsx(
             "flex items-center w-full rounded-xl font-medium transition-all duration-150",
             collapsed ? "justify-center p-3" : "gap-3 px-4 py-2.5",
-            "text-gray-500 hover:bg-gray-100 hover:text-gray-800",
+            "text-slate-400 hover:bg-surface-hover hover:text-slate-100",
           )}
         >
           {isDark
@@ -163,8 +163,8 @@ export default function Sidebar() {
         className={clsx(
           "absolute -right-3 top-[78px] z-10",
           "flex items-center justify-center w-6 h-6 rounded-full",
-          "bg-white border border-gray-200 text-gray-400",
-          "hover:bg-gray-50 hover:text-gray-700",
+          "bg-surface-card border border-surface-border text-slate-400",
+          "hover:bg-surface-hover hover:text-slate-200",
           "shadow-sm transition-colors duration-150",
         )}
       >
@@ -173,13 +173,13 @@ export default function Sidebar() {
 
       {/* ── Account menu ─────────────────────────────────────── */}
       {user ? (
-        <div className="relative border-t border-gray-100">
+        <div className="relative border-t border-surface-border">
           <button
             onClick={() => setMenuOpen((o) => !o)}
             title={collapsed ? `${user.username} (${user.role})` : undefined}
             aria-expanded={menuOpen}
             className={clsx(
-              "flex items-center w-full transition-colors duration-150 hover:bg-gray-50",
+              "flex items-center w-full transition-colors duration-150 hover:bg-surface-hover",
               collapsed ? "justify-center p-3" : "px-3 py-3.5 gap-3",
             )}
           >
@@ -189,15 +189,15 @@ export default function Sidebar() {
             {!collapsed && (
               <>
                 <div className="min-w-0 flex-1 text-left">
-                  <p className="text-xs font-semibold text-gray-700 truncate leading-none">
+                  <p className="text-xs font-semibold text-slate-200 truncate leading-none">
                     {user.username}
                   </p>
-                  <p className="text-[10px] text-gray-400 truncate mt-0.5 capitalize">{user.role}</p>
+                  <p className="text-[10px] text-slate-400 truncate mt-0.5 capitalize">{user.role}</p>
                 </div>
                 <ChevronUp
                   size={13}
                   className={clsx(
-                    "shrink-0 text-gray-300 transition-transform duration-150",
+                    "shrink-0 text-slate-400 transition-transform duration-150",
                     !menuOpen && "rotate-180",
                   )}
                 />
@@ -210,22 +210,22 @@ export default function Sidebar() {
               <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
               <div
                 className={clsx(
-                  "absolute z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 overflow-hidden",
+                  "absolute z-50 bg-surface-card border border-surface-border rounded-xl shadow-xl py-1.5 overflow-hidden",
                   collapsed ? "left-full ml-2 bottom-0 w-48" : "left-3 right-3 bottom-[calc(100%+6px)]",
                 )}
               >
                 <Link
                   href="/settings"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-300 hover:bg-surface-hover hover:text-slate-100 transition-colors"
                 >
-                  <Settings size={15} className="shrink-0 text-gray-400" />
+                  <Settings size={15} className="shrink-0 text-slate-400" />
                   Settings
                 </Link>
-                <div className="h-px bg-gray-100 my-1" />
+                <div className="h-px bg-surface-border my-1" />
                 <button
                   onClick={() => { setMenuOpen(false); logout(); }}
-                  className="flex items-center w-full text-left gap-2.5 px-3.5 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                  className="flex items-center w-full text-left gap-2.5 px-3.5 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                 >
                   <LogOut size={15} className="shrink-0" />
                   Log out
@@ -239,17 +239,17 @@ export default function Sidebar() {
           href="/login"
           title={collapsed ? "Log in" : undefined}
           className={clsx(
-            "flex items-center gap-3 border-t border-gray-100 transition-all duration-150 hover:bg-gray-50",
+            "flex items-center gap-3 border-t border-surface-border transition-all duration-150 hover:bg-surface-hover",
             collapsed ? "justify-center p-3" : "px-3 py-3.5",
           )}
         >
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-gray-500">
+          <div className="w-8 h-8 rounded-full bg-surface-border flex items-center justify-center shrink-0 text-slate-400">
             <LogIn size={15} />
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-gray-700 truncate leading-none">Log in</p>
-              <p className="text-[10px] text-gray-400 truncate mt-0.5">Owner / developer access</p>
+              <p className="text-xs font-semibold text-slate-200 truncate leading-none">Log in</p>
+              <p className="text-[10px] text-slate-400 truncate mt-0.5">Owner / developer access</p>
             </div>
           )}
         </Link>

@@ -49,12 +49,12 @@ export default function FullscreenToggle({ collapsed }: { collapsed: boolean }) 
       className={clsx(
         "flex items-center w-full rounded-xl font-medium transition-all duration-150",
         collapsed ? "justify-center p-3" : "gap-3 px-4 py-2.5",
-        "text-gray-500 hover:bg-gray-100 hover:text-gray-800",
+        "text-slate-400 hover:bg-surface-hover hover:text-slate-100",
       )}
     >
       {isFullscreen
         ? <Minimize size={18} className="shrink-0 text-sky-500" />
-        : <Maximize size={18} className="shrink-0 text-gray-400" />}
+        : <Maximize size={18} className="shrink-0 text-slate-400" />}
       {!collapsed && (
         <span className="text-[13px]">{isFullscreen ? "Exit Full Screen" : "Full Screen"}</span>
       )}
