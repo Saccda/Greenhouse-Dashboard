@@ -22,6 +22,7 @@ import {
   Camera,
 } from "lucide-react";
 import { clsx } from "clsx";
+import FullscreenToggle from "./FullscreenToggle";
 import { useTheme } from "@/hooks/useTheme";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
@@ -135,8 +136,9 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* ── Theme toggle ─────────────────────────────────────── */}
+      {/* ── Full screen + theme ──────────────────────────────── */}
       <div className="pb-3 px-3">
+        <FullscreenToggle collapsed={collapsed} />
         <button
           onClick={toggle}
           aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}

@@ -30,6 +30,6 @@ export const config = {
   // which is why the directory is named rather than the extension — excluding
   // all .js would be far broader than needed.
   matcher: [
-    "/((?!_next/static|_next/image|draco|models|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|mov|glb|gltf|wasm)$).*)",
+    "/((?!_next/static|_next/image|draco|models|manifest\\.webmanifest|sw\\.js|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|mov|glb|gltf|wasm)$).*)",
   ],
 };

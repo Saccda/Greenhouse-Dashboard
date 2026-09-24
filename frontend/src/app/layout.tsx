@@ -1,11 +1,24 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SidebarAwareLayout from "@/components/layout/SidebarAwareLayout";
+import RegisterServiceWorker from "@/components/pwa/RegisterServiceWorker";
 import { AuthProvider } from "@/hooks/useAuth";
 
 export const metadata: Metadata = {
   title: "Farm Monitoring Dashboard",
   description: "Mechanical Engineering — Real-time IoT monitoring for pepper farms",
+  // Tells iOS to drop Safari's chrome once added to the home screen. Android
+  // and desktop read the equivalent from manifest.ts instead.
+  appleWebApp: { capable: true, title: "FarmOS", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  // The window title bar colour in an installed app. The LIGHT value, because
+  // that is what the app boots into; the script in <head> rewrites it to the
+  // dark surface when the saved theme is dark, so the title bar does not sit
+  // pale above a dark blue dashboard.
+  themeColor: "#f2f7f3",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('gh_theme')||'light';document.documentElement.className=t;})()`,
+            __html: `(function(){var t=localStorage.getItem('gh_theme')||'light';document.documentElement.className=t;var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='dark'?'#001040':'#f2f7f3');})()`,
           }}
         />
       </head>
@@ -24,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </SidebarAwareLayout>
         </AuthProvider>
+        <RegisterServiceWorker />
       </body>
     </html>
   );
