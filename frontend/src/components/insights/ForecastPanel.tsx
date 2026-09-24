@@ -104,7 +104,7 @@ export default function ForecastPanel({ farm, tempWarn }: { farm: string; tempWa
   const anyAvailable = horizons.some((h) => h.available);
   const blurb = data?.status !== "ok" || anyAvailable
     ? `${pct}% of outcomes land inside the shaded band, measured on days the method never saw. The band is the forecast — the line is only its middle.`
-    : "No live reading, so there is no band to draw — a forecast projected from stale data could never be checked. The chart shows the last session; the band returns when the rig does.";
+    : "No live reading, so there is no band to draw — a forecast projected from stale data could never be checked. The chart shows the last session; the band returns when the system does.";
 
   return (
     <section className="rounded-xl border border-surface-border bg-surface-card overflow-hidden">

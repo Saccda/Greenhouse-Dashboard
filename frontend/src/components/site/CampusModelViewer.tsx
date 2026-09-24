@@ -57,7 +57,7 @@ class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean
           <p className="text-sm font-medium text-slate-100 mt-3">The 3D view could not start</p>
           <p className="text-[12px] text-slate-200 mt-1.5 leading-relaxed">
             WebGL is unavailable — usually an older graphics card or hardware acceleration turned
-            off. The photographs on the Overview page show the same rig.
+            off. The photographs on the Overview page show the same equipment.
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
   const [expanded, setExpanded] = useState(false);
   const [pickMode, setPickMode] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
-  // Force a role lit regardless of the live feed. The rig is offline most of
+  // Force a role lit regardless of the live feed. The system is offline most of
   // the time, so without this there is no way to check that a group covers the
   // parts it claims to — which is exactly the question the body numbers keep
   // raising.
@@ -256,7 +256,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
           </div>
           {picked.length === 0 ? (
             <p className="text-[11px] text-slate-100 leading-relaxed">
-              Only the mapped bodies are clickable — the rest of the rig is merged into one mesh
+              Only the mapped bodies are clickable — the rest of the model is merged into one mesh
               for performance. Each name carries its SolidWorks body number, so anything wrong here
               can be traced straight back to the CAD.
             </p>

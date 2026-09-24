@@ -51,7 +51,7 @@ export default function SitePage() {
 
           <PageHeader
             icon={Camera}
-            title="PP Campus — the rig"
+            title="PP Campus — Automated Cooling and Spraying System"
             description="The hardware behind the readings on every other page: what it looks like, and what it does when a channel switches on."
           >
             <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-sky-400/15 text-sky-400">
@@ -67,7 +67,7 @@ export default function SitePage() {
                   <Box size={15} className="text-sky-400" /> 3D model
                 </h2>
                 <p className="text-xs text-slate-200 mt-1 mb-4 max-w-2xl leading-relaxed">
-                  The CAD assembly of the rig, from the SolidWorks model, bound to live channel
+                  The CAD assembly of the system, from the SolidWorks model, bound to live channel
                   state: the nozzle run lights when CH2 is actually spraying, and the chilled-water
                   tank and its copper coil when CH4 is cooling. Nothing lights while the feed is
                   stale, because the channel states are then unknown rather than off.

@@ -29,7 +29,7 @@ interface AlertLogResponse { logs: { id: number; created_at: string }[]; count: 
 
 // The hero photograph follows the farm selector. It used to be a single
 // hardcoded /farm.jpg for every site, which showed a Kampot pepper field to
-// someone who had explicitly selected the campus rig — the one thing on this
+// someone who had explicitly selected the campus system — the one thing on this
 // screen that was not actually about the farm they picked.
 const FARM_HERO: Record<string, string> = {
   campus: "/campus/campus-right.jpg",

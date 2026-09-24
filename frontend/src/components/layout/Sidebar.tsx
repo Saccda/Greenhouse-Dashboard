@@ -43,7 +43,7 @@ const ROLE_NAV_ITEMS: Record<string, typeof NAV_ITEMS> = {
   developer: [{ href: "/insights", label: "Insights", icon: Sparkles }],
 };
 
-// Entries that belong to one site only. Site holds the campus rig's photographs,
+// Entries that belong to one site only. Site holds the campus system's photographs,
 // video and 3D model: campus is our own development platform, whereas Kampot is
 // a working farm someone depends on. Showing a Kampot operator a nav item for a
 // page that has nothing for them is just clutter.

@@ -1,6 +1,6 @@
 "use client";
 /**
- * CampusSetpointPanel — the campus rig's auto threshold-setpoint control.
+ * CampusSetpointPanel — the campus system's auto threshold-setpoint control.
  * Distinct from SetpointPanel (Kampot/Kep, one relay at a time, proxied
  * through Node-RED): campus's controller expects all three zones' low/high
  * values in one combined MQTT publish every time (see routes/campus.py), so

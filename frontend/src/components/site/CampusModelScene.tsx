@@ -42,7 +42,7 @@ const ROLE_GLOW: Record<string, string> = {
 
 /**
  * Camera directions, in the rotated frame where +Y is up and +X runs the length
- * of the rig. Bounds computes the distance, so only the direction matters —
+ * of the model. Bounds computes the distance, so only the direction matters —
  * which keeps these correct if the model is ever re-exported at another scale.
  */
 export const VIEWS = {
@@ -294,13 +294,13 @@ export default function CampusModelScene({
         {/* Bounds measures the real bounding box, so the model's offset from
             the origin and its true size are both handled without hardcoding
             either — a re-export at a different scale still frames correctly. */}
-        {/* margin 0.95, not drei's default 1.2. The rig is long and low, so a
+        {/* margin 0.95, not drei's default 1.2. The model is long and low, so a
             20% pad around its bounding box left the model floating small in
             the middle of the panel. Under 1 fits tighter than exactly, which
             reads as filling the frame; the narrow fov above is what keeps the
             closer camera from reintroducing perspective splay. */}
         <Bounds fit clip observe margin={0.85}>
-          {/* The export is Z-DOWN: the floor sits at Z = -2.97 and the rig rises
+          {/* The export is Z-DOWN: the floor sits at Z = -2.97 and the model rises
               toward Z = -8.25. Proven from the model rather than assumed — the
               water tank's base is 0.09 m from the Z maximum and its 2 x 2 m
               platform slab sits right at it, and a tank stands on the floor.
@@ -325,7 +325,7 @@ export default function CampusModelScene({
         dampingFactor={0.08}
         minDistance={2}
         maxDistance={80}
-        // Stop at the floor: looking up through a rig with no modelled underside
+        // Stop at the floor: looking up through a model with no modelled underside
         // just shows the inside of the mesh.
         maxPolarAngle={Math.PI / 2.05}
       />

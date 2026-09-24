@@ -4,7 +4,7 @@
  * observed and which hours are represented.
  *
  * This is deliberately at the top of the page rather than in a footnote. The
- * Kampot rig powers down outside working hours, so every percentage below it is
+ * Kampot system powers down outside working hours, so every percentage below it is
  * conditional on daytime readings — the hottest part of the day. Reporting
  * "temperature exceeded 32 °C 57% of the time" without that qualifier would
  * overstate the true daily figure substantially.

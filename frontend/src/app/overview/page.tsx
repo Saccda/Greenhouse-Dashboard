@@ -236,11 +236,11 @@ const SITE_CONTENT: Record<string, {
       "reading so the system responds to the heat event rather than to somebody noticing it. One " +
       "tank, one pump, one sensor, and a grid of nozzles over the growing area \u2014 deliberately " +
       "few moving parts, because every one of them is something that can fail unattended. " +
-      "The renders below are the CAD model the PP Campus rig was built from.",
+      "The renders below are the CAD model the PP Campus Automated Cooling and Spraying System was built from.",
     cad: [
       {
         src: "/campus/cad-zoom-out-view.jpg",
-        title: "Complete Campus Rig",
+        title: "Complete System Layout",
         caption: "The whole installation: the storage tank feeding the loop, the steel frame carrying the overhead misting lines, growing beds beneath, and the cooling skid and control panels against the back wall.",
       },
       {
@@ -265,7 +265,7 @@ const SITE_CONTENT: Record<string, {
       {
         src: "/campus/campus-front.jpg",
         title: "Front view",
-        caption: "The campus rig as installed — controller cabinet, sensor box and spray manifold.",
+        caption: "The system as installed — controller cabinet, sensor box and spray manifold.",
       },
       {
         src: "/campus/campus-side.jpg",
@@ -273,7 +273,7 @@ const SITE_CONTENT: Record<string, {
         caption: "Side elevation showing the frame, piping runs and the tank feeding the spray loop.",
       },
     ],
-    footageLabel: "The Rig in Operation",
+    footageLabel: "The System in Operation",
     videos: [
       {
         src: "/campus/campus-operation-front.mp4",
@@ -612,7 +612,7 @@ function ImplementSection() {
       {content.photos && content.photos.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            The Rig as Built
+            The System as Built
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {content.photos.map((photo) => (
