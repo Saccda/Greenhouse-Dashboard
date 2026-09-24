@@ -64,17 +64,16 @@ const PARTS = {
   // a black panel. Only [126], the 15 x 15 x 129 mm wire, was right, which is
   // why the channel appeared to light the wiring and nothing else.
   ch4_cool: [121, 153, 126],
-  // [297] is the control enclosure: a 517 x 600 x 339 mm plain white box of only
-  // 620 triangles, which is what a simple cabinet shell looks like in a model
-  // where comparable volumes run to tens of thousands. It is the only body of
-  // that description near the skid.
+  // The electrical panel. [90] is a 400 x 175 x 600 mm box of only 876 triangles
+  // standing on its own — nothing else in the model is within 0.6 m of it — and
+  // its face carries rgb(255,6,6) red, rgb(255,255,0) yellow, rgb(24,171,36)
+  // green and rgb(1,52,118) blue over a grey body. Pilot-lamp colours on a
+  // plain box, and the only body in the model with that combination.
   //
-  // [50] came from the farm team. It is 24 x 24 x 60 mm and I described it as a
-  // wall-mounted indicator lamp, which was wrong — its centre is INSIDE the
-  // tank's bounding box, so it is a fitting on the tank, not on a panel. Kept,
-  // because it was supplied rather than inferred, but it is far too small to
-  // read as "the system is enabled" on its own.
-  ch1_enable: [297, 50],
+  // Found by colour because the exporter preserved SolidWorks' appearances,
+  // which turned out to be a far better discriminator than size or position —
+  // the same trick identified the copper coil for CH4.
+  ch1_enable: [90],
   // Context only, never bound: the water storage tank.
   storage: [35],
 };
@@ -92,6 +91,12 @@ const UNVERIFIED = [
   // dropped from CH4: [119] is one of seventeen identical slats and [282] is a
   // panel, neither of which is cooling plant
   119, 282,
+  // dropped from CH1. [297] reads as a rectangle attached to the cooling tank,
+  // not an electrical enclosure. [50] was supplied by the farm team as CH1, but
+  // its centre is inside the tank's bounding box, so it is part of the same
+  // wrong-looking highlight; easy to restore if it was meant as the enable
+  // signal's sensor rather than the panel.
+  297, 50,
   // Ruled out by eye once the preview actually rendered — previously bound to
   // CH2 on the farm team's say-so, which was worth more than my inference until
   // it could be checked visually. The measurements are emphatic: all 68 real

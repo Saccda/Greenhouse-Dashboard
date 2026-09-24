@@ -169,6 +169,13 @@ html, body {
 /* The frosted overlay in Control page */
 .light .bg-surface-base\/60 { background-color: rgba(242, 247, 243, 0.80); }
 
+/* The floating pills over the 3D viewer. Every opacity variant needs its own
+   entry: the rules above only cover the bare bg-surface-* classes, because
+   Tailwind generates a SEPARATE class for each opacity step and none of them
+   inherit the override. Without this, .light remapped the text to near-black
+   while the pill kept Tailwind's dark #002068, so the labels vanished. */
+.light .bg-surface-card\/85 { background-color: rgba(255, 255, 255, 0.85); }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    LIGHT MODE — COMPONENT-SPECIFIC OVERRIDES
 ═══════════════════════════════════════════════════════════════════════════ */
