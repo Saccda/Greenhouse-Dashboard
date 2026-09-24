@@ -175,7 +175,7 @@ export default function HistoricalPage() {
 
         {/* Readings table */}
         <section className="bg-surface-card border border-surface-border rounded-xl p-4">
-          <h2 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-4">
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
             Readings (latest 100)
           </h2>
           {isLoading && !history ? (
