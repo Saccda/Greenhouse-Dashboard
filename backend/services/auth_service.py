@@ -67,15 +67,31 @@ def _sign(payload_b64: str) -> str:
 
 
 def issue_token(username: str) -> tuple[str, int]:
-    """Return (token, expires_at_unix_ts)."""
+    """
+    Return (token, expires_at_unix_ts).
+
+    The payload carries the account's token version as "v". require_auth
+    compares it with the stored one and rejects a mismatch, which is what
+    makes logout and password change actually revoke a session rather than
+    merely dropping the browser's copy of it.
+    """
     expires_at = int(time.time()) + config.AUTH_TOKEN_TTL_DAYS * 86400
-    payload = json.dumps({"u": username, "exp": expires_at}, separators=(",", ":"))
+    version = user_service.get_token_version(username)
+    payload = json.dumps({"u": username, "exp": expires_at, "v": version}, separators=(",", ":"))
     payload_b64 = base64.urlsafe_b64encode(payload.encode()).decode()
     return f"{payload_b64}.{_sign(payload_b64)}", expires_at
 
 
 def verify_token(token: str) -> dict | None:
-    """Return {"username"} if valid and unexpired, else None."""
+    """
+    Return {"username", "version"} if the signature is valid and the token is
+    unexpired, else None. Says nothing about whether the version is CURRENT —
+    that check needs the user record, and lives in require_auth.
+
+    A token with no "v" predates versioning and is refused. That costs every
+    logged-in account one re-login when this ships, which is the correct
+    outcome: those tokens are precisely the ones that cannot be revoked.
+    """
     try:
         payload_b64, signature = token.split(".", 1)
     except ValueError:
@@ -88,7 +104,9 @@ def verify_token(token: str) -> dict | None:
         return None
     if payload.get("exp", 0) < time.time():
         return None
-    return {"username": payload["u"]}
+    if "v" not in payload:
+        return None
+    return {"username": payload["u"], "version": payload["v"]}
 
 
 def login(username: str, password: str) -> tuple[str, str, list[str] | None, int] | None:
@@ -182,13 +200,30 @@ async def require_auth(
     if user is None:
         raise HTTPException(status_code=401, detail="Account no longer exists")
 
+    # The revocation check. Deliberately compared against the stored record on
+    # every request, for the same reason role and farms are read fresh: a
+    # stateless token can only say what was true when it was signed.
+    if claims["version"] != user.get("token_version", 1):
+        raise HTTPException(status_code=401, detail="Session ended — please sign in again")
+
     return {"username": user["username"], "role": user["role"], "farms": user.get("farms")}
 
 
+#: The only roles that may change anything. Written as an allow-list, never as
+#: "not pending": a deny-list silently grants every role added later, which is
+#: exactly how a read-only display account would have gained write access.
+WRITE_ROLES = ("owner", "developer")
+
+
 async def require_write_access(user: dict = Depends(require_auth)) -> dict:
-    """FastAPI dependency — 'owner' and 'developer' only; 'pending' accounts are logged in but read-only."""
-    if user["role"] not in ("owner", "developer"):
-        raise HTTPException(status_code=403, detail="Your account is awaiting approval from a farm owner")
+    """FastAPI dependency — 'owner' and 'developer' only. 'viewer' and 'pending' are read-only."""
+    if user["role"] not in WRITE_ROLES:
+        detail = (
+            "This is a display account and cannot change settings"
+            if user["role"] == "viewer"
+            else "Your account is awaiting approval from a farm owner"
+        )
+        raise HTTPException(status_code=403, detail=detail)
     return user
 
 

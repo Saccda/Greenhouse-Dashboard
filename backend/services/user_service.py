@@ -1,9 +1,21 @@
 """
 User store — backend/data/users.json.
 
-Three roles: "owner" and "developer" (full write access), and "pending"
-(self-registered, logged in, but no write access until an owner promotes
-them via /api/users). scripts/create_user.py remains the bootstrap tool
+Four roles. "owner" and "developer" have full write access. "viewer" and
+"pending" are read-only, and the distinction between them is deliberate:
+
+  pending  self-registered, awaiting a decision. An owner is expected to
+           promote or delete it.
+  viewer   permanently read-only, by design. This is what a wall-mounted
+           display account uses. It is NOT a lesser "pending": nobody should
+           ever approve it, because there is nothing to approve.
+
+They are separate roles rather than one because a display account parked in
+"pending" would sit in an owner's approval queue forever, and one stray click
+would silently grant a screen in a public corridor the ability to actuate
+relays. A role that is never in a queue cannot be approved by accident.
+
+scripts/create_user.py remains the bootstrap tool
 for the very first account; every account after that comes either from
 an owner using /api/users directly, or from self-registration landing in
 "pending" for an owner to approve.
@@ -68,6 +80,11 @@ def upsert_user(
         "created_at":   existing.get("created_at") or datetime.now(timezone.utc).isoformat(),
         "email":        email if email is not None else existing.get("email"),
         "display_name": display_name if display_name is not None else existing.get("display_name"),
+        # Bumped on logout and on password change; the session token carries a
+        # copy and is rejected when the two disagree. Preserved across an
+        # upsert so an admin password reset does not silently un-revoke
+        # sessions that a logout already killed.
+        "token_version": existing.get("token_version", 1),
     }
     _write(data)
 
@@ -92,10 +109,38 @@ def set_farms(username: str, farms: list[str] | None) -> bool:
     return True
 
 
+def bump_token_version(username: str) -> int | None:
+    """
+    Invalidate every session token already issued for this account.
+
+    The session token is stateless — a signed {username, expiry} — so deleting
+    the cookie only removes the browser's copy. Anyone holding the token string
+    keeps access until it expires regardless. Incrementing the stored version
+    is what actually revokes it, because require_auth compares the two.
+
+    Returns the new version, or None if the user does not exist.
+    """
+    data = _load()
+    if username not in data:
+        return None
+    version = data[username].get("token_version", 1) + 1
+    data[username]["token_version"] = version
+    _write(data)
+    return version
+
+
+def get_token_version(username: str) -> int:
+    """Current token version, defaulting to 1 for records written before this existed."""
+    return (_load().get(username) or {}).get("token_version", 1)
+
+
 def set_password(username: str, salt_hex: str, hash_hex: str) -> bool:
     data = _load()
     if username not in data:
         return False
+    # A password change revokes existing sessions: the usual reason to
+    # change one is that the old password may be known to someone else.
+    data[username]["token_version"] = data[username].get("token_version", 1) + 1
     data[username]["salt_hex"] = salt_hex
     data[username]["hash_hex"] = hash_hex
     _write(data)

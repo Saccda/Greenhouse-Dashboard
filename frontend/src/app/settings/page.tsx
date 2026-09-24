@@ -10,6 +10,7 @@ import {
 import { clsx } from "clsx";
 import { format } from "date-fns";
 
+import { canWrite as canWriteRole } from "@/lib/roles";
 import { swrFetcher, fetchFarms, API_BASE } from "@/lib/api";
 import { useSettings, SETTINGS_DEFAULTS } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
@@ -150,7 +151,7 @@ function InfoRow({ label, value, mono = false, isLink = false }: {
 export default function SettingsPage() {
   const { settings, update } = useSettings();
   const { user } = useAuth();
-  const canWrite = !!user && user.role !== "pending";
+  const canWrite = canWriteRole(user?.role);
   const canManage = !!user && user.role === "owner";
   const [farms, setFarms] = useState<Farm[]>([]);
   const [saved, setSaved] = useState(false);
@@ -195,6 +196,9 @@ export default function SettingsPage() {
       }),
   );
 
+  // "pending" is an approval queue; "viewer" is a settled, permanently
+  // read-only account and must never appear in it. A display screen sitting in
+  // the queue is one stray approval away from being able to actuate relays.
   const pendingUsers  = usersData?.users.filter((u) => u.role === "pending") ?? [];
   const approvedUsers = usersData?.users.filter((u) => u.role !== "pending") ?? [];
 
@@ -619,6 +623,7 @@ export default function SettingsPage() {
                       >
                         <option value="developer">Developer</option>
                         <option value="owner">Owner</option>
+                        <option value="viewer">Viewer (display screen — read only)</option>
                       </select>
                     </div>
                     <button
@@ -731,6 +736,7 @@ export default function SettingsPage() {
                           >
                             <option value="developer">Developer</option>
                             <option value="owner">Owner</option>
+                            <option value="viewer">Viewer (display screen — read only)</option>
                             <option value="pending">Pending (suspend)</option>
                           </select>
                           <button

@@ -10,7 +10,7 @@ auth_service.require_auth/require_write_access on every protected route.
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
-from services import auth_service
+from services import auth_service, user_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -56,7 +56,19 @@ def me(user: dict = Depends(auth_service.require_auth)) -> dict:
 
 
 @router.post("/logout")
-def logout(response: Response, _user: dict = Depends(auth_service.require_auth)) -> dict:
-    """Clear the session cookie. JS can't clear an httpOnly cookie itself, so this round-trip is required."""
+def logout(response: Response, user: dict = Depends(auth_service.require_auth)) -> dict:
+    """
+    End the session, on the server as well as in the browser.
+
+    Clearing the cookie is not enough on its own. The session token is a signed
+    {username, expiry, version}, so dropping the browser's copy leaves anyone
+    who captured the string — from a shared machine, a synced profile, a proxy
+    log — with a working session until it expires. Bumping the stored version
+    is what revokes it: require_auth compares the two on every request.
+
+    JS cannot clear an httpOnly cookie itself, so the round-trip was already
+    required; this makes it do something worth the trip.
+    """
+    user_service.bump_token_version(user["username"])
     auth_service.clear_session_cookie(response)
     return {"ok": True}

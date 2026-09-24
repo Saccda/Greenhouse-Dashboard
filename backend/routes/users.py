@@ -15,10 +15,15 @@ from services import auth_service, user_service
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-# An admin creating an account directly grants real access — "pending" only
-# happens via self-registration. PATCH allows "pending" too, so an owner can
-# revoke someone back to read-only without deleting their account outright.
-CREATE_ROLES = {"owner", "developer"}
+# Roles an owner may assign directly. "viewer" is here because creating a
+# display account is the whole point of it — a screen in a greenhouse or a
+# corridor runs as a viewer, sees every reading, and can actuate nothing.
+#
+# "pending" is NOT creatable: it means "self-registered, awaiting a decision",
+# which is a state an account arrives in, not one an owner puts it into. PATCH
+# still allows it, so an owner can push someone back into the queue without
+# deleting the account.
+CREATE_ROLES = {"owner", "developer", "viewer"}
 ALL_ROLES    = CREATE_ROLES | {"pending"}
 
 

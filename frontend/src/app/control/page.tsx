@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import { format } from "date-fns";
 
 import PageHeader from "@/components/ui/PageHeader";
+import { canWrite as canWriteRole } from "@/lib/roles";
 import { swrFetcher, API_BASE } from "@/lib/api";
 import { useSettings, syncThresholdsToBackend } from "@/hooks/useSettings";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
@@ -52,7 +53,7 @@ function ThresholdInput({
 export default function ControlPage() {
   const { settings, update } = useSettings();
   const { user, logout } = useAuth();
-  const canWrite = !!user && user.role !== "pending";
+  const canWrite = canWriteRole(user?.role);
   const { farm, setFarm, farms } = useFarmSelection();
   const [saved,    setSaved]    = useState(false);
   const [tempWarn, setTempWarn] = useState(settings.tempWarn);
