@@ -38,9 +38,9 @@ const EQUIPMENT: Record<string, Spec> = {
   "FM-01": {
     name: "Water meter",
     kind: "Instrument",
-    note: "On the mains inlet, so it measures what the whole system draws from supply. Publishes a daily total rather than a live rate.",
+    note: "Between the storage tank and the chilled tank, so it measures what is drawn out of storage into the cooling and misting circuit. Publishes a daily total rather than a live rate.",
     detail: [
-      ["Service", "Mains inlet"],
+      ["Service", "Storage outlet to cooling circuit"],
       ["Reports", "Start / end totalizer and daily consumption"],
       ["Unit", "Cubic metres"],
       ["Cadence", "About once a day"],

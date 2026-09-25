@@ -30,10 +30,14 @@ export const BED = { x: 330, y: 132, w: 550, h: 30 };
 
 // ── Row C: the process line ───────────────────────────────────────────────
 export const LINE_Y = 250;
-export const FM = { cx: 70, cy: LINE_Y, r: 22 };
-export const T01 = { x: 130, y: 195, w: 85, h: 110 };
-export const T02 = { x: 265, y: 195, w: 105, h: 110 };
-export const F01 = { x: 420, y: 225, w: 80, h: 50 };
+// FM-01 sits BETWEEN the storage tank and the chilled tank — confirmed with
+// the farm team. It therefore measures what is drawn out of storage and into
+// the cooling and misting circuit, which is the figure Day_consumption
+// reports. It is not on the mains inlet and not after the pump.
+export const T01 = { x: 70, y: 195, w: 85, h: 110 };
+export const FM = { cx: 205, cy: LINE_Y, r: 22 };
+export const T02 = { x: 275, y: 195, w: 105, h: 110 };
+export const F01 = { x: 430, y: 225, w: 80, h: 50 };
 export const P01 = { cx: 580, cy: LINE_Y, r: 28 };
 export const RISER_X = 880;
 
@@ -43,13 +47,13 @@ export const TAG_Y = 330;
 // ── Row E: channel tags ───────────────────────────────────────────────────
 export const CH_TAG = { w: 54, h: 16 };
 export const CH2_TAG = { cx: P01.cx, y: 362 };
-export const CH4_TAG = { cx: 317, y: 390 };
+export const CH4_TAG = { cx: 327, y: 390 };
 
 // ── Row F: chiller loop, panel, instruments ───────────────────────────────
 export const COIL_LOOP_Y = 378;
-export const CHILLER = { cx: 317, cy: 432, w: 92, h: 36 };
+export const CHILLER = { cx: 327, cy: 432, w: 92, h: 36 };
 export const PANEL = { x: 560, y: 404, w: 132, h: 74 };
-export const FM_READOUT = { x: 20, y: 404, w: 132, h: 36 };
+export const FM_READOUT = { x: 145, y: 150, w: 132, h: 36 };
 export const TH_READOUT = { x: 730, y: 186, w: 132, h: 52 };
 
 /** Every occupied rectangle, tags included. Order is irrelevant. */

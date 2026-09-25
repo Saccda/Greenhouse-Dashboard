@@ -10,14 +10,13 @@
  *
  * The process, left to right, is the order water actually travels:
  *
- *   mains  →  FM-01 meter  →  T-01 storage  →  T-02 chilled tank (coil, CH4)
+ *   mains  →  T-01 storage  →  FM-01 meter  →  T-02 chilled tank (coil, CH4)
  *        →  F-01 filter  →  P-01 circulation pump (CH2)  →  misting header
  *        →  nozzles over the growing bed
  *
- * FM-01 sits on the MAINS INLET. The meter reports a daily consumption total,
- * which is what the whole system drew from supply — a figure only the inlet
- * can give. After the pump it would have counted recirculation on every pass
- * and missed anything drawn elsewhere.
+ * FM-01 is between the storage tank and the chilled tank, as installed. It
+ * measures what is drawn out of storage into the cooling and misting circuit,
+ * which is the figure Day_consumption reports.
  *
  * ISA-101 throughout: state is shown by FORM (filled vs outline, bright vs dim
  * line), colour is reserved for abnormal, and nothing moves. A diagram where
@@ -70,9 +69,9 @@ export default function CampusPID({
         </defs>
 
         {/* ── PIPEWORK — drawn first so symbols sit on their connections ── */}
-        <Pipe d={`M 8 ${L.LINE_Y} L ${L.FM.cx - L.FM.r} ${L.LINE_Y}`} live={supply} />
-        <Pipe d={`M ${L.FM.cx + L.FM.r} ${L.LINE_Y} L ${L.T01.x} ${L.LINE_Y}`} live={supply} />
-        <Pipe d={`M ${L.T01.x + L.T01.w} ${L.LINE_Y} L ${L.T02.x} ${L.LINE_Y}`} live={supply} />
+        <Pipe d={`M 8 ${L.LINE_Y} L ${L.T01.x} ${L.LINE_Y}`} live={supply} />
+        <Pipe d={`M ${L.T01.x + L.T01.w} ${L.LINE_Y} L ${L.FM.cx - L.FM.r} ${L.LINE_Y}`} live={supply} />
+        <Pipe d={`M ${L.FM.cx + L.FM.r} ${L.LINE_Y} L ${L.T02.x} ${L.LINE_Y}`} live={supply} />
         <Pipe d={`M ${L.T02.x + L.T02.w} ${L.LINE_Y} L ${L.F01.x} ${L.LINE_Y}`} live={supply} />
         <Pipe d={`M ${L.F01.x + L.F01.w} ${L.LINE_Y} L ${L.P01.cx - L.P01.r} ${L.LINE_Y}`} live={supply} />
         {/* riser from the pump up to the header */}
@@ -102,16 +101,20 @@ export default function CampusPID({
 
         {/* ── EQUIPMENT. Each links to its Level 3 detail page, which is how
               a real faceplate is reached. ──────────────────────────────── */}
-        <Detail tag="FM-01">
-          <circle cx={L.FM.cx} cy={L.FM.cy} r={L.FM.r} fill={HMI.panel} stroke={HMI.line} strokeWidth={2} />
-          <text x={L.FM.cx} y={L.FM.cy + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill={HMI.inkMuted}>FM</text>
-          <Tag cx={L.FM.cx} tag="FM-01" name="Water meter" />
-        </Detail>
-
         <Detail tag="T-01">
           <rect x={L.T01.x} y={L.T01.y} width={L.T01.w} height={L.T01.h} rx={4}
                 fill={HMI.panel} stroke={HMI.line} strokeWidth={2} />
           <Tag cx={L.T01.x + L.T01.w / 2} tag="T-01" name="Storage tank" />
+        </Detail>
+
+        {/* FM-01 is BETWEEN the storage tank and the chilled tank, as
+            installed. It therefore measures what is drawn out of storage into
+            the cooling and misting circuit — which is the figure
+            Day_consumption reports. */}
+        <Detail tag="FM-01">
+          <circle cx={L.FM.cx} cy={L.FM.cy} r={L.FM.r} fill={HMI.panel} stroke={HMI.line} strokeWidth={2} />
+          <text x={L.FM.cx} y={L.FM.cy + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill={HMI.inkMuted}>FM</text>
+          <Tag cx={L.FM.cx} tag="FM-01" name="Water meter" />
         </Detail>
 
         <Detail tag="T-02">
