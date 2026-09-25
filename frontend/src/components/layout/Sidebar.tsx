@@ -48,7 +48,7 @@ const ROLE_NAV_ITEMS: Record<string, typeof NAV_ITEMS> = {
 // a working farm someone depends on. Showing a Kampot operator a nav item for a
 // page that has nothing for them is just clutter.
 const FARM_NAV_ITEMS: Record<string, typeof NAV_ITEMS> = {
-  campus: [{ href: "/site", label: "Digital 3D Model", icon: Box }],
+  campus: [{ href: "/hmi", label: "Digital 3D Model", icon: Box }],
 };
 
 function getInitials(name: string): string {

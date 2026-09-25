@@ -91,6 +91,8 @@ export interface Farm {
    * does not want both.
    */
   water_source?: "measured" | "estimated" | "none";
+  /** Whether soil probes are fitted. False everywhere today. */
+  has_soil_sensors?: boolean;
 }
 
 export interface FarmsResponse {

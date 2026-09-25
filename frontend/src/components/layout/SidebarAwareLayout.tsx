@@ -10,12 +10,22 @@ import { useAuth } from "@/hooks/useAuth";
 // control, saving settings) stay gated behind owner/developer approval.
 const PUBLIC_ROUTES = ["/login", "/register"];
 
+// Routes that take the whole window, with no sidebar.
+//
+// An HMI is read from across a room, often on a panel that is only ever
+// showing this one screen. Navigation chrome is dead pixels there: it competes
+// with the process graphic for the area that matters and it is not what anyone
+// is standing in front of the screen to use. The page carries its own way back
+// in the top bar, so the sidebar is not the only exit.
+const FULL_BLEED_ROUTES = ["/hmi"];
+
 export default function SidebarAwareLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
 
   const isPublic = PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+  const isFullBleed = FULL_BLEED_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
   const needsAuth = !isPublic && !loading && !user;
 
   useEffect(() => {
@@ -35,6 +45,12 @@ export default function SidebarAwareLayout({ children }: { children: React.React
         </div>
       </>
     );
+  }
+
+  // Full-bleed routes still require auth — they just render without the
+  // sidebar once past it.
+  if (isFullBleed) {
+    return <div className="flex-1 flex flex-col min-w-0 overflow-hidden">{children}</div>;
   }
 
   return (
