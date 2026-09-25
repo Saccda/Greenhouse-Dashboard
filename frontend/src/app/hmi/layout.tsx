@@ -85,12 +85,14 @@ export default function HmiLayout({ children }: { children: React.ReactNode }) {
         >
           <ArrowLeft size={16} /> EXIT
         </Link>
+        {/* The SYSTEM leads and the site follows. This screen exists to show
+            the system; which site it is at is the qualifier, not the headline. */}
         <div className="flex items-baseline gap-3 min-w-0">
-          <span className="text-[19px] font-bold tracking-widest" style={{ color: HMI.ink }}>
-            PP CAMPUS
-          </span>
-          <span className="text-[13px] tracking-wide truncate" style={{ color: HMI.inkFaint }}>
+          <span className="text-[19px] font-bold tracking-wide truncate" style={{ color: HMI.ink }}>
             AUTOMATED COOLING AND SPRAYING SYSTEM
+          </span>
+          <span className="text-[14px] tracking-widest shrink-0" style={{ color: HMI.inkFaint }}>
+            — PP CAMPUS
           </span>
         </div>
         <button
@@ -108,27 +110,41 @@ export default function HmiLayout({ children }: { children: React.ReactNode }) {
         className="flex items-stretch shrink-0 divide-x"
         style={{ backgroundColor: HMI.panelAlt, borderBottom: "1px solid " + HMI.line, borderColor: HMI.line }}
       >
+        {/* Every cell says NO DATA rather than a dash or a question mark. A
+            placeholder glyph is a puzzle: "––.–" and "?" both mean "we do not
+            know", but the reader has to work that out, and on a control screen
+            an unreadable state is indistinguishable from a broken page. */}
         <StateCell
-          label="System"
-          value={stale ? "UNKNOWN" : running.length ? "RUNNING" : "IDLE"}
+          label="Running?"
+          value={stale ? "NO DATA" : running.length ? "YES — SPRAYING OR COOLING" : "NO — IDLE"}
           bad={stale}
           wide
         />
-        <StateCell label="Temperature" value={temp != null ? temp.toFixed(1) + " °C" : "––.–"} bad={stale} />
-        <StateCell label="Humidity" value={hum != null ? hum.toFixed(0) + " %" : "–– "} bad={stale} />
         <StateCell
-          label="Channels on"
-          value={stale ? "?" : running.length ? running.map((r) => r.key).join(" ") : "none"}
+          label="Air temperature"
+          value={!stale && temp != null ? temp.toFixed(1) + " °C" : "NO DATA"}
           bad={stale}
         />
         <StateCell
-          label="Last reading"
-          value={
-            latest?.timestamp
-              ? new Date(latest.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              : "––:––"
-          }
+          label="Humidity"
+          value={!stale && hum != null ? hum.toFixed(0) + " %" : "NO DATA"}
           bad={stale}
+        />
+        <StateCell
+          label="Channels on now"
+          value={stale ? "NO DATA" : running.length ? running.map((r) => r.key).join("  ") : "NONE"}
+          bad={stale}
+        />
+        {/* AGE, not clock time. The previous version showed "03:16 PM" with no
+            date, so a reading two days old looked like one from sixteen minutes
+            ago — the header telling a reassuring lie about the very thing the
+            alarm strip beneath it was raising. The exact timestamp is on hover. */}
+        <StateCell
+          label="Last reading"
+          value={latest?.timestamp ? ago(latest.timestamp) : "NEVER"}
+          title={latest?.timestamp ? new Date(latest.timestamp).toLocaleString() : undefined}
+          bad={stale}
+          wide
         />
       </div>
 
@@ -170,13 +186,25 @@ export default function HmiLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** How long ago, in words. "2 days ago" is actionable; "03:16 PM" is not. */
+function ago(iso: string): string {
+  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 90) return Math.round(secs) + " SEC AGO";
+  const mins = secs / 60;
+  if (mins < 90) return Math.round(mins) + " MIN AGO";
+  const hours = mins / 60;
+  if (hours < 36) return Math.round(hours) + " HOURS AGO";
+  return Math.round(hours / 24) + " DAYS AGO";
+}
+
 function StateCell({
-  label, value, bad, wide,
+  label, value, bad, wide, title,
 }: {
-  label: string; value: string; bad: boolean; wide?: boolean;
+  label: string; value: string; bad: boolean; wide?: boolean; title?: string;
 }) {
   return (
-    <div className={clsx("px-5 py-2.5 leading-tight", wide && "min-w-[11rem]")} style={{ borderColor: HMI.line }}>
+    <div className={clsx("px-5 py-2.5 leading-tight", wide && "min-w-[11rem]")}
+         style={{ borderColor: HMI.line }} title={title}>
       <div className="text-[11px] tracking-widest uppercase" style={{ color: HMI.inkFaint }}>
         {label}
       </div>

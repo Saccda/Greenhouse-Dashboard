@@ -59,7 +59,7 @@ export default function AlarmStrip({ live }: { live: LiveAlarm[] }) {
 
   return (
     <div
-      className="shrink-0 h-[7rem] overflow-hidden flex flex-col"
+      className="shrink-0 h-[7.5rem] overflow-hidden flex flex-col"
       style={{ backgroundColor: HMI.panelAlt, borderBottom: "1px solid " + HMI.line }}
       role="status"
       aria-live="polite"
@@ -68,9 +68,10 @@ export default function AlarmStrip({ live }: { live: LiveAlarm[] }) {
           make the columns readable without guessing.
 
           Height is 7rem because that is what the contents need: the header row
-          is about 1.6rem and each of the three alarm rows is 1.7rem. At 6rem
-          the third row rendered as a half-height sliver — text on screen that
-          could not be read, which on an alarm strip is worse than no text. */}
+          is about 1.8rem and each of the three alarm rows is 1.7rem, so 7rem
+          left about two pixels of slack and any font rounding clipped the last
+          row into a sliver. 7.5rem has actual room. Text on screen that cannot
+          be read is worse than no text, most of all on an alarm strip. */}
       <div
         className="grid items-center px-5 py-1.5 text-[11px] font-bold tracking-widest uppercase shrink-0"
         style={{ gridTemplateColumns: "9rem 11rem 6rem 1fr", color: HMI.inkFaint, borderBottom: "1px solid " + HMI.line }}
