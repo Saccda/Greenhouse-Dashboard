@@ -4,6 +4,7 @@ import { clsx } from "clsx";
 
 import { swrFetcher } from "@/lib/api";
 import { HMI } from "./tokens";
+import { plain } from "./plain";
 
 export interface LiveAlarm {
   id: string;
@@ -47,7 +48,7 @@ export default function AlarmStrip({ live }: { live: LiveAlarm[] }) {
     id: "log-" + r.id,
     priority: r.event === "resolved" ? "warn" : "alarm",
     tag: r.alert_type.replace(/_/g, " ").toUpperCase(),
-    text: r.message,
+    text: plain(r.message),
     at: r.created_at,
   }));
 

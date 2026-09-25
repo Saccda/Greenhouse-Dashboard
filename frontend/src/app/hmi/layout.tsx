@@ -50,6 +50,11 @@ export default function HmiLayout({ children }: { children: React.ReactNode }) {
   );
 
   const stale = !!error || (latest ? !latest.is_online : true);
+  // last_seen, NOT timestamp. The API sets timestamp to datetime.now() when it
+  // builds the response, so it is always a second old and said "1 SEC AGO"
+  // beside four cells reading NO DATA. last_seen is when the SENSOR last
+  // spoke, which is the only version of this fact worth showing.
+  const lastSeen = latest?.last_seen ? new Date(latest.last_seen) : null;
   const temp = latest?.readings?.temperature?.value;
   const hum = latest?.readings?.humidity?.value;
   const running = (latest?.relays ?? []).filter((r) => r.state === "ON");
@@ -110,15 +115,41 @@ export default function HmiLayout({ children }: { children: React.ReactNode }) {
         className="flex items-stretch shrink-0 divide-x"
         style={{ backgroundColor: HMI.panelAlt, borderBottom: "1px solid " + HMI.line, borderColor: HMI.line }}
       >
-        {/* Every cell says NO DATA rather than a dash or a question mark. A
-            placeholder glyph is a puzzle: "––.–" and "?" both mean "we do not
-            know", but the reader has to work that out, and on a control screen
+        {/* The two questions someone walks up to this screen with are "is data
+            coming in" and "if not, since when". They get the first two cells,
+            in that order, before any process value — a reading is only worth
+            reading once you know whether it is current.
+
+            Every other cell says NO DATA in words rather than a dash or a
+            question mark. A placeholder glyph is a puzzle: the reader has to
+            work out that "––.–" means we do not know, and on a control screen
             an unreadable state is indistinguishable from a broken page. */}
         <StateCell
-          label="Running?"
-          value={stale ? "NO DATA" : running.length ? "YES — SPRAYING OR COOLING" : "NO — IDLE"}
+          label="Feed"
+          value={stale ? "OFFLINE" : "LIVE"}
+          bad={stale}
+        />
+        <StateCell
+          label={stale ? "Offline since" : "Last reading"}
+          value={
+            lastSeen
+              ? stale
+                ? lastSeen.toLocaleString([], {
+                    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                  })
+                : ago(lastSeen)
+              : "NEVER"
+          }
+          sub={lastSeen && stale ? ago(lastSeen) : undefined}
+          title={lastSeen ? lastSeen.toLocaleString() : undefined}
           bad={stale}
           wide
+        />
+        <StateCell
+          label="Running?"
+          value={stale ? "NO DATA" : running.length ? "YES" : "NO — IDLE"}
+          sub={!stale && running.length ? running.map((r) => r.key).join("  ") : undefined}
+          bad={stale}
         />
         <StateCell
           label="Air temperature"
@@ -129,22 +160,6 @@ export default function HmiLayout({ children }: { children: React.ReactNode }) {
           label="Humidity"
           value={!stale && hum != null ? hum.toFixed(0) + " %" : "NO DATA"}
           bad={stale}
-        />
-        <StateCell
-          label="Channels on now"
-          value={stale ? "NO DATA" : running.length ? running.map((r) => r.key).join("  ") : "NONE"}
-          bad={stale}
-        />
-        {/* AGE, not clock time. The previous version showed "03:16 PM" with no
-            date, so a reading two days old looked like one from sixteen minutes
-            ago — the header telling a reassuring lie about the very thing the
-            alarm strip beneath it was raising. The exact timestamp is on hover. */}
-        <StateCell
-          label="Last reading"
-          value={latest?.timestamp ? ago(latest.timestamp) : "NEVER"}
-          title={latest?.timestamp ? new Date(latest.timestamp).toLocaleString() : undefined}
-          bad={stale}
-          wide
         />
       </div>
 
@@ -186,9 +201,9 @@ export default function HmiLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** How long ago, in words. "2 days ago" is actionable; "03:16 PM" is not. */
-function ago(iso: string): string {
-  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+/** How long ago, in words. "2 DAYS AGO" is actionable; "03:16 PM" is not. */
+function ago(d: Date): string {
+  const secs = Math.max(0, (Date.now() - d.getTime()) / 1000);
   if (secs < 90) return Math.round(secs) + " SEC AGO";
   const mins = secs / 60;
   if (mins < 90) return Math.round(mins) + " MIN AGO";
@@ -198,22 +213,29 @@ function ago(iso: string): string {
 }
 
 function StateCell({
-  label, value, bad, wide, title,
+  label, value, bad, wide, title, sub,
 }: {
   label: string; value: string; bad: boolean; wide?: boolean; title?: string;
+  /** A quieter second line — the duration under a date, the channels under a yes. */
+  sub?: string;
 }) {
   return (
-    <div className={clsx("px-5 py-2.5 leading-tight", wide && "min-w-[11rem]")}
+    <div className={clsx("px-5 py-2 leading-tight", wide && "min-w-[13rem]")}
          style={{ borderColor: HMI.line }} title={title}>
       <div className="text-[11px] tracking-widest uppercase" style={{ color: HMI.inkFaint }}>
         {label}
       </div>
       <div
-        className="text-[22px] font-mono-num font-semibold tabular-nums leading-tight"
+        className="text-[20px] font-mono-num font-semibold tabular-nums leading-tight"
         style={{ color: bad ? HMI.warn : HMI.ink }}
       >
         {value}
       </div>
+      {sub && (
+        <div className="text-[11px] font-mono-num tracking-wide" style={{ color: HMI.inkFaint }}>
+          {sub}
+        </div>
+      )}
     </div>
   );
 }

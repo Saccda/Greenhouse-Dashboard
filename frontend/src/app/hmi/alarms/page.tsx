@@ -16,6 +16,7 @@ import { clsx } from "clsx";
 
 import { swrFetcher } from "@/lib/api";
 import { HMI } from "@/components/hmi2/tokens";
+import { plain } from "@/components/hmi2/plain";
 
 interface AlertRow {
   id: number;
@@ -136,7 +137,10 @@ export default function HmiAlarms() {
                     <Cell mono right muted>
                       {r.duration_min != null ? `${Math.round(r.duration_min)} min` : "—"}
                     </Cell>
-                    <Cell>{r.message}</Cell>
+                    {/* Same cleanup as the strip: the priority column already
+                        carries severity, so the emoji and asterisks are noise
+                        in the way of the words. */}
+                    <Cell>{plain(r.message)}</Cell>
                   </tr>
                 );
               })}
