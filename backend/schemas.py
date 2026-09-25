@@ -104,6 +104,10 @@ class FarmInfo(BaseModel):
     # farm showing "Not configured" where it is actually measured is worse than
     # showing nothing.
     water_source: str = "none"
+    # Whether soil probes are fitted. False everywhere today; the dashboard
+    # reads this rather than hardcoding "coming soon", so the day probes are
+    # wired the panel changes on its own.
+    has_soil_sensors: bool = False
 
 
 class FarmsResponse(BaseModel):

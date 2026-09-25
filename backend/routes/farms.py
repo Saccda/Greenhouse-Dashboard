@@ -36,6 +36,7 @@ def list_farms(user: dict = Depends(auth_service.require_auth)) -> FarmsResponse
             latitude=info.get("latitude"),
             longitude=info.get("longitude"),
             water_source=_water_source(info),
+            has_soil_sensors=bool(info.get("soil_sensors")),
         )
         for farm_id, info in config.FARMS.items()
         if allowed is None or farm_id in allowed

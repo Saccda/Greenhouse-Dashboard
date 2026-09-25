@@ -189,6 +189,11 @@ COOKIE_SECURE = FLASK_ENV != "development"
 # Confirmed with the farm team: the campus totalizer counts CUBIC METRES, so
 # {"Day_consumption": 2} is 2,000 litres. liters_per_unit is what lets the
 # measured figure be compared with the litre-denominated runtime estimate.
+#
+# soil_sensors follows the same shape and is None everywhere for now: none is
+# installed at any site yet. It exists so the dashboard can say "no soil sensor
+# fitted" as a fact read from configuration rather than as a hardcoded string
+# somebody has to remember to delete on the day one is wired in.
 FARMS: dict[str, dict] = {
     "kampot": {
         "display_name": "Kampot Farm",
@@ -198,6 +203,7 @@ FARMS: dict[str, dict] = {
         "longitude":    104.1811,
         "fogger_spec":  {"lines": 9, "foggers_per_line": 18, "flow_lpm_per_fogger": 3.0},
         "water_meter":  None,   # no flow meter installed at Kampot
+        "soil_sensors": None,   # no soil probes installed
     },
     "kep": {
         "display_name": "Kep Farm",
@@ -207,6 +213,7 @@ FARMS: dict[str, dict] = {
         "longitude":    104.3167,
         "fogger_spec":  None,  # TODO: confirm Kep's line/fogger layout and per-fogger flow rate
         "water_meter":  None,  # no flow meter installed at Kep
+        "soil_sensors": None,  # no soil probes installed
     },
     "campus": {
         "display_name": "PP Campus",
@@ -231,6 +238,10 @@ FARMS: dict[str, dict] = {
             "liters_per_unit": CAMPUS_WATER_LITERS_PER_UNIT,
             "topic":           CAMPUS_WATER_MQTT_TOPIC,
         },
+        # Planned, not installed. Fill this in when probes are wired and the
+        # dashboard panel starts showing readings instead of saying there are
+        # none.
+        "soil_sensors": None,
     },
 }
 DEFAULT_FARM = "kampot"
