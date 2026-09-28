@@ -105,8 +105,52 @@ def check_broker(wait: int) -> bool:
     return True
 
 
+def check_status_feed():
+    """
+    Is the bridge writing ANYTHING?
+
+    This is the test that separates the explanations, and it runs from
+    anywhere. The bridge subscribes to the status topic and the water topic on
+    one connection, so:
+
+      status arriving, water not  -> the bridge is alive but not subscribed to
+                                     the water topic. Almost always a process
+                                     that started before that topic was added,
+                                     since a subscription is not retroactive.
+      neither arriving            -> the bridge is down or cannot reach
+                                     InfluxDB. Water is not the thing to chase.
+      both arriving               -> nothing is wrong.
+
+    Without this, "no water data" looks identical in all three cases.
+    """
+    print("")
+    print("2. STATUS FEED - is the bridge writing anything at all?")
+    measurement = config.FARMS["campus"]["measurement"]
+    flux = (
+        'from(bucket: "' + config.INFLUXDB_BUCKET + '")'
+        + ' |> range(start: -7d)'
+        + ' |> filter(fn: (r) => r._measurement == "' + measurement + '")'
+        + ' |> filter(fn: (r) => r._field == "temperature" or r._field == "humidity")'
+        + ' |> last()'
+    )
+    try:
+        df = influxdb_service._run_query(flux)
+    except Exception as e:
+        print("   could not query: " + str(e))
+        return False
+    if df.empty:
+        print("   NOTHING in the last 7 days. The bridge is not writing at all,")
+        print("   so the water topic is not the first thing to chase.")
+        return False
+    tcol = "time" if "time" in df.columns else df.columns[0]
+    print("   writing - newest status reading " + str(max(df[tcol])))
+    for _, r in df.iterrows():
+        print("     " + str(r.get("field", "?")).ljust(12) + str(r.get("value")))
+    return True
+
+
 def check_influx() -> int:
-    print("\n2. INFLUXDB — the store the dashboard reads")
+    print("\n3. INFLUXDB — water fields specifically")
     measurement = config.FARMS["campus"]["measurement"]
     df = influxdb_service.get_water_history(measurement, days=90)
     if df.empty:
@@ -121,7 +165,7 @@ def check_influx() -> int:
 
 
 def check_postgres() -> int:
-    print("\n3. POSTGRES — the long-term archive")
+    print("\n4. POSTGRES — the long-term archive")
     url = config.POSTGRES_URL or config.POSTGRES_WRITE_URL
     if not url:
         print("   POSTGRES_URL is not set in this environment; skipped.")
@@ -229,10 +273,11 @@ def main() -> int:
 
     subscribed = check_bridge_log()
     check_broker(args.wait)
+    status_ok = check_status_feed()
     influx = check_influx()
     postgres = check_postgres()
 
-    print("\n4. WHAT THIS MEANS")
+    print("\n5. WHAT THIS MEANS")
     if postgres == -1:
         print("   (Postgres could not be reached from here, so only the broker")
         print("    and InfluxDB are being judged.)")
@@ -240,7 +285,19 @@ def main() -> int:
         print("   (The archive exists but this role cannot read it. That blocks")
         print("    THIS CHECK only — the bridge writes with a different role.)")
     if influx == 0 and postgres <= 0:
-        print("   Nothing has been stored anywhere yet.")
+        print("   No water data has been stored anywhere yet.")
+        if status_ok:
+            print("   But the bridge IS writing status readings, so it is running")
+            print("   and reaching InfluxDB. That narrows it to one thing: the")
+            print("   running process is not subscribed to the WATER topic. A")
+            print("   subscription happens once, on connect, so a process that")
+            print("   started before that topic was added never asked for it,")
+            print("   however long it stays up. Restart it:")
+            print("     nssm.exe restart CampusMqttBridge")
+            print("   then confirm BOTH topics appear on its subscribe line.")
+        else:
+            print("   The bridge is not writing status readings either, so it is")
+            print("   down or cannot reach InfluxDB. Fix that before chasing water.")
         if subscribed == 0:
             print("   Section 0 found the cause: the running bridge is not")
             print("   subscribed to the water topic. Restart it.")
@@ -268,7 +325,7 @@ def main() -> int:
         print("   Both stores have water data. The pipeline works end to end.")
         print("   The dashboard card appears on Historical for PP Campus.")
     print("")
-    print("5. WORTH ASKING THE FIRMWARE TEAM FOR")
+    print("6. WORTH ASKING THE FIRMWARE TEAM FOR")
     print("   Publish the water topic with the RETAIN flag set.")
     print("   MQTT delivers a message to whoever is subscribed AT THAT MOMENT.")
     print("   On the status topic, publishing every 30s, a miss costs one sample")
