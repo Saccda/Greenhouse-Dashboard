@@ -224,9 +224,22 @@ FARMS: dict[str, dict] = {
         # whole-number humidity reading as an integer, which permanently
         # locked that measurement's humidity column to integer type in
         # InfluxDB (schema-on-write, no ALTER-column-type available). Every
-        # later float reading was then rejected outright. The old
-        # "CampusData" measurement is harmless leftover cruft in the bucket
-        # now — nothing reads it — but don't reuse that name.
+        # later float reading was then rejected outright.
+        #
+        # The old "CampusData" measurement was left behind in the bucket: 480
+        # points spanning five minutes on 2026-09-02, read by nothing. It
+        # CANNOT be deleted — this is InfluxDB Cloud Serverless (v3), whose
+        # delete API answers "Deletes ranges are not supported for serverless
+        # v3 buckets", and the only other lever is dropping the whole bucket,
+        # which would take every farm's history with it. It aged out instead
+        # via the bucket's 30-day retention, around 2026-10-02.
+        #
+        # Worth knowing beyond this one measurement: on this plan, data cannot
+        # be removed once written. Anything wrong that gets stored stays until
+        # retention expires it, which is the real argument for the type casts
+        # in campus_mqtt_bridge.py rather than fixing mistakes afterwards.
+        #
+        # Don't reuse that name.
         "measurement":  "PPCampusData",
         "location":     "Phnom Penh",
         "latitude":     11.5564,
