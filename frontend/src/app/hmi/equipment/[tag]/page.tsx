@@ -78,6 +78,18 @@ const EQUIPMENT: Record<string, Spec> = {
     note: "Cools the water in T-02 through the coil. Independent of spraying — the tank can be chilled while the nozzles are idle, which is the normal way to have cold water ready.",
     detail: [["Driven by", "CH4"], ["Service", "Chilled water"]],
   },
+  "N-01": {
+    name: "Misting nozzles",
+    kind: "Inline",
+    channel: "CH2",
+    note: "Thirty-one heads on four overhead rails, fed from the circulation pump. They share CH2 with the pump, so nozzle run time and pump run time are necessarily the same number — a nozzle cannot be running while the pump is not.",
+    detail: [
+      ["Driven by", "CH2"],
+      ["Rails", "4, running the length of the growing area"],
+      ["Heads", "31 identified in the CAD"],
+      ["Flow instrumentation", "None per head — a blocked nozzle shows up only as run time rising for the same water used"],
+    ],
+  },
   "CP-01": {
     name: "Control panel",
     kind: "Electrical",

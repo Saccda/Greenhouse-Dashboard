@@ -18,6 +18,7 @@
  */
 import { useState, useMemo, useCallback, Component, type ReactNode } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { clsx } from "clsx";
 import { Box, Maximize2, RotateCcw, AlertTriangle, Crosshair, Copy, Check, Eye } from "lucide-react";
@@ -78,6 +79,7 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
   // A nonce alongside the name so clicking the same view again re-frames,
   // which is what someone expects after they have orbited away from it.
   const [view, setView] = useState<{ name: ViewName; nonce: number }>({ name: "iso", nonce: 0 });
+  const router = useRouter();
   // Live camera angles. The default ISO framing has been set by eye several
   // times over; showing the numbers means the next adjustment is "orbit to it
   // and read them off" rather than another guess at the source.
@@ -119,6 +121,10 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
             viewNonce={view.nonce}
             onCamera={onCamera}
             onPick={(name) => setPicked((p) => (p.includes(name) ? p : [...p, name]))}
+            // Same destination the process diagram sends you to, so the model
+            // and the schematic are two views of one plant rather than two
+            // pictures of it.
+            onSelectTag={(tag) => router.push(`/hmi/equipment/${tag}`)}
           />
         </WebGLBoundary>
 
@@ -221,7 +227,9 @@ export default function CampusModelViewer({ farm = "campus" }: { farm?: string }
         <div className="absolute bottom-3 left-3 flex items-center gap-2.5 text-[10px] text-slate-200 bg-surface-card/85 backdrop-blur px-2.5 py-1.5 rounded-lg ring-1 ring-surface-border">
           <span className="flex items-center gap-1.5">
             <Box size={11} />
-            {pickMode ? "click a highlighted part to identify it" : "drag to rotate · scroll to zoom · right-drag to pan"}
+            {pickMode
+            ? "click a highlighted part to identify it"
+            : "click a part for its detail · drag to rotate · scroll to zoom · right-drag to pan"}
           </span>
           {angles && (
             <span

@@ -67,6 +67,39 @@ const ROLE_GLOW: Record<string, { base: string; emissive: string }> = {
  * `axis` is in the model's own coordinates, where the fan's thin dimension —
  * and therefore its shaft — runs along X.
  */
+/**
+ * Which equipment page a body belongs to, by SolidWorks body number.
+ *
+ * The process diagram already opens a detail page when you click an item; the
+ * model did not, so the two were separate pictures of the same plant rather
+ * than one twin. Clicking the pump here now lands on the same page clicking
+ * the pump there does.
+ *
+ * Keyed by body number rather than by role, because a role can span several
+ * pieces of equipment: ch4_cool covers the chilled tank, its coil and the
+ * condenser fan, which are two different things to read about.
+ *
+ * F-01 and FM-01 are absent on purpose — the filter and the meter are not
+ * separately modelled, so they have no body to click. They stay reachable
+ * from the diagram, which is the honest answer rather than pointing some
+ * nearby body at them.
+ */
+const BODY_TAG: Record<number, string> = {
+  35: "T-01",                     // storage tank
+  121: "T-02", 153: "T-02",       // chilled tank and the coil inside it
+  255: "CH-01", 280: "CH-01",     // condenser fan
+  126: "CH-01",                   // the wire feeding the cooling unit
+  90: "CP-01",                    // control panel
+};
+
+/** Every nozzle body belongs to the misting run. */
+const ROLE_TAG: Record<string, string> = { ch2_spray: "N-01" };
+
+function tagForPart(partName: string): string | null {
+  const [role, body] = partName.split("__");
+  return BODY_TAG[Number(body)] ?? ROLE_TAG[role] ?? null;
+}
+
 const MOTION: Record<string, { axis: [number, number, number]; rpm: number }> = {
   // 90 rpm is a DISPLAY speed, not the real one. A condenser fan runs nearer a
   // thousand, which at 60 frames a second is roughly a quarter turn per frame —
@@ -105,6 +138,8 @@ export interface SceneProps {
   /** Developer aid: click a part to report `role__bodyNumber`. */
   pickMode?: boolean;
   onPick?: (partName: string) => void;
+  /** Called with an equipment tag when a mapped part is clicked outside pick mode. */
+  onSelectTag?: (tag: string) => void;
   /** Which preset to frame from, and a nonce so re-picking the same one re-fits. */
   view?: ViewName;
   viewNonce?: number;
@@ -147,7 +182,7 @@ function Backdrop() {
   return <primitive object={scene} />;
 }
 
-function Parts({ active, pickMode, onPick }: SceneProps) {
+function Parts({ active, pickMode, onPick, onSelectTag }: SceneProps) {
   const { scene } = useGLTF(PARTS_URL, DRACO_PATH);
   const invalidate = useThree((s) => s.invalidate);
 
@@ -308,7 +343,19 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
     <primitive
       object={scene}
       onClick={(e: { stopPropagation: () => void; object: THREE.Object3D }) => {
-        if (!pickMode || !onPick) return;
+        // Pick mode is the developer aid and keeps priority: it reports the
+        // body number so a mis-assigned part can be traced back to the CAD.
+        // Outside it, a click opens that item's detail page.
+        if (!pickMode) {
+          if (!onSelectTag) return;
+          e.stopPropagation();
+          let node: THREE.Object3D | null = e.object;
+          while (node && !(node.name ?? "").includes("__")) node = node.parent;
+          const tag = node ? tagForPart(node.name) : null;
+          if (tag) onSelectTag(tag);
+          return;
+        }
+        if (!onPick) return;
         e.stopPropagation();
         // Walk up to the named part: the click lands on a mesh, which may be a
         // child of the node carrying the role__body name.
@@ -367,7 +414,7 @@ function Loading() {
 }
 
 export default function CampusModelScene({
-  active, pickMode, onPick, view = "iso", viewNonce = 0, onCamera,
+  active, pickMode, onPick, onSelectTag, view = "iso", viewNonce = 0, onCamera,
 }: SceneProps) {
   const controls = useRef<OrbitControlsImpl>(null);
   // Last reported pair, so a drag does not fire a React render per frame.
@@ -447,7 +494,7 @@ export default function CampusModelScene({
               on its head. */}
           <group rotation={[Math.PI / 2, 0, 0]}>
             <Backdrop />
-            <Parts active={active} pickMode={pickMode} onPick={onPick} />
+            <Parts active={active} pickMode={pickMode} onPick={onPick} onSelectTag={onSelectTag} />
             {/* Inside the rotated group on purpose: the effects work in the
                 model's own coordinates, derived from the nozzle bodies, so
                 they move with the model rather than needing the rotation
