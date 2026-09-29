@@ -203,9 +203,24 @@ function Parts({ active, pickMode, onPick, onSelectTag }: SceneProps) {
       /** Present only for parts in MOTION: the group they spin about. */
       pivot?: THREE.Object3D;
     }[] = [];
+    // TWO PHASES, and the separation is load-bearing.
+    //
+    // This loop REPARENTS motion parts into pivot groups. Doing that inside
+    // scene.traverse mutates the children array three.js is iterating, which
+    // makes it skip siblings: on the very first mount, ch2_spray__256 and
+    // ch2_spray__287 were never visited, so they never got cloned materials
+    // and could not light up. They worked only after a remount, once the
+    // reparenting was already done and the traverse ran clean — which is a
+    // bug that hides from anyone who reloads the page to check.
+    //
+    // Collect first, mutate second.
+    const partNodes: THREE.Object3D[] = [];
     scene.traverse((obj) => {
+      if ((obj.name ?? "").includes("__")) partNodes.push(obj);
+    });
+
+    for (const obj of partNodes) {
       const name = obj.name ?? "";
-      if (!name.includes("__")) return;
       const role = name.split("__")[0];
       const materials: THREE.MeshStandardMaterial[] = [];
       const original: { color: THREE.Color; metalness: number }[] = [];
@@ -287,7 +302,7 @@ function Parts({ active, pickMode, onPick, onSelectTag }: SceneProps) {
         }
       }
       found.push({ role, name, node: obj, materials, original, pivot });
-    });
+    }
     return found;
   }, [scene]);
 
