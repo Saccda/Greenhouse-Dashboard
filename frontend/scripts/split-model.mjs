@@ -63,7 +63,18 @@ const PARTS = {
   // one slat out of seventeen identical 192 x 514 x 25 mm bodies, and [282] is
   // a black panel. Only [126], the 15 x 15 x 129 mm wire, was right, which is
   // why the channel appeared to light the wiring and nothing else.
-  ch4_cool: [121, 153, 126],
+  ch4_cool: [121, 153, 126,
+    // The condenser fan, added so it can SPIN. Two bodies at an identical
+    // bounding box — the same duplication the nozzle heads show — forming a
+    // 361 mm disc 77 mm thick on the face of the cooling unit, which is where
+    // a condenser fan goes and what one looks like. Its thin axis is X, so
+    // that is the axis it turns about; see MOTION in CampusModelScene.tsx.
+    //
+    // This is the one addition to the three bodies CH4 was deliberately kept
+    // to, and it earns it: a digital twin should move where the real thing
+    // moves, and this is the only part of the campus system that rotates and
+    // is separately modelled.
+    255, 280],
   // The electrical panel. [90] is a 400 x 175 x 600 mm box of only 876 triangles
   // standing on its own — nothing else in the model is within 0.6 m of it — and
   // its face carries rgb(255,6,6) red, rgb(255,255,0) yellow, rgb(24,171,36)

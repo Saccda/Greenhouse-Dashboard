@@ -23,7 +23,7 @@
  * the picker below reports exactly that string.
  */
 import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Bounds, useBounds, ContactShadows, Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
@@ -34,10 +34,46 @@ const PARTS_URL = "/models/campus-parts.glb";
 const DRACO_PATH = "/draco/";
 
 /** Colour each role glows when its channel is running. */
-const ROLE_GLOW: Record<string, string> = {
-  ch2_spray:  "#38bdf8",   // water — sky
-  ch4_cool:   "#22d3ee",   // chilled water — cyan
-  ch1_enable: "#4ade80",   // system enabled — green
+/**
+ * What a running channel looks like.
+ *
+ * `base` replaces the part's own colour and `emissive` makes it glow. Emissive
+ * alone was not enough: these materials are metallic, so an emissive tint sat
+ * UNDER a grey reflection and the highlight read as a faint sheen rather than
+ * "this is the part that is running". Recolouring the body as well is what
+ * produces the saturated blue of a vendor's twin, where a highlighted machine
+ * is unmistakably a different object from its neighbours.
+ *
+ * Metalness is also dropped on a highlighted part — a mirror shows its
+ * surroundings rather than its own colour, so a metallic part cannot look blue
+ * however blue you paint it.
+ */
+const ROLE_GLOW: Record<string, { base: string; emissive: string }> = {
+  ch2_spray:  { base: "#0ea5e9", emissive: "#38bdf8" },   // water
+  ch4_cool:   { base: "#06b6d4", emissive: "#22d3ee" },   // chilled water
+  ch1_enable: { base: "#22c55e", emissive: "#4ade80" },   // system enabled
+};
+
+/**
+ * Parts that MOVE, keyed by their `role__body` name.
+ *
+ * A digital twin should move where the real thing moves and nowhere else.
+ * Spinning something that is bolted down would be a lie told for decoration,
+ * so this list is short on purpose: the condenser fan is the only part of the
+ * campus system that rotates and is separately modelled.
+ *
+ * `axis` is in the model's own coordinates, where the fan's thin dimension —
+ * and therefore its shaft — runs along X.
+ */
+const MOTION: Record<string, { axis: [number, number, number]; rpm: number }> = {
+  // 90 rpm is a DISPLAY speed, not the real one. A condenser fan runs nearer a
+  // thousand, which at 60 frames a second is roughly a quarter turn per frame —
+  // past the point where the eye resolves rotation, so it aliases into a
+  // strobe and can appear to turn backwards. The twin's job here is to say
+  // "this is running", and a speed that reads as rotation says it better than
+  // a number nobody can see.
+  "ch4_cool__255": { axis: [1, 0, 0], rpm: 90 },
+  "ch4_cool__280": { axis: [1, 0, 0], rpm: 90 },
 };
 
 /**
@@ -117,12 +153,22 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
   // scene, so mutating a material in place would leak the highlight into any
   // other consumer of the same asset — and back into this one after a remount.
   const parts = useMemo(() => {
-    const found: { role: string; node: THREE.Object3D; materials: THREE.MeshStandardMaterial[] }[] = [];
+    const found: {
+      role: string;
+      name: string;
+      node: THREE.Object3D;
+      materials: THREE.MeshStandardMaterial[];
+      /** The part's own colour and metalness, so the highlight can be undone. */
+      original: { color: THREE.Color; metalness: number }[];
+      /** Present only for parts in MOTION: the group they spin about. */
+      pivot?: THREE.Object3D;
+    }[] = [];
     scene.traverse((obj) => {
       const name = obj.name ?? "";
       if (!name.includes("__")) return;
       const role = name.split("__")[0];
       const materials: THREE.MeshStandardMaterial[] = [];
+      const original: { color: THREE.Color; metalness: number }[] = [];
       obj.traverse((child) => {
         const mesh = child as THREE.Mesh;
         if (!mesh.isMesh) return;
@@ -137,34 +183,100 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
         const clones = list.map((m) => {
           const clone = (m as THREE.MeshStandardMaterial).clone();
           materials.push(clone);
+          original.push({ color: clone.color.clone(), metalness: clone.metalness });
           return clone;
         });
         mesh.material = wasArray ? clones : clones[0];
       });
-      found.push({ role, node: obj, materials });
+      // A part that spins needs a pivot at its own centre: rotating the node
+      // directly turns it about the model's ORIGIN and swings the fan across
+      // the room instead of spinning it in place.
+      //
+      // MUST be idempotent. useGLTF caches and shares the loaded scene — the
+      // same warning the material cloning above carries — so this memo re-runs
+      // on the SAME objects every time the viewer remounts, which happens
+      // whenever someone switches HMI tabs and comes back. Building the pivot
+      // unconditionally reparented the fan a second time and subtracted its
+      // centre again, leaving it displaced by twice the offset and orbiting.
+      // That is what "it should not rotate like that" looked like.
+      let pivot: THREE.Object3D | undefined;
+      if (MOTION[name]) {
+        if (obj.parent?.userData?.motionPivot) {
+          // Already built on an earlier mount; reuse it untouched.
+          pivot = obj.parent;
+        } else if (obj.parent) {
+          const box = new THREE.Box3();
+          obj.traverse((child) => {
+            const mesh = child as THREE.Mesh;
+            if (!mesh.isMesh || !mesh.geometry) return;
+            mesh.geometry.computeBoundingBox();
+            if (mesh.geometry.boundingBox) box.union(mesh.geometry.boundingBox);
+          });
+          if (!box.isEmpty()) {
+            const centre = box.getCenter(new THREE.Vector3());
+            const parent = obj.parent;
+            const group = new THREE.Group();
+            group.userData.motionPivot = true;
+            group.position.copy(centre);
+            parent.add(group);
+            group.add(obj);
+            obj.position.sub(centre);
+            pivot = group;
+          }
+        }
+      }
+      found.push({ role, name, node: obj, materials, original, pivot });
     });
     return found;
   }, [scene]);
 
   useEffect(() => {
-    for (const { role, materials } of parts) {
+    for (const { role, materials, original } of parts) {
       const on = active.has(role);
       const glow = ROLE_GLOW[role];
-      for (const m of materials) {
+      materials.forEach((m, i) => {
         if (on && glow) {
-          m.emissive = new THREE.Color(glow);
-          m.emissiveIntensity = 1.4;
+          m.color = new THREE.Color(glow.base);
+          m.emissive = new THREE.Color(glow.emissive);
+          m.emissiveIntensity = 2.2;
+          // A mirror shows its surroundings, not its own colour, so a metallic
+          // part cannot look blue however blue it is painted.
+          m.metalness = 0.05;
         } else {
+          m.color = original[i].color.clone();
           m.emissive = new THREE.Color("#000000");
           m.emissiveIntensity = 0;
+          m.metalness = original[i].metalness;
         }
         m.needsUpdate = true;
-      }
+      });
     }
     // frameloop is "demand", so a state change that only alters materials would
     // otherwise never be drawn.
     invalidate();
   }, [parts, active, invalidate]);
+
+  /**
+   * Spin whatever is both in MOTION and currently running.
+   *
+   * invalidate() is called from inside the frame because the canvas runs
+   * frameloop="demand": without it the scene draws once and the fan freezes
+   * mid-turn. Asking for the next frame only while something is actually
+   * turning means a still model costs nothing, which is the whole reason the
+   * canvas is on demand in the first place.
+   */
+  useFrame((_, delta) => {
+    let moving = false;
+    for (const { role, name, pivot } of parts) {
+      if (!pivot || !active.has(role)) continue;
+      const spec = MOTION[name];
+      if (!spec) continue;
+      const radians = (spec.rpm / 60) * Math.PI * 2 * delta;
+      pivot.rotateOnAxis(new THREE.Vector3(...spec.axis).normalize(), radians);
+      moving = true;
+    }
+    if (moving) invalidate();
+  });
 
   return (
     <primitive
