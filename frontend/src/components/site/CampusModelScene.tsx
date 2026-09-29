@@ -29,6 +29,8 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
+import SprayEffects from "./SprayEffects";
+
 const BACKDROP_URL = "/models/campus-backdrop.glb";
 const PARTS_URL = "/models/campus-parts.glb";
 const DRACO_PATH = "/draco/";
@@ -149,9 +151,12 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
   const { scene } = useGLTF(PARTS_URL, DRACO_PATH);
   const invalidate = useThree((s) => s.invalidate);
 
-  // Materials are cloned once per part. useGLTF caches and shares the loaded
-  // scene, so mutating a material in place would leak the highlight into any
-  // other consumer of the same asset — and back into this one after a remount.
+  // Materials are cloned once per part, and the clone carries its own pristine
+  // colour in userData. useGLTF caches and shares the loaded scene, so anything
+  // written here survives unmount and is seen again on the next mount — which
+  // makes every mutation in this block a place where state can leak forward.
+  // Both bugs found so far came from exactly that: the fan reparented twice,
+  // and a highlight colour recorded as a part's own colour.
   const parts = useMemo(() => {
     const found: {
       role: string;
@@ -181,7 +186,28 @@ function Parts({ active, pickMode, onPick }: SceneProps) {
         const wasArray = Array.isArray(mesh.material);
         const list = wasArray ? (mesh.material as THREE.Material[]) : [mesh.material];
         const clones = list.map((m) => {
-          const clone = (m as THREE.MeshStandardMaterial).clone();
+          const mat = m as THREE.MeshStandardMaterial;
+          // Reuse our own clone if this mesh already has one. The clones are
+          // written back into the SHARED cached scene, so on a remount `list`
+          // holds the previous mount's clones, not the asset's own materials.
+          // Cloning those again captured whatever colour the part happened to
+          // be wearing at unmount — leave the page with CH4 previewed and the
+          // chilled tank's "original" colour was recorded as blue, so it came
+          // back blue and stayed blue for good.
+          //
+          // The pristine values are therefore stored ON the material the first
+          // time we ever touch it, and always restored from there.
+          if (mat.userData?.pristine) {
+            const p = mat.userData.pristine as { color: THREE.Color; metalness: number };
+            materials.push(mat);
+            original.push({ color: p.color.clone(), metalness: p.metalness });
+            return mat;
+          }
+          const clone = mat.clone();
+          clone.userData = {
+            ...clone.userData,
+            pristine: { color: clone.color.clone(), metalness: clone.metalness },
+          };
           materials.push(clone);
           original.push({ color: clone.color.clone(), metalness: clone.metalness });
           return clone;
@@ -422,6 +448,11 @@ export default function CampusModelScene({
           <group rotation={[Math.PI / 2, 0, 0]}>
             <Backdrop />
             <Parts active={active} pickMode={pickMode} onPick={onPick} />
+            {/* Inside the rotated group on purpose: the effects work in the
+                model's own coordinates, derived from the nozzle bodies, so
+                they move with the model rather than needing the rotation
+                applied to them by hand. */}
+            <SprayEffects active={active.has("ch2_spray")} />
           </group>
           <ViewController view={view} nonce={viewNonce} />
         </Bounds>
