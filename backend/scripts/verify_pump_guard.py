@@ -75,8 +75,19 @@ pump_guard.consider("kampot", "long_spray", AFTER + 20, 36.0)
 check("a long spray that IS cooling is left alone", not SENT)
 
 reset()
-pump_guard.consider("kampot", "empty_tank", AFTER - 1, 36.0)
-check("inside the grace period, nothing is sent", not SENT)
+# The grace period is zero by design: nobody is watching Telegram minute by
+# minute, so waiting only added dry running. Assert it acts on the very first
+# cycle, since that is now the promise -- and that a farm configured WITH a
+# grace period still honours it, so the knob has not quietly stopped working.
+pump_guard.consider("kampot", "empty_tank", 0.0, 36.0)
+check("no grace period: acts on the first cycle that sees it", len(SENT) == 1)
+
+reset()
+_saved = CFG["after_minutes"]
+CFG["after_minutes"] = 5.0
+pump_guard.consider("kampot", "empty_tank", 4.0, 36.0)
+check("a configured grace period is still honoured", not SENT)
+CFG["after_minutes"] = _saved
 
 reset()
 pump_guard.consider("kep", "empty_tank", AFTER + 20, 36.0)
@@ -90,7 +101,7 @@ check("a farm with no protection config is left alone", not SENT)
 print("\n=== 2. The dry run ===")
 reset()
 pump_guard.consider("kampot", "empty_tank", AFTER + 5, 35.9)
-check("locks out after the grace period", len(SENT) == 1)
+check("locks out on the first cycle", len(SENT) == 1)
 check(f"raises relay 3 to {CFG['lockout_low']}–{CFG['lockout_high']} °C",
       SENT and SENT[0]["relay"] == 3
       and SENT[0]["low"] == CFG["lockout_low"] and SENT[0]["high"] == CFG["lockout_high"])

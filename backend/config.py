@@ -158,23 +158,26 @@ MIN_TEMP_DROP_AFTER_SPRAY    = float(os.getenv("MIN_TEMP_DROP",        "1.0"))  
 #
 #   Worst case is therefore two dry-run cycles, not a nightly one.
 #
-# after_minutes is measured from when the empty-tank condition was first seen,
-# not from when the pump started. The alert itself fires at MAX_SPRAY_MINUTES
-# (5 min), so the pump has already run that long by the time this is consulted.
-# ALERT_CHECK_INTERVAL_MINUTES (5) is the real floor on reaction time: a grace
-# period shorter than one cycle cannot be resolved.
+# after_minutes is a grace period for a person to act before the machine does,
+# and it is ZERO on purpose. Nobody watches Telegram or the dashboard minute by
+# minute on a working farm, so waiting bought five more minutes of dry running
+# and no human response. The guard acts on the first cycle that sees the
+# condition. The real floor on reaction time is MAX_SPRAY_MINUTES (5) plus one
+# ALERT_CHECK_INTERVAL_MINUTES (5), so the pump runs 5-10 min, not 10-15.
 DRY_RUN_PROTECTION: dict[str, dict] = {
     "kampot": {
         "enabled":       os.getenv("DRY_RUN_PROTECT_KAMPOT", "true").lower() == "true",
         "relay":         3,        # Spray Pump (P5/P6)
 
-        # One checker cycle of grace, so the pump has run ~10 min rather than
-        # ~15 before the machine acts. Dropping this further does nothing on
-        # its own — ALERT_CHECK_INTERVAL would have to come down with it.
-        "after_minutes": float(os.getenv("DRY_RUN_AFTER_MIN", "5")),
-
-        # Second strike: no grace. The first lockout already gave somebody
-        # time and an auto-release, and it was not enough.
+        # No grace. The farmer is not holding their phone, so the only thing a
+        # delay here bought was more dry running. Acting on the first cycle
+        # does mean one bad temperature reading can lock the pump out where it
+        # previously had to persist across two cycles -- that trade is
+        # deliberate: a wrong lockout is visible on the Control page and
+        # undone with one button, while pump damage is neither.
+        "after_minutes": float(os.getenv("DRY_RUN_AFTER_MIN", "0")),
+        # Second strike. Same zero wait, but this one also refuses to release
+        # itself -- see auto_release below. That is the whole difference.
         "after_minutes_repeat": 0.0,
 
         # The pump engages above P6 and releases below P5, so a band the
@@ -206,7 +209,7 @@ DRY_RUN_PROTECTION: dict[str, dict] = {
         # until someone confirms its relay map matches Kampot's.
         "enabled":       False,
         "relay":         3,
-        "after_minutes": 5.0,
+        "after_minutes": 0.0,
         "after_minutes_repeat": 0.0,
         # Kep has recorded 33.6 °C at most, so the same band clears it by
         # nearly 7 °C.
