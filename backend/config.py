@@ -68,9 +68,15 @@ MQTT_USERNAME     = os.getenv("MQTT_USERNAME", "")
 MQTT_PASSWORD     = os.getenv("MQTT_PASSWORD", "")
 CAMPUS_MQTT_TOPIC = os.getenv("CAMPUS_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/infor/status")
 
-# The campus flow meter publishes on its own topic, on its own schedule (daily
-# totals, not the per-reading cadence of the status topic):
+# The campus flow meter publishes on its own topic, and on CONSUMPTION rather
+# than on a clock: the firmware sends a message each time another cubic metre
+# has gone through it.
 #     {"Start_totalizer": 15, "Last_totalizer": 17, "Day_consumption": 2}
+#
+# That is worth knowing before anyone calls a silent meter broken. One cubic
+# metre is a thousand litres, so a system that sprays for a few minutes a day
+# can legitimately say nothing for days. Silence here is not evidence of a
+# fault; only the status feed arriving while the water feed stays empty is.
 CAMPUS_WATER_MQTT_TOPIC = os.getenv(
     "CAMPUS_WATER_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/water_data"
 )

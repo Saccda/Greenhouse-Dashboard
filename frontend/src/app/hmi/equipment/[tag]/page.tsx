@@ -43,7 +43,7 @@ const EQUIPMENT: Record<string, Spec> = {
       ["Service", "Storage outlet to cooling circuit"],
       ["Reports", "Start / end totalizer and daily consumption"],
       ["Unit", "Cubic metres"],
-      ["Cadence", "About once a day"],
+      ["Reports", "Each time another cubic metre has been consumed"],
     ],
   },
   "T-01": {

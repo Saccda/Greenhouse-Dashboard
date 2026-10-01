@@ -324,22 +324,44 @@ def get_water_history(measurement: str, days: int = 30) -> pd.DataFrame:
     Daily water-meter rows for a measurement, newest last.
 
     A longer range than the sensor queries use on purpose. The flow meter
-    publishes about once a day, so -6h would usually return nothing at all and
+    publishes only once another cubic metre has been consumed, so -6h would
+    usually return nothing at all and
     make a working meter look broken.
 
     Returns a DataFrame with _time plus whichever of WATER_FIELDS are present,
     or an empty frame when the meter has never published.
     """
+    # NO pivot() in the Flux. _run_query reads record["_field"] from every row,
+    # and pivot removes that column — so this query always raised KeyError
+    # '_field', the caller swallowed it, and the API reported "the meter has
+    # not reported yet" whether or not it had. A silent meter hid the fault
+    # perfectly; the first real reading would have been the first symptom.
+    #
+    # Reshaping in pandas instead keeps _run_query's one tidy contract.
     flux = f'''
 from(bucket: "{config.INFLUXDB_BUCKET}")
   |> range(start: -{int(days)}d)
   |> filter(fn: (r) => r._measurement == "{measurement}")
   |> filter(fn: (r) => {_field_filter(WATER_FIELDS)})
-  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
   |> sort(columns: ["_time"])
 '''
     try:
-        return _run_query(flux)
+        long = _run_query(flux)
     except Exception as e:
         print(f"[InfluxDB] get_water_history failed: {e}")
         return pd.DataFrame()
+
+    if long.empty:
+        return pd.DataFrame()
+
+    # One row per timestamp, one column per field. "last" rather than "mean":
+    # these are meter readings, and averaging two of them would invent a
+    # number the meter never showed.
+    wide = (
+        long.pivot_table(index="time", columns="field", values="value", aggfunc="last")
+            .reset_index()
+            .rename(columns={"time": "_time"})
+            .sort_values("_time")
+    )
+    wide.columns.name = None
+    return wide

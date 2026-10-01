@@ -117,7 +117,10 @@ function WaterPanel({ water }: { water?: WaterResponse }) {
             worth chasing, the other is a permanent and expected absence. */}
         <Absent>
           <span style={{ color: HMI.warn }}>Meter has not reported.</span>
-          <span className="block mt-1.5">It publishes about once a day; nothing has arrived yet.</span>
+          <span className="block mt-1.5">
+            The meter reports once another cubic metre has been used, so a quiet period is
+            normal on a system that runs briefly. Nothing has arrived yet.
+          </span>
         </Absent>
       </Panel>
     );

@@ -17,7 +17,8 @@ Status (config.CAMPUS_MQTT_TOPIC), one message per publish:
     {"ID": "Device01", "CH1": 1, "CH2": 0, ..., "CH8": 0,
      "Temperature": 35.2, "Humidity": 60.5}
 
-Water (config.CAMPUS_WATER_MQTT_TOPIC), roughly one a day from the flow meter:
+Water (config.CAMPUS_WATER_MQTT_TOPIC), published by the flow meter each time
+another CUBIC METRE has been consumed — not on a clock:
     {"Start_totalizer": 15, "Last_totalizer": 17, "Day_consumption": 2}
 
 They are routed by TOPIC, not by guessing from the payload's keys, so a
@@ -315,7 +316,8 @@ def _on_connect(client: mqtt.Client, userdata, flags, reason_code, properties=No
             f"{config.CAMPUS_MQTT_TOPIC} and {config.CAMPUS_WATER_MQTT_TOPIC}"
         )
         # Both at QoS 1 on the same persistent session. The water topic matters
-        # more for this than the status one: it publishes roughly once a day, so
+        # more for this than the status one: it publishes only once another
+        # cubic metre has gone through the meter, so
         # a missed message is a missing DAY, not a missing sample among many.
         client.subscribe([(config.CAMPUS_MQTT_TOPIC, 1),
                           (config.CAMPUS_WATER_MQTT_TOPIC, 1)])

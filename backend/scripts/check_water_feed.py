@@ -5,7 +5,8 @@ Is the campus water meter's data arriving, and is anything listening?
     python scripts/check_water_feed.py
     python scripts/check_water_feed.py --wait 120
 
-The meter publishes roughly once a DAY, not every 30 seconds like the status
+The meter publishes when another CUBIC METRE has been consumed, not on a
+clock and not every 30 seconds like the status
 topic, so "nothing on screen" is the normal state almost all of the time and
 tells you nothing on its own. This answers the question that actually matters:
 has anything EVER arrived, and would it be captured if it did.
@@ -91,7 +92,9 @@ def check_broker(wait: int) -> bool:
 
     if not seen:
         print("   nothing arrived, and nothing is retained.")
-        print("   This is EXPECTED between the meter's daily publishes. It only")
+        print("   EXPECTED between publishes: the meter speaks once another cubic")
+        print("   metre has gone through it, which on a system that runs for a few")
+        print("   minutes a day can be a long wait. It only")
         print("   means trouble if InfluxDB below is also empty after a day or two.")
         return False
     payload, retained = seen[0]
@@ -329,7 +332,7 @@ def main() -> int:
     print("   Publish the water topic with the RETAIN flag set.")
     print("   MQTT delivers a message to whoever is subscribed AT THAT MOMENT.")
     print("   On the status topic, publishing every 30s, a miss costs one sample")
-    print("   out of thousands. On a topic that publishes once a DAY, a miss")
+    print("   out of thousands. On a topic that speaks once per cubic metre, a miss")
     print("   during a restart, a deploy or a network blip costs the whole day,")
     print("   and it cannot be recovered afterwards.")
     print("   A retained message is held by the broker and handed to every new")
