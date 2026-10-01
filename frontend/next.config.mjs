@@ -70,6 +70,13 @@ const CSP = [
 
   // Stops a plain-HTTP subresource downgrading a secure page.
   "upgrade-insecure-requests",
+
+  // Where violations go. Same origin, so no CORS preflight and no public
+  // unauthenticated endpoint on the API. report-uri is deprecated but is what
+  // most browsers still honour; report-to is the replacement and is sent
+  // alongside via the Reporting-Endpoints header below.
+  "report-uri /api/csp-report",
+  "report-to csp",
 ].join("; ");
 
 /** @type {import('next').NextConfig} */
@@ -82,6 +89,11 @@ const nextConfig = {
         source: "/:path*",
         headers: [
           { key: CSP_HEADER_NAME, value: CSP },
+
+          // The modern half of the reporting pair. Browsers that have dropped
+          // report-uri use this; those that have not use both, which is
+          // harmless — a duplicate report costs a log line.
+          { key: "Reporting-Endpoints", value: 'csp="/api/csp-report"' },
 
           // Two years, with preload eligibility. Only meaningful over HTTPS,
           // and harmless over the plain-HTTP LAN address since browsers ignore

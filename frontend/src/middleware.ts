@@ -29,7 +29,13 @@ export const config = {
   // broken model rather than a redirect. The decoder's glue file is plain .js,
   // which is why the directory is named rather than the extension — excluding
   // all .js would be far broader than needed.
+  //
+  // api/csp-report is excluded because a browser posts a CSP violation report
+  // WITHOUT credentials. Routed through the auth redirect it would answer 307
+  // to the login page, the report would be lost, and the rollout would look
+  // clean because nothing was arriving — the worst failure mode for a check
+  // whose entire job is to tell you something is wrong.
   matcher: [
-    "/((?!_next/static|_next/image|draco|models|manifest\\.webmanifest|sw\\.js|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|mov|glb|gltf|wasm)$).*)",
+    "/((?!_next/static|_next/image|draco|models|api/csp-report|manifest\\.webmanifest|sw\\.js|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|mov|glb|gltf|wasm)$).*)",
   ],
 };
