@@ -27,6 +27,7 @@ from services import influxdb_service as db
 from services import spray_analysis
 from services import telegram_service as telegram
 from services import alert_log_service as alert_log
+from services import pump_guard
 from services import settings_service
 
 
@@ -435,6 +436,10 @@ def _check_farm(farm_id: str) -> None:
     is_active  = ongoing_duration is not None
     active_eff, _ = _effective_duration(key)
 
+    # Relay 3 closed right now, at any duration — the question the pump guard
+    # has to answer, which is not the same one the alert below asks.
+    pump_running = any(e.get("ongoing") for e in spray_stats.get("spray_events", []))
+
     if is_active:
         dur = ongoing_duration or 0.0
         temp_at_start = db.get_temp_at_range_start(measurement, dur)
@@ -484,6 +489,21 @@ def _check_farm(farm_id: str) -> None:
                 f"Time: {now_str}"
             ),
         )
+
+        # Act, rather than only tell someone. alert_type is "empty_tank" only
+        # when the pump has run long AND the temperature has not fallen, which
+        # together mean it is moving no water — the condition that destroys a
+        # pump. Everything the guard needs is already known here, including the
+        # effective duration with offline gaps excluded, so this is the one
+        # place that can make the decision honestly.
+        #
+        # Deliberately after _handle: the human is told first, and the guard's
+        # own message then says what was done about it.
+        try:
+            pump_guard.consider(farm_id, alert_type, active_eff, temp)
+        except Exception as exc:
+            # A failure here must never stop the remaining farms being checked.
+            print(f"[AlertChecker] Pump guard failed for {farm_id}: {exc}")
     else:
         _handle(
             key=key, farm_id=farm_id, alert_type="long_spray",
@@ -497,6 +517,25 @@ def _check_farm(farm_id: str) -> None:
                 f"Time: {now_str}"
             ),
         )
+
+    # Did the lockout actually stop the pump? Checked on every cycle with the
+    # real relay state, not from inside either branch above: `is_active` only
+    # flags events past MAX_SPRAY_MINUTES, so a pump that stopped and
+    # re-engaged two minutes ago would take the inactive branch and have its
+    # lockout recorded as confirmed while the relay is closed. pump_guard
+    # ignores this until its own verification window has passed.
+    try:
+        pump_guard.verify(farm_id, pump_running=pump_running)
+    except Exception as exc:
+        print(f"[AlertChecker] Pump guard verify failed for {farm_id}: {exc}")
+
+    # Then the one automatic release, and the forgiving of an old strike. Also
+    # every cycle, because both are about the farm having cooled or stayed
+    # quiet over time, neither of which is tied to an alert firing.
+    try:
+        pump_guard.maybe_auto_release(farm_id, temp)
+    except Exception as exc:
+        print(f"[AlertChecker] Pump guard auto-release failed for {farm_id}: {exc}")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────

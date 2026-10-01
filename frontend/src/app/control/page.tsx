@@ -17,6 +17,7 @@ import { RelayPanel } from "@/components/hmi/RelayIndicator";
 import EquipmentMimic from "@/components/hmi/EquipmentMimic";
 import SetpointPanel from "@/components/hmi/SetpointPanel";
 import CampusSetpointPanel from "@/components/hmi/CampusSetpointPanel";
+import PumpLockoutBanner from "@/components/hmi/PumpLockoutBanner";
 import Sparkline from "@/components/charts/Sparkline";
 import type { LatestResponse, RelayStatus } from "@/types";
 import { deriveConnectionStatus } from "@/lib/connection";
@@ -144,6 +145,13 @@ export default function ControlPage() {
         <div className="max-w-screen-2xl mx-auto space-y-5">
 
           <PageHeader icon={Sliders} title="Control" description="Relay state and setpoints for the selected farm. Changes here are written to the hardware, so they take effect on the next control cycle rather than immediately." />
+
+        {/* ── Dry-run lockout ─────────────────────────────────────────
+            Renders nothing unless this farm's pump has been stopped
+            automatically. When it does render it sits above the relay
+            cards, because a relay reading "OFF" is not self-explanatory
+            if something other than the operator turned it off. */}
+        <PumpLockoutBanner farm={farm} />
 
         {/* ── Section 1: Live relay status cards ─────────────────────── */}
         <section>

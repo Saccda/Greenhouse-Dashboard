@@ -11,6 +11,7 @@ import httpx
 
 import config
 from services import auth_service
+from services import pump_guard
 from services import setpoint_service
 
 router = APIRouter(tags=["setpoint"], dependencies=[Depends(auth_service.require_auth)])
@@ -68,3 +69,60 @@ async def send_setpoint(body: SetpointRequest, user: dict = Depends(auth_service
 
     setpoint_service.save(body.farm, body.relay, body.low, body.high)
     return result
+
+
+@router.get("/api/pump-lockout")
+def get_pump_lockout(farm: str, user: dict = Depends(auth_service.require_auth)) -> dict:
+    """
+    Whether this farm's pump is currently locked out, and why.
+
+    Readable by anyone who can see the farm, including read-only accounts: a
+    display panel showing a farm that will not spray should be able to say
+    why, and withholding the reason from a viewer helps nobody.
+    """
+    if farm not in config.FARMS:
+        raise HTTPException(status_code=400, detail=f"Unknown farm '{farm}'")
+    auth_service.require_farm_access(user, farm)
+    entry = pump_guard.state(farm)
+    return {
+        "farm":    farm,
+        "locked":  entry is not None,
+        "lockout": entry,
+        # Strikes spent. 1 or more means the next dry run locks out with no
+        # grace period and will not release itself, so the UI has to say so
+        # even when nothing is locked right now.
+        "strikes": pump_guard.strikes(farm),
+    }
+
+
+@router.post("/api/pump-lockout/release")
+def release_pump_lockout(farm: str, user: dict = Depends(auth_service.require_write_access)) -> dict:
+    """
+    Release a lockout and restore the setpoint that preceded it.
+
+    Requires write access, because it re-arms a pump. It is a plain def rather
+    than async so FastAPI runs it in a threadpool — pump_guard talks to
+    Node-RED over blocking HTTP, and doing that on the event loop would stall
+    every other request for the duration.
+
+    Nothing releases a lockout automatically. The lockout does not refill a
+    tank, so releasing one while the tank is still empty simply restarts the
+    dry run. That judgement belongs to whoever looked in the tank.
+    """
+    if farm not in config.FARMS:
+        raise HTTPException(status_code=400, detail=f"Unknown farm '{farm}'")
+    auth_service.require_farm_access(user, farm)
+    try:
+        return pump_guard.release(farm, user["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Node-RED unreachable at {config.NODE_RED_URL} — the lockout is still in force",
+        )
+    except Exception as e:
+        # The lockout stays latched on any failure. Reporting success over a
+        # restore that did not happen would leave someone believing the farm
+        # can spray again when it cannot.
+        raise HTTPException(status_code=502, detail=f"Could not restore the setpoint: {e}")

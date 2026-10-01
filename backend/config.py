@@ -127,6 +127,101 @@ ALERT_COOLDOWN_MINUTES       = int(os.getenv("ALERT_COOLDOWN_MINUTES", "30"))
 MAX_SPRAY_MINUTES            = float(os.getenv("MAX_SPRAY_MINUTES",    "5.0"))
 MIN_TEMP_DROP_AFTER_SPRAY    = float(os.getenv("MIN_TEMP_DROP",        "1.0"))  # °C expected drop
 
+# ---------------------------------------------------------------------------
+# Dry-run pump protection
+#
+# A spray pump running with an empty tank destroys itself: there is no water to
+# carry heat away from the seals and impeller. The alert checker already
+# detects the condition — the pump has run past MAX_SPRAY_MINUTES and the
+# temperature has NOT fallen, which together mean it is moving no water — and
+# until now the only response was a Telegram message. If nobody is holding
+# their phone, the pump keeps running.
+#
+# This lets the system act. On Kampot and Kep the only control lever is the
+# setpoint band proxied to Node-RED, so "stop the pump" means raising relay 3's
+# band (P5/P6) above any temperature the greenhouse will reach. The controller
+# then never calls for spray.
+#
+# IT ESCALATES, BECAUSE A TEMPERATURE DROP IS NOT PROOF OF WATER
+#   A locked-out greenhouse cools down every evening whether or not anybody
+#   refilled the tank — the sun sets. So releasing purely on temperature would
+#   restore the band each night and hand the pump a fresh dry run each morning,
+#   forever, which is the damage this exists to prevent.
+#
+#   What makes it safe is the strike count. The FIRST lockout may release
+#   itself once the greenhouse has cooled below the pump's own off-point, on
+#   the theory that somebody probably topped the tank up without opening the
+#   dashboard — which is what actually happens on a farm. If that was wrong,
+#   the next dry run is the SECOND strike: it locks out with no grace period
+#   at all and will not release itself for any reason. Only a person, who has
+#   looked in the tank, can release it from there.
+#
+#   Worst case is therefore two dry-run cycles, not a nightly one.
+#
+# after_minutes is measured from when the empty-tank condition was first seen,
+# not from when the pump started. The alert itself fires at MAX_SPRAY_MINUTES
+# (5 min), so the pump has already run that long by the time this is consulted.
+# ALERT_CHECK_INTERVAL_MINUTES (5) is the real floor on reaction time: a grace
+# period shorter than one cycle cannot be resolved.
+DRY_RUN_PROTECTION: dict[str, dict] = {
+    "kampot": {
+        "enabled":       os.getenv("DRY_RUN_PROTECT_KAMPOT", "true").lower() == "true",
+        "relay":         3,        # Spray Pump (P5/P6)
+
+        # One checker cycle of grace, so the pump has run ~10 min rather than
+        # ~15 before the machine acts. Dropping this further does nothing on
+        # its own — ALERT_CHECK_INTERVAL would have to come down with it.
+        "after_minutes": float(os.getenv("DRY_RUN_AFTER_MIN", "5")),
+
+        # Second strike: no grace. The first lockout already gave somebody
+        # time and an auto-release, and it was not enough.
+        "after_minutes_repeat": 0.0,
+
+        # The pump engages above P6 and releases below P5, so a band the
+        # greenhouse never reaches means it is never asked to spray. Kampot has
+        # recorded 37.6 °C (2026-10-01), so this leaves ~3.4 °C of headroom —
+        # on 30 days of data that do not yet include March–April, the hot
+        # season. If the greenhouse ever passes 41 °C the lockout stops
+        # working, which is why verify() exists: it alarms when the pump did
+        # not stop rather than assuming it did.
+        "lockout_low":   40.5,
+        "lockout_high":  41.0,
+
+        # First strike only, and never for any later one.
+        "auto_release":  True,
+
+        # How long the greenhouse must sit below the pump's own off-point
+        # before the first lockout releases itself. Sustained, so a passing
+        # cloud does not do it, and below the off-point specifically so the
+        # restored band cannot re-engage the pump the instant it lands.
+        "auto_release_cool_minutes": 30.0,
+
+        # Survive this long after an auto-release with no further dry run and
+        # the strike is forgiven — the tank really was refilled. A second dry
+        # run would land during the next hot afternoon, well inside this.
+        "strike_forgive_hours": 24.0,
+    },
+    "kep": {
+        # Same hardware, but Kep has not been commissioned, so this stays off
+        # until someone confirms its relay map matches Kampot's.
+        "enabled":       False,
+        "relay":         3,
+        "after_minutes": 5.0,
+        "after_minutes_repeat": 0.0,
+        # Kep has recorded 33.6 °C at most, so the same band clears it by
+        # nearly 7 °C.
+        "lockout_low":   40.5,
+        "lockout_high":  41.0,
+        "auto_release":  True,
+        "auto_release_cool_minutes": 30.0,
+        "strike_forgive_hours": 24.0,
+    },
+    # Campus is absent deliberately. It has direct per-channel relay commands
+    # rather than a setpoint band, so stopping its pump is a different action
+    # and belongs in its own path — and it is the development rig, where
+    # somebody is usually standing next to it.
+}
+
 # Connectivity: brief drops (< OFFLINE_ALERT_MINUTES) are silently tolerated and
 # excluded from alert durations.  Only sustained outages trigger a Telegram alert.
 OFFLINE_ALERT_MINUTES        = int(os.getenv("OFFLINE_ALERT_MINUTES", "30"))
