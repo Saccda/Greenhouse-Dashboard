@@ -36,7 +36,7 @@ export default function SprayEventsTable({
 
   return (
     <div className="overflow-auto max-h-72">
-      <table className="w-full text-xs">
+      <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-slate-600 border-b border-surface-border">
             <th className="pb-2 pr-3 font-medium">#</th>
@@ -53,11 +53,11 @@ export default function SprayEventsTable({
           )}
           {spray_events.map((ev, i) => (
             <tr key={i} className="border-b border-surface-border/50 last:border-0">
-              <td className="py-1.5 pr-3 text-slate-600 font-mono-num">{i + 1}</td>
-              <td className="py-1.5 pr-3 text-slate-300 font-mono-num">
+              <td className="py-2.5 pr-3 text-slate-600 font-mono-num">{i + 1}</td>
+              <td className="py-2.5 pr-3 text-slate-300 font-mono-num">
                 {format(parseISO(ev.start_time), timeFmt)}
               </td>
-              <td className="py-1.5 pr-3 font-mono-num">
+              <td className="py-2.5 pr-3 font-mono-num">
                 {ev.ongoing ? (
                   <span className="flex items-center gap-1 text-brand-cyan">
                     <RefreshCw size={10} className="animate-spin" />

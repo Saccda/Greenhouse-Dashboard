@@ -87,7 +87,7 @@ export default function HmiAlarms() {
             </p>
           </div>
         ) : (
-          <table className="w-full text-[12px] border-separate border-spacing-0">
+          <table className="w-full text-[14px] border-separate border-spacing-0">
             <thead className="sticky top-0 z-10">
               <tr>
                 {["", "Time", "Type", "Value", "Threshold", "Duration", "Message"].map((h, i) => (

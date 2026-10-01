@@ -128,7 +128,7 @@ export default function SprayEffectPanel({
           the honest thing to do rather than hiding it behind an average. */}
       {effect.pairs.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-600 border-b border-surface-border">
                 <th className="pb-2 pr-4 font-medium">Spray started</th>
@@ -141,14 +141,14 @@ export default function SprayEffectPanel({
             <tbody>
               {effect.pairs.map((p) => (
                 <tr key={p.start_time} className="border-b border-surface-border/40 last:border-0">
-                  <td className="py-1.5 pr-4 text-slate-400 font-mono-num">
+                  <td className="py-2.5 pr-4 text-slate-400 font-mono-num">
                     {p.start_time.slice(0, 16).replace("T", " ")}
                   </td>
-                  <td className="py-1.5 pr-4 text-right text-slate-500 font-mono-num">
+                  <td className="py-2.5 pr-4 text-right text-slate-500 font-mono-num">
                     {p.duration_minutes != null ? `${p.duration_minutes.toFixed(1)}m` : "—"}
                   </td>
-                  <td className="py-1.5 pr-4 text-right text-slate-300 font-mono-num">{p.before.toFixed(2)}</td>
-                  <td className="py-1.5 pr-4 text-right text-slate-300 font-mono-num">{p.after.toFixed(2)}</td>
+                  <td className="py-2.5 pr-4 text-right text-slate-300 font-mono-num">{p.before.toFixed(2)}</td>
+                  <td className="py-2.5 pr-4 text-right text-slate-300 font-mono-num">{p.after.toFixed(2)}</td>
                   <td
                     className={clsx(
                       "py-1.5 text-right font-mono-num font-semibold",

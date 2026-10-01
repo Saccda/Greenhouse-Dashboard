@@ -256,16 +256,16 @@ export default function AlertLogPage() {
               <p className="text-xs mt-1">Alerts will appear here when conditions are triggered</p>
             </div>
           ) : (
-            <table className="w-full text-xs">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-surface-border text-left">
-                  <th className="px-4 py-2.5 text-slate-500 font-medium">Time</th>
-                  <th className="px-4 py-2.5 text-slate-500 font-medium">Farm</th>
-                  <th className="px-4 py-2.5 text-slate-500 font-medium">Type</th>
-                  <th className="px-4 py-2.5 text-slate-500 font-medium">Event</th>
-                  <th className="px-4 py-2.5 text-slate-500 font-medium text-right">Value</th>
-                  <th className="px-4 py-2.5 text-slate-500 font-medium text-right">Threshold</th>
-                  <th className="px-4 py-2.5 text-slate-500 font-medium text-right">Duration</th>
+                  <th className="px-4 py-3 text-slate-500 font-medium">Time</th>
+                  <th className="px-4 py-3 text-slate-500 font-medium">Farm</th>
+                  <th className="px-4 py-3 text-slate-500 font-medium">Type</th>
+                  <th className="px-4 py-3 text-slate-500 font-medium">Event</th>
+                  <th className="px-4 py-3 text-slate-500 font-medium text-right">Value</th>
+                  <th className="px-4 py-3 text-slate-500 font-medium text-right">Threshold</th>
+                  <th className="px-4 py-3 text-slate-500 font-medium text-right">Duration</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,30 +274,30 @@ export default function AlertLogPage() {
                     key={row.id}
                     className="border-b border-surface-border/50 last:border-0 hover:bg-surface-hover transition-colors"
                   >
-                    <td className="px-4 py-2.5 font-mono-num text-slate-400 whitespace-nowrap">
+                    <td className="px-4 py-3 font-mono-num text-slate-400 whitespace-nowrap">
                       {format(parseISO(row.created_at), "MMM d, HH:mm:ss")}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-300 capitalize">{row.farm_id}</td>
-                    <td className={clsx("px-4 py-2.5 font-medium", TYPE_STYLE[row.alert_type])}>
+                    <td className="px-4 py-3 text-slate-300 capitalize">{row.farm_id}</td>
+                    <td className={clsx("px-4 py-3 font-medium", TYPE_STYLE[row.alert_type])}>
                       {TYPE_LABEL[row.alert_type] ?? row.alert_type}
                     </td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-3">
                       <Badge
                         text={row.event.charAt(0).toUpperCase() + row.event.slice(1)}
                         cls={EVENT_STYLE[row.event] ?? "bg-surface-hover text-slate-300 border-surface-border"}
                       />
                     </td>
-                    <td className="px-4 py-2.5 font-mono-num text-slate-300 text-right">
+                    <td className="px-4 py-3 font-mono-num text-slate-300 text-right">
                       {row.sensor_value != null
                         ? `${row.sensor_value.toFixed(1)}${unitFor(row.alert_type)}`
                         : "—"}
                     </td>
-                    <td className="px-4 py-2.5 font-mono-num text-slate-500 text-right">
+                    <td className="px-4 py-3 font-mono-num text-slate-500 text-right">
                       {row.threshold != null
                         ? `${row.threshold.toFixed(1)}${unitFor(row.alert_type)}`
                         : "—"}
                     </td>
-                    <td className="px-4 py-2.5 font-mono-num text-right">
+                    <td className="px-4 py-3 font-mono-num text-right">
                       {row.duration_min != null ? (
                         <span
                           className="text-[color:var(--warn-ink)]"

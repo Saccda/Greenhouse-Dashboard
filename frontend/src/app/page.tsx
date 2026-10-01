@@ -174,8 +174,13 @@ export default function HomePage() {
     return () => ro.disconnect();
   }, []);
 
+  // Scoped to the SELECTED farm. Without the farm parameter the backend falls
+  // back to every farm the caller may see, so an unrestricted owner's badge
+  // counted Kampot's alerts while the page showed PP Campus — a number that
+  // did not belong to the farm named beside it, on the one control a reader
+  // uses to decide whether anything needs attention.
   const { data: alertData } = useSWR<AlertLogResponse>(
-    "/api/notifications/log?days=1&limit=100",
+    `/api/notifications/log?days=1&limit=100&farm=${selectedFarmId}`,
     swrFetcher,
     { refreshInterval: 60_000 },
   );

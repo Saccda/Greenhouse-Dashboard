@@ -237,7 +237,7 @@ export default function EquipmentDetail({ params }: { params: { tag: string } })
         {tag === "FM-01" && water?.has_meter && water.readings.length > 0 && (
           <>
             <Label>Daily record</Label>
-            <table className="w-full text-[12px] border-separate border-spacing-0">
+            <table className="w-full text-[14px] border-separate border-spacing-0">
               <thead>
                 <tr>
                   {["Date", "Start", "End", `Used (${water.unit_label})`, "Used (L)", ""].map((h, i) => (
