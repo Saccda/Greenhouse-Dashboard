@@ -5,7 +5,22 @@
       "Bash(npx tsc *)",
       "Bash(npx next *)",
       "Bash(npx stylelint *)",
-      "WebFetch(domain:dribbble.com)"
+      "WebFetch(domain:dribbble.com)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s -m 3 http://localhost:5000/api/health)",
+      "Bash(curl -s -m 3 -o /dev/null -w \"frontend: %{http_code}\\\\n\" http://localhost:3010)",
+      "Bash(timeout 30 bash -c 'until curl -sf http://localhost:5000/api/health >/dev/null 2>&1; do sleep 1; done')",
+      "Bash(timeout 40 bash -c 'until curl -sf http://localhost:3010 >/dev/null 2>&1; do sleep 1; done')",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(curl -s -b /tmp/prod_cookies.txt https://api.farmos-mechanicalengineering.com/api/farms/)",
+      "Bash(rm -f /tmp/prod_cookies.txt)",
+      "Bash(git add *)"
+    ],
+    "additionalDirectories": [
+      "D:\\01 Teaching & Learning Materials\\05 IoT Web Dashboard",
+      "\\tmp"
     ]
   }
 }
