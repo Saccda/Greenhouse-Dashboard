@@ -93,60 +93,47 @@ Get-Service | Where-Object { $_.Name -match "campus|bridge|mqtt" }
 If nothing comes back it is not installed as a service, and is either running in a console window or
 not running at all. Install it the same way as the backend:
 
+Paths below are the ones this doc was written with. **Check yours first** — the
+project may sit elsewhere on that machine, and an `AppDirectory` that is wrong
+by one character fails in a way that looks like a broken bridge rather than a
+typo:
+
 ```powershell
-C:
-ssm
-ssm-2.24\win64
-ssm.exe install CampusMqttBridge "D:\GreenhouseDashboardackend\.venv\Scripts\python.exe" "scripts\campus_mqtt_bridge.py"
-C:
-ssm
-ssm-2.24\win64
-ssm.exe set CampusMqttBridge AppDirectory "D:\GreenhouseDashboardackend"
-C:
-ssm
-ssm-2.24\win64
-ssm.exe set CampusMqttBridge AppStdout "D:\GreenhouseDashboardackend\data\campus-bridge.log"
-C:
-ssm
-ssm-2.24\win64
-ssm.exe set CampusMqttBridge AppStderr "D:\GreenhouseDashboardackend\data\campus-bridge.log"
-C:
-ssm
-ssm-2.24\win64
-ssm.exe set CampusMqttBridge AppRotateFiles 1
-C:
-ssm
-ssm-2.24\win64
-ssm.exe set CampusMqttBridge AppRotateBytes 1048576
-C:
-ssm
-ssm-2.24\win64
-ssm.exe set CampusMqttBridge Start SERVICE_AUTO_START
-C:
-ssm
-ssm-2.24\win64
-ssm.exe start CampusMqttBridge
+# Where is it actually installed, and what is the service really called?
+Get-Service | Where-Object { $_.Name -match "campus|bridge|mqtt|greenhouse" }
+C:\nssm\nssm-2.24\win64\nssm.exe get CampusMqttBridge AppDirectory
+```
+
+```powershell
+C:\nssm\nssm-2.24\win64\nssm.exe install CampusMqttBridge "D:\GreenhouseDashboard\backend\.venv\Scripts\python.exe" "scripts\campus_mqtt_bridge.py"
+C:\nssm\nssm-2.24\win64\nssm.exe set CampusMqttBridge AppDirectory "D:\GreenhouseDashboard\backend"
+C:\nssm\nssm-2.24\win64\nssm.exe set CampusMqttBridge AppStdout "D:\GreenhouseDashboard\backend\data\campus-bridge.log"
+C:\nssm\nssm-2.24\win64\nssm.exe set CampusMqttBridge AppStderr "D:\GreenhouseDashboard\backend\data\campus-bridge.log"
+C:\nssm\nssm-2.24\win64\nssm.exe set CampusMqttBridge AppRotateFiles 1
+C:\nssm\nssm-2.24\win64\nssm.exe set CampusMqttBridge AppRotateBytes 1048576
+C:\nssm\nssm-2.24\win64\nssm.exe set CampusMqttBridge Start SERVICE_AUTO_START
+C:\nssm\nssm-2.24\win64\nssm.exe start CampusMqttBridge
 ```
 
 ### It must be restarted after a topic change
 
 **An MQTT subscription is not retroactive.** The bridge subscribes on connect, so a process that
-started before a topic was added to the code is not listening to that topic at all, however long it
-stays up. Restarting is not optional housekeeping after a change like that — it is the change taking
-effect.
+started before a topic changed is not listening to the new one at all, however long it stays up.
+Restarting is not optional housekeeping after a change like that — it is the change taking effect.
+
+This is not hypothetical: the campus controller's topic root changed from `RUPP_CAMPUS_1` to
+`Device01` in October 2026, and the rig spent 17 days looking offline while the ESP32 published
+every 60 seconds, because nothing had resubscribed.
 
 ```powershell
 git pull
-C:
-ssm
-ssm-2.24\win64
-ssm.exe restart CampusMqttBridge
+C:\nssm\nssm-2.24\win64\nssm.exe restart CampusMqttBridge
 ```
 
 The log should then show both topics on the subscribe line:
 
 ```
-[campus-mqtt-bridge] connected ... subscribing to RUPP_CAMPUS_1/phnom_penh/infor/status and RUPP_CAMPUS_1/phnom_penh/water_data
+[campus-mqtt-bridge] connected ... subscribing to Device01/phnom_penh/infor/status and Device01/phnom_penh/water_data
 ```
 
 If only one topic appears, the running code is older than the pull.
@@ -154,7 +141,7 @@ If only one topic appears, the running code is older than the pull.
 ### Checking the water feed
 
 ```powershell
-cd D:\GreenhouseDashboardackend
+cd D:\GreenhouseDashboard\backend
 .venv\Scripts\python.exe scripts\check_water_feed.py --wait 60
 ```
 

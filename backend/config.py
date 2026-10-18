@@ -66,7 +66,22 @@ MQTT_BROKER_HOST  = os.getenv("MQTT_BROKER_HOST", "")
 MQTT_BROKER_PORT  = int(os.getenv("MQTT_BROKER_PORT", "8883"))  # TLS port (HiveMQ Cloud default)
 MQTT_USERNAME     = os.getenv("MQTT_USERNAME", "")
 MQTT_PASSWORD     = os.getenv("MQTT_PASSWORD", "")
-CAMPUS_MQTT_TOPIC = os.getenv("CAMPUS_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/infor/status")
+# The campus controller publishes under a root of its own choosing, and that
+# root CHANGED when the hardware was reworked in October 2026: it was
+# RUPP_CAMPUS_1 (named for the site) and is now Device01 (named for the device,
+# matching the "ID" field the ESP32 puts in its own payload).
+#
+# Everything campus hangs off this, so a device rename is one line rather than
+# four. It is worth the indirection because getting it wrong is SILENT in both
+# directions: reads simply show no data, and writes publish successfully to a
+# topic nothing is subscribed to, so the dashboard reports a relay command sent
+# that no hardware ever hears. That is how the rig spent 17 days looking
+# offline while the ESP32 was publishing every 60 seconds.
+CAMPUS_TOPIC_ROOT = os.getenv("CAMPUS_TOPIC_ROOT", "Device01")
+
+CAMPUS_MQTT_TOPIC = os.getenv(
+    "CAMPUS_MQTT_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/infor/status"
+)
 
 # The campus flow meter publishes on its own topic, and on CONSUMPTION rather
 # than on a clock: the firmware sends a message each time another cubic metre
@@ -78,7 +93,7 @@ CAMPUS_MQTT_TOPIC = os.getenv("CAMPUS_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/inf
 # can legitimately say nothing for days. Silence here is not evidence of a
 # fault; only the status feed arriving while the water feed stays empty is.
 CAMPUS_WATER_MQTT_TOPIC = os.getenv(
-    "CAMPUS_WATER_MQTT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/water_data"
+    "CAMPUS_WATER_MQTT_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/water_data"
 )
 
 # The meter's unit lives on the farm entry (FARMS[...]["water_meter"]) rather
@@ -93,7 +108,7 @@ CAMPUS_WATER_LITERS_PER_UNIT = float(os.getenv("CAMPUS_WATER_LITERS_PER_UNIT", "
 # Kampot/Kep's low/high threshold model (routes/setpoint.py, proxied through
 # Node-RED) — campus's controller takes direct on/off commands instead.
 CAMPUS_RELAY_COMMAND_TOPIC = os.getenv(
-    "CAMPUS_RELAY_COMMAND_TOPIC", "RUPP_CAMPUS_1/phnom_penh/relays/command"
+    "CAMPUS_RELAY_COMMAND_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/relays/command"
 )
 
 # Campus *also* runs its own auto threshold-setpoint model (separate from the
@@ -102,7 +117,7 @@ CAMPUS_RELAY_COMMAND_TOPIC = os.getenv(
 # publish, not a partial per-zone update, so routes/campus.py always sends
 # all six together.
 CAMPUS_SETPOINT_TOPIC = os.getenv(
-    "CAMPUS_SETPOINT_TOPIC", "RUPP_CAMPUS_1/phnom_penh/relays/setpoints"
+    "CAMPUS_SETPOINT_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/relays/setpoints"
 )
 
 # Example values straight from the firmware's own topic comment — used as the
