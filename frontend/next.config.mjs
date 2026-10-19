@@ -51,6 +51,20 @@ const API_ORIGINS = [
   PRODUCTION_API,
 ].filter((v, i, a) => a.indexOf(v) === i);
 
+/**
+ * `next dev` evaluates every module through eval() for hot reload, so a policy
+ * without 'unsafe-eval' blocks the client bundle outright. The failure is
+ * quiet and easy to misread: the server-rendered HTML still arrives with a
+ * 200, so the page looks like it is loading forever while React never
+ * hydrates and not one API call is made. It cost an afternoon once.
+ *
+ * Added for `next dev` ONLY. Production keeps the strict policy, which is the
+ * one that actually faces the internet — and because dev and production now
+ * differ, anything CSP-related has to be confirmed against a production build
+ * rather than the dev server.
+ */
+const DEV = process.env.NODE_ENV !== "production";
+
 const CSP = [
   "default-src 'self'",
 
@@ -61,7 +75,7 @@ const CSP = [
   //
   // 'wasm-unsafe-eval' is for the Draco decoder the 3D model is compressed
   // with. Without it the model silently fails to load.
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${DEV ? " 'unsafe-eval'" : ""}`,
 
   // Tailwind emits a stylesheet, but Leaflet and the charts set inline styles.
   "style-src 'self' 'unsafe-inline'",
@@ -81,6 +95,9 @@ const CSP = [
     ...API_ORIGINS,
     "https://api.open-meteo.com",
     "https://api.rainviewer.com",
+    // Hot reload talks over a websocket. Dev only, for the same reason as
+    // 'unsafe-eval' above.
+    ...(DEV ? ["ws://localhost:3000", "ws://127.0.0.1:3000"] : []),
   ].join(" "),
 
   "font-src 'self' data:",
