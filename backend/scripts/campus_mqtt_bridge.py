@@ -75,6 +75,19 @@ CHANNEL_FIELDS  = list(config.FARM_CHANNELS["campus"].keys())  # CH1..CH8, liter
 RENAMED_FIELDS  = [("Temperature", "temperature"), ("Humidity", "humidity")]
 LITERAL_FIELDS  = [(k, k) for k in CHANNEL_FIELDS]
 
+# Soil probes, read from the farm's configuration rather than listed here, so
+# wiring one in is a config edit and not a code change in three files. Empty
+# until config.FARMS["campus"]["soil_sensors"] is filled in.
+#
+# Keys the payload does not carry are simply absent from a reading — the write
+# loop skips a missing value — so a probe added here before the firmware sends
+# it costs nothing and starts recording by itself the day it does.
+SOIL_FIELDS = [
+    (p["payload_key"], p["field"])
+    for p in config.soil_probes("campus")
+    if p.get("payload_key") and p.get("field")
+]
+
 # The flow meter's own topic. Daily totals, not per-reading values, so these
 # arrive far less often than the status topic and are stored as their own
 # fields rather than merged into a reading.
@@ -210,7 +223,10 @@ def _write_postgres(payload: dict, ts: datetime, spec: list[tuple[str, str]] | N
     device_id = str(device_id) if device_id is not None else None
 
     rows = []
-    for payload_key, field in (spec if spec is not None else RENAMED_FIELDS + LITERAL_FIELDS):
+    # Soil joins the default set so the archive keeps the same columns as the
+    # live store; a probe recorded in one and not the other is the kind of gap
+    # that only shows up months later when the ML work goes looking for it.
+    for payload_key, field in (spec if spec is not None else RENAMED_FIELDS + LITERAL_FIELDS + SOIL_FIELDS):
         value = payload.get(payload_key)
         if value is not None:
             # double precision throughout, channels included. Postgres does not
@@ -291,6 +307,15 @@ def _write_point(payload: dict, spec: list[tuple[str, str]] | None = None) -> No
         value = payload.get(payload_key)
         if value is not None:
             point = point.field(influx_field, int(value))
+            written_any = True
+    # Soil, float for the same reason as temperature above: a probe reading
+    # exactly 40 would otherwise lock the field to integer on its first write
+    # and reject every decimal afterwards. Influx does not allow that to be
+    # undone, so the cast matters more than it looks.
+    for payload_key, influx_field in SOIL_FIELDS:
+        value = payload.get(payload_key)
+        if value is not None:
+            point = point.field(influx_field, float(value))
             written_any = True
 
     if not written_any:

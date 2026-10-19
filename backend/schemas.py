@@ -85,6 +85,15 @@ class SprayStatsResponse(BaseModel):
 
 # ── Farms ─────────────────────────────────────────────────────────────────
 
+class SoilProbe(BaseModel):
+    field: str
+    label: str
+    unit:  str = ""
+    min:   Optional[float] = None
+    max:   Optional[float] = None
+    depth_cm: Optional[float] = None
+
+
 class FarmInfo(BaseModel):
     id:           str
     display_name: str
@@ -108,6 +117,17 @@ class FarmInfo(BaseModel):
     # reads this rather than hardcoding "coming soon", so the day probes are
     # wired the panel changes on its own.
     has_soil_sensors: bool = False
+    # Which measurement field carries the spray pump on this farm: "relay3" on
+    # the three-relay controllers, "CH2" on campus's eight-channel one. The
+    # dashboard needs it to shade spray periods on the chart, and sending it
+    # beats mirroring the map in the frontend, where the copy would drift the
+    # first time a farm's wiring changed.
+    spray_field: str = "relay3"
+    # The farm's soil probes, in configured order: field, label, unit and
+    # chart bounds. Sent as DATA so the dashboard renders whatever is fitted
+    # without knowing any probe name in advance -- the day a second probe is
+    # added it appears on its own, with no frontend release.
+    soil_probes: list["SoilProbe"] = []
 
 
 class FarmsResponse(BaseModel):

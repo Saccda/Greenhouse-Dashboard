@@ -309,10 +309,49 @@ COOKIE_SECURE = FLASK_ENV != "development"
 # {"Day_consumption": 2} is 2,000 litres. liters_per_unit is what lets the
 # measured figure be compared with the litre-denominated runtime estimate.
 #
-# soil_sensors follows the same shape and is None everywhere for now: none is
-# installed at any site yet. It exists so the dashboard can say "no soil sensor
-# fitted" as a fact read from configuration rather than as a hardcoded string
-# somebody has to remember to delete on the day one is wired in.
+# soil_sensors is None everywhere for now because none is installed yet. When
+# the probes go in, FILLING THIS IN IS THE WHOLE JOB — the field list, the MQTT
+# bridge, the farms API and the dashboard all read it, so none of them needs
+# editing on the day. That is the point of the shape below rather than a bare
+# True/False: a flag would have told the dashboard that soil exists without
+# telling anything what to store, query or label.
+#
+#   "soil_sensors": {
+#       "probes": [
+#           {
+#               # What the device calls it in its MQTT payload. CONFIRM THIS
+#               # AGAINST THE FIRMWARE rather than assuming -- a guessed key
+#               # matches nothing and stores silently empty, which looks
+#               # exactly like a probe that is fitted and reading zero.
+#               "payload_key": "SoilMoisture",
+#               # What it is called in InfluxDB and in the API. Lower snake
+#               # case, prefixed soil_, and NEVER changed once written: Influx
+#               # fixes a field's type and name on first write.
+#               "field":       "soil_moisture",
+#               "label":       "Soil moisture",
+#               "unit":        "%",
+#               # Chart bounds. Give the real instrument range, not the range
+#               # of the readings seen so far, or the first dry week rescales
+#               # the axis and every later reading looks extreme.
+#               "min":         0,
+#               "max":         100,
+#           },
+#           {
+#               "payload_key": "SoilTemperature",
+#               "field":       "soil_temperature",
+#               "label":       "Soil temperature",
+#               "unit":        "°C",
+#               "min":         0,
+#               "max":         50,
+#           },
+#       ],
+#       # Where the probes sit, for the label under the readings. Optional.
+#       "depth_cm": 30,
+#   }
+#
+# Add probes one at a time as they are confirmed. A probe listed here that the
+# device does not actually send shows as "no reading" rather than breaking the
+# others, so a wrong guess is visible instead of silent.
 FARMS: dict[str, dict] = {
     "kampot": {
         "display_name": "Kampot Farm",
@@ -504,9 +543,45 @@ EXPECTED_SAMPLE_INTERVAL_S = int(os.getenv("EXPECTED_SAMPLE_INTERVAL_S", "30"))
 # overnight shutdown from being reported as one 16-hour heat episode.
 EXCEEDANCE_MAX_GAP_S = int(os.getenv("EXCEEDANCE_MAX_GAP_S", "300"))
 
-# Influx fields to query per farm — derived from FARM_CHANNELS so the channel
-# list only has to be maintained in one place.
+def soil_probes(farm_id: str) -> list[dict]:
+    """
+    The configured soil probes for a farm, or [] when none are fitted.
+
+    One accessor rather than four places reaching into FARMS[...]["soil_sensors"]
+    and each handling None its own way.
+    """
+    spec = (FARMS.get(farm_id) or {}).get("soil_sensors") or {}
+    return list(spec.get("probes") or [])
+
+
+def soil_fields(farm_id: str) -> list[str]:
+    """Influx field names for a farm's soil probes, in configured order."""
+    return [p["field"] for p in soil_probes(farm_id) if p.get("field")]
+
+
+# Influx fields to query per farm — derived from FARM_CHANNELS and the soil
+# spec so each list is maintained in exactly one place. Soil fields join
+# automatically the moment probes are configured, which is what makes
+# /latest and /history return them without either route being touched.
 FARM_FIELDS: dict[str, list[str]] = {
-    farm_id: ["temperature", "humidity", *channels.keys()]
+    farm_id: ["temperature", "humidity", *channels.keys(), *soil_fields(farm_id)]
     for farm_id, channels in FARM_CHANNELS.items()
+}
+
+# Which field carries the SPRAY PUMP, per farm.
+#
+# Kampot and Kep run a three-relay controller where relay3 is the pump. Campus
+# runs an eight-channel one where CH2 is. Every piece of spray analysis used to
+# query "relay3" literally, so on campus it matched nothing and returned a
+# clean, confident empty result: no sprays, no durations, no events, and a
+# chart with nothing shaded. Not an error anywhere -- just a farm that looked
+# like it had never once watered itself.
+#
+# An empty answer that looks identical to a true zero is the failure mode worth
+# naming here, which is why this is a map rather than a default with a special
+# case bolted on.
+FARM_SPRAY_FIELD: dict[str, str] = {
+    "kampot": "relay3",
+    "kep":    "relay3",
+    "campus": "CH2",
 }

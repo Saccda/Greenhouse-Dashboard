@@ -128,20 +128,24 @@ def get_spray_stats(
 ) -> SprayStatsResponse:
     auth_service.require_farm_access(user, farm)
     measurement = _measurement(farm)
+    # Which channel is the pump on this farm. Campus is CH2, not relay3, and
+    # querying the wrong one returns an empty frame rather than an error --
+    # a farm that looks like it has never sprayed.
+    spray_field = config.FARM_SPRAY_FIELD.get(farm, "relay3")
 
     if start_date and end_date:
         # Date-range query: pull raw relay3 for the whole window, analyse all events
-        raw_df    = db.get_relay3_raw(measurement, start_date=start_date, end_date=end_date)
-        raw_stats = spray_analysis.analyze_spray_events(raw_df)
+        raw_df    = db.get_relay3_raw(measurement, spray_field, start_date=start_date, end_date=end_date)
+        raw_stats = spray_analysis.analyze_spray_events(raw_df, spray_field)
     elif range:
         # Relative-range query (mirrors /history's `range` param) — analyse every event
         # in the window, not just today's, so 7d/30d selections aren't silently clipped.
-        raw_df    = db.get_relay3_raw(measurement, time_range=range)
-        raw_stats = spray_analysis.analyze_spray_events(raw_df)
+        raw_df    = db.get_relay3_raw(measurement, spray_field, time_range=range)
+        raw_stats = spray_analysis.analyze_spray_events(raw_df, spray_field)
     else:
         # Default: today's events from the last 24 h of raw data
-        raw_df    = db.get_relay3_raw(measurement, time_range="-1d")
-        raw_stats = spray_analysis.get_today_spray_stats(raw_df)
+        raw_df    = db.get_relay3_raw(measurement, spray_field, time_range="-1d")
+        raw_stats = spray_analysis.get_today_spray_stats(raw_df, spray_field)
 
     events = [
         SprayEvent(

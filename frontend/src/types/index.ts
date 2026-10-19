@@ -93,6 +93,31 @@ export interface Farm {
   water_source?: "measured" | "estimated" | "none";
   /** Whether soil probes are fitted. False everywhere today. */
   has_soil_sensors?: boolean;
+  /**
+   * Which history series carries the spray pump: "relay3" on Kampot and Kep,
+   * "CH2" on campus. Sent by the API rather than mapped here, so the chart
+   * shades the right channel without the frontend keeping its own copy of the
+   * wiring. Optional for older responses; callers fall back to "relay3".
+   */
+  spray_field?: string;
+  /**
+   * Soil probes fitted to this farm, in configured order — empty when none
+   * are. Sent as data rather than assumed, so the dashboard draws whatever is
+   * installed without knowing any probe name in advance: adding a second probe
+   * is a backend config edit, not a frontend release.
+   */
+  soil_probes?: SoilProbe[];
+}
+
+export interface SoilProbe {
+  /** Series name in /history and /latest, e.g. "soil_moisture". */
+  field: string;
+  label: string;
+  unit:  string;
+  /** Instrument range for chart bounds — not the range of readings so far. */
+  min?:  number | null;
+  max?:  number | null;
+  depth_cm?: number | null;
 }
 
 export interface FarmsResponse {

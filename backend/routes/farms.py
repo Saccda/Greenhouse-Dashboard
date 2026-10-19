@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 import config
-from schemas import FarmInfo, FarmsResponse
+from schemas import SoilProbe, FarmInfo, FarmsResponse
 from services import auth_service
 
 
@@ -37,6 +37,18 @@ def list_farms(user: dict = Depends(auth_service.require_auth)) -> FarmsResponse
             longitude=info.get("longitude"),
             water_source=_water_source(info),
             has_soil_sensors=bool(info.get("soil_sensors")),
+            spray_field=config.FARM_SPRAY_FIELD.get(farm_id, "relay3"),
+            soil_probes=[
+                SoilProbe(
+                    field=p["field"],
+                    label=p.get("label", p["field"]),
+                    unit=p.get("unit", ""),
+                    min=p.get("min"),
+                    max=p.get("max"),
+                    depth_cm=(info.get("soil_sensors") or {}).get("depth_cm"),
+                )
+                for p in config.soil_probes(farm_id)
+            ],
         )
         for farm_id, info in config.FARMS.items()
         if allowed is None or farm_id in allowed

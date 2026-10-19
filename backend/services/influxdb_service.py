@@ -196,14 +196,25 @@ from(bucket: "{bucket}")
 
 def get_relay3_raw(
     measurement: str,
+    field:       str = "relay3",
     time_range:  str = "-1d",
     start_date:  str | None = None,   # YYYY-MM-DD absolute start
     end_date:    str | None = None,   # YYYY-MM-DD absolute end
 ) -> pd.DataFrame:
     """
-    Return raw (un-aggregated) relay3 data for spray event detection.
+    Return raw (un-aggregated) spray-pump data for spray event detection.
     Aggregation destroys the transitions needed to count spray cycles.
     Accepts either a relative time_range or an absolute start_date/end_date pair.
+
+    `field` is which channel carries the pump, because it is not relay3
+    everywhere: Kampot and Kep run a three-relay controller, campus an
+    eight-channel one whose pump is CH2 (see config.FARM_SPRAY_FIELD). It was
+    hardcoded to "relay3", so on campus this matched nothing and returned an
+    empty frame — which is indistinguishable from a farm that genuinely never
+    sprayed, and is exactly how campus came to show no sprays, no durations and
+    an unshaded chart without a single error anywhere.
+
+    The default keeps every existing caller behaving as before.
     """
     bucket = config.INFLUXDB_BUCKET
 
@@ -217,7 +228,7 @@ def get_relay3_raw(
 from(bucket: "{bucket}")
   |> {range_clause}
   |> filter(fn: (r) => r._measurement == "{measurement}")
-  |> filter(fn: (r) => r._field == "relay3")
+  |> filter(fn: (r) => r._field == "{field}")
 '''
     try:
         return _run_query(flux)
