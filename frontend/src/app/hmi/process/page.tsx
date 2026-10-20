@@ -117,9 +117,9 @@ export default function HmiProcess() {
           band={zones?.["3"] ?? null}
         />
         <SectionLabel>Control band</SectionLabel>
-        <BandRow label="Zone 1 temp" z={zones?.["1"]} unit="°C" />
-        <BandRow label="Zone 2 temp" z={zones?.["2"]} unit="°C" />
-        <BandRow label="Zone 3 hum" z={zones?.["3"]} unit="%" />
+        <BandRow label="CH1 · System enable" z={zones?.["1"]} unit="°C" />
+        <BandRow label="CH2 · Spraying" z={zones?.["2"]} unit="°C" />
+        <BandRow label="CH3 · Humidity control" z={zones?.["3"]} unit="%" />
       </aside>
     </div>
   );

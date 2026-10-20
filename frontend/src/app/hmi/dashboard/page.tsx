@@ -81,7 +81,14 @@ export default function HmiDashboard() {
   const from = to - period.minutes * 60_000;
 
   const merged = mergeByTime(series("temperature"), series("humidity"));
-  const tempBand = zones?.["1"] ?? null;
+  // Setpoint 1 drives CH1, the system enable: the controller switches the
+  // system ON above its high value. It is a THRESHOLD, not a target to sit
+  // inside — which is how this page first came to report "temperature in
+  // band", a figure that quietly rewarded the greenhouse for being hot.
+  //
+  // Setpoint 2 drives CH2 (spraying) and 3 drives CH3 (humidity). Naming them
+  // "zones" cost a real conversation, so they are named for their channels.
+  const enableBand = zones?.["1"] ?? null;
 
   // How much of the period actually arrived.
   const expected = Math.max(1, Math.round((period.minutes * 60_000) / windowMs));
@@ -96,7 +103,8 @@ export default function HmiDashboard() {
 
   const sprayMin = dutyMinutes(series("CH2"), windowMs);
   const coolMin = dutyMinutes(series("CH4"), windowMs);
-  const inBand = fractionInBand(temps, tempBand);
+  // How much of the period the greenhouse was hot enough to call for cooling.
+  const aboveEnable = fractionAbove(temps, enableBand?.high ?? null);
 
   const noData = !isLoading && temps.length === 0;
 
@@ -134,7 +142,7 @@ export default function HmiDashboard() {
             <div className="flex items-center gap-4 text-[10px]" style={{ color: HMI.inkFaint }}>
               <Key swatch={HMI.ink} label="Temperature °C" />
               <Key swatch={HMI.inkFaint} dashed label="Humidity %" />
-              <Key swatch={HMI.panelAlt} block label={tempBand ? `Target ${tempBand.low}–${tempBand.high} °C` : "No band set"} />
+              <Key swatch={HMI.panelAlt} block label={enableBand ? `CH1 enable ${enableBand.low}–${enableBand.high} °C` : "CH1 band not set"} />
             </div>
           </div>
 
@@ -147,9 +155,9 @@ export default function HmiDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={merged} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
                   <CartesianGrid stroke={HMI.line} strokeDasharray="2 4" vertical={false} />
-                  {tempBand && (
+                  {enableBand && (
                     <ReferenceArea
-                      yAxisId="t" y1={tempBand.low} y2={tempBand.high}
+                      yAxisId="t" y1={enableBand.low} y2={enableBand.high}
                       fill={HMI.panelAlt} fillOpacity={1} stroke="none"
                     />
                   )}
@@ -241,13 +249,16 @@ export default function HmiDashboard() {
             }
           />
           <WaterStat water={water} />
+          {/* Not "temperature in band". CH1 switches the system on ABOVE its
+              high setpoint, so what matters is how much of the period was hot
+              enough to need it, not how much sat between two numbers. */}
           <Stat
-            label="Temperature in band"
-            value={inBand == null ? "—" : pct(inBand)}
+            label="Called for cooling"
+            value={aboveEnable == null ? "—" : pct(aboveEnable)}
             note={
-              inBand == null
-                ? tempBand ? "no readings to judge" : "no target band set"
-                : `of ${temps.length} readings, target ${tempBand!.low}–${tempBand!.high} °C`
+              aboveEnable == null
+                ? enableBand ? "no readings to judge" : "CH1 enable setpoint not set"
+                : `of ${temps.length} readings above ${enableBand!.high} °C, CH1's enable point`
             }
           />
         </section>
@@ -408,11 +419,12 @@ function dutyMinutes(points: TimePoint[], windowMs: number): number {
   return (windows * windowMs) / 60_000;
 }
 
-function fractionInBand(points: TimePoint[], band: { low: number; high: number } | null): number | null {
-  if (!band) return null;
+/** Share of readings at or above a threshold. Null when there is nothing to judge. */
+function fractionAbove(points: TimePoint[], threshold: number | null): number | null {
+  if (threshold == null) return null;
   const v = points.map((p) => p.value).filter((x): x is number => x != null);
   if (!v.length) return null;
-  return v.filter((x) => x >= band.low && x <= band.high).length / v.length;
+  return v.filter((x) => x >= threshold).length / v.length;
 }
 
 function runtime(min: number): string {

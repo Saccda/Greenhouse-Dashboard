@@ -2,7 +2,7 @@
 /**
  * CampusSetpointPanel — the campus system's auto threshold-setpoint control.
  * Distinct from SetpointPanel (Kampot/Kep, one relay at a time, proxied
- * through Node-RED): campus's controller expects all three zones' low/high
+ * through Node-RED): campus's controller expects all three channels' low/high
  * values in one combined MQTT publish every time (see routes/campus.py), so
  * this panel edits all three at once instead of switching between them.
  */
@@ -19,9 +19,9 @@ import { useAuth } from "@/hooks/useAuth";
 type StoredZones = Record<string, { low: number; high: number; updated_at: string }>;
 
 const ZONES = [
-  { index: 1, label: "Zone 1", param: "temp", lowKey: "temp_low1", highKey: "temp_high1", unit: "°C", min: 0, max: 50, step: 0.5 },
-  { index: 2, label: "Zone 2", param: "temp", lowKey: "temp_low2", highKey: "temp_high2", unit: "°C", min: 0, max: 50, step: 0.5 },
-  { index: 3, label: "Zone 3", param: "hum",  lowKey: "hum_low3",  highKey: "hum_high3",  unit: "%",  min: 0, max: 100, step: 1 },
+  { index: 1, label: "CH1 · System enable", param: "temp", lowKey: "temp_low1", highKey: "temp_high1", unit: "°C", min: 0, max: 50, step: 0.5 },
+  { index: 2, label: "CH2 · Spraying", param: "temp", lowKey: "temp_low2", highKey: "temp_high2", unit: "°C", min: 0, max: 50, step: 0.5 },
+  { index: 3, label: "CH3 · Humidity control", param: "hum",  lowKey: "hum_low3",  highKey: "hum_high3",  unit: "%",  min: 0, max: 100, step: 1 },
 ] as const;
 
 const DEFAULTS: Record<string, number> = {
