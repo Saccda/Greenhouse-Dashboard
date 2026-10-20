@@ -14,6 +14,12 @@ backend/data/*.db
 backend/data/users.json
 backend/data/setpoints.json
 backend/data/settings.json
+# The dry-run pump lockout latch. Machine-local runtime state, like the files
+# above, and worse than useless shared: a lockout committed here would travel
+# to another machine and tell it a farm is locked out when it is not, or hide
+# that one is. It is written by services/pump_guard.py and belongs only to the
+# backend that wrote it.
+backend/data/pump_guard.json
 backend/data/service-out.log
 backend/data/service-err.log
 

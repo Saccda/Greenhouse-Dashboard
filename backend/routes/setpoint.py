@@ -125,4 +125,7 @@ def release_pump_lockout(farm: str, user: dict = Depends(auth_service.require_wr
         # The lockout stays latched on any failure. Reporting success over a
         # restore that did not happen would leave someone believing the farm
         # can spray again when it cannot.
-        raise HTTPException(status_code=502, detail=f"Could not restore the setpoint: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not restore the setpoint: {e} — the lockout is still in force",
+        )

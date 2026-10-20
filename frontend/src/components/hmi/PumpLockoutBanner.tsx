@@ -72,7 +72,10 @@ export default function PumpLockoutBanner({ farm }: { farm: string }) {
       }
       await mutate();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not release the lockout");
+      // Self-contained, because nothing appends a consequence any more. This
+      // branch is a network failure with no server reply, so the latch is
+      // untouched and the farm still will not spray.
+      setError(e instanceof Error ? e.message : "Could not reach the server — the lockout is still in force.");
     } finally {
       setReleasing(false);
     }
@@ -160,9 +163,15 @@ export default function PumpLockoutBanner({ farm }: { farm: string }) {
             {l.temp_at_lock != null && ` · ${l.temp_at_lock.toFixed(1)} °C at the time`}
           </p>
 
+          {/* The server's message verbatim. This used to append "— the lockout
+              is still in force", which doubled the phrase on the errors that
+              already say it, and flatly contradicted the one error meaning the
+              opposite: "no active pump lockout". Each message now carries its
+              own consequence, written server-side where whether the latch
+              survived is actually known. */}
           {error && (
             <p className="text-[13px] text-[color:var(--danger-ink)] mt-2">
-              {error} — the lockout is still in force.
+              {error}
             </p>
           )}
 
