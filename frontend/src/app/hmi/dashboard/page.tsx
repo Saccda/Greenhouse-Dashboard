@@ -80,7 +80,8 @@ export default function HmiDashboard() {
   const to = Date.now();
   const from = to - period.minutes * 60_000;
 
-  const merged = mergeByTime(series("temperature"), series("humidity"));
+  const merged = mergeByTime(series("temperature"), series("humidity"), series("water_temperature"));
+  const hasWaterTemp = series("water_temperature").length > 0;
   // Setpoint 1 drives CH1, 2 drives CH2 and 3 drives CH3 — confirmed with the
   // farm team on 2026-10-21, after a round trip through two other readings of
   // the same six numbers. CH4 is NOT in this set: the controller runs it from
@@ -144,6 +145,7 @@ export default function HmiDashboard() {
             <div className="flex items-center gap-4 text-[10px]" style={{ color: HMI.inkFaint }}>
               <Key swatch={HMI.ink} label="Temperature °C" />
               <Key swatch={HMI.inkFaint} dashed label="Humidity %" />
+              {hasWaterTemp && <Key swatch={HMI.inkMuted} dashed label="Tank water °C" />}
               <Key swatch={HMI.panelAlt} block label={enableBand ? `CH1 enable ${enableBand.low}–${enableBand.high} °C` : "CH1 band not set"} />
             </div>
           </div>
@@ -208,6 +210,16 @@ export default function HmiDashboard() {
                     stroke={HMI.inkFaint} strokeWidth={1.2} strokeDasharray="3 3" dot={false}
                     isAnimationActive={false} connectNulls={false}
                   />
+                  {/* Cooling tank, on the air-temperature axis so the gap
+                      between them is readable at a glance. Drawn only when
+                      the farm actually has the probe. */}
+                  {hasWaterTemp && (
+                    <Line
+                      yAxisId="t" name="Tank water" dataKey="waterTemp" type="linear"
+                      stroke={HMI.inkMuted} strokeWidth={1.2} strokeDasharray="6 3" dot={false}
+                      isAnimationActive={false} connectNulls={false}
+                    />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -384,16 +396,25 @@ function Empty({ children }: { children: React.ReactNode }) {
 /* ── Maths ───────────────────────────────────────────────────────────────── */
 
 /** Merge two series onto one time axis without letting a gap in one shift the other. */
-function mergeByTime(temperature: TimePoint[], humidity: TimePoint[]) {
-  const rows = new Map<number, { ts: number; temperature?: number; humidity?: number }>();
-  for (const p of temperature) {
-    const ts = new Date(p.time).getTime();
-    rows.set(ts, { ...(rows.get(ts) ?? { ts }), temperature: p.value ?? undefined });
-  }
-  for (const p of humidity) {
-    const ts = new Date(p.time).getTime();
-    rows.set(ts, { ...(rows.get(ts) ?? { ts }), humidity: p.value ?? undefined });
-  }
+function mergeByTime(
+  temperature: TimePoint[],
+  humidity: TimePoint[],
+  waterTemp: TimePoint[] = [],
+) {
+  type Row = { ts: number; temperature?: number; humidity?: number; waterTemp?: number };
+  const rows = new Map<number, Row>();
+  const put = (points: TimePoint[], key: keyof Omit<Row, "ts">) => {
+    for (const p of points) {
+      const ts = new Date(p.time).getTime();
+      rows.set(ts, { ...(rows.get(ts) ?? { ts }), [key]: p.value ?? undefined });
+    }
+  };
+  put(temperature, "temperature");
+  put(humidity, "humidity");
+  // Tank temperature shares the °C axis with air temperature on purpose: the
+  // interesting question is the gap between them, and two axes would let a
+  // flat tank and a climbing greenhouse look identical.
+  put(waterTemp, "waterTemp");
   return [...rows.values()].sort((a, b) => a.ts - b.ts);
 }
 

@@ -103,6 +103,26 @@ WATER_FIELDS = [
     ("Day_consumption", "water_day_consumption"),
 ]
 
+# The cooling-tank probe, read from the farm's capability spec so a farm
+# without one simply yields an empty list and nothing downstream changes.
+_WT = config.water_temp_sensor("campus") or {}
+WATER_TEMP_FIELDS = (
+    [(_WT["payload_key"], _WT["field"])] if _WT.get("payload_key") and _WT.get("field") else []
+)
+
+# Last time a water-temperature reading was stored. The probe publishes every
+# 5 seconds; see config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S for why most of those
+# are dropped rather than written.
+_last_water_temp_write: datetime | None = None
+
+# Where the controller's OWN reported setpoints are kept. Written by this
+# bridge, read by the API, so the dashboard can show what the hardware is
+# actually running next to what the dashboard last sent. Those two silently
+# disagreed for weeks; this file is what makes the disagreement visible.
+REPORTED_SETPOINTS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "campus_reported.json"
+)
+
 
 # ── Postgres archive ────────────────────────────────────────────────────────
 #
@@ -337,15 +357,25 @@ def _on_connect(client: mqtt.Client, userdata, flags, reason_code, properties=No
         # subscribe is required again even with clean_session=False.
         print(
             f"[campus-mqtt-bridge] connected to {config.MQTT_BROKER_HOST} "
-            f"(session_present={flags.session_present}), subscribing to "
-            f"{config.CAMPUS_MQTT_TOPIC} and {config.CAMPUS_WATER_MQTT_TOPIC}"
+            f"(session_present={flags.session_present}), subscribing to:\n"
+            f"    status        {config.CAMPUS_MQTT_TOPIC}\n"
+            f"    water meter   {config.CAMPUS_WATER_MQTT_TOPIC}\n"
+            f"    water temp    {config.CAMPUS_WATER_TEMP_TOPIC}\n"
+            f"    setpoints     {config.CAMPUS_SETPOINT_STATUS_TOPIC}\n"
+            f"    water setpt   {config.CAMPUS_WATER_SETPOINT_STATUS_TOPIC}"
         )
         # Both at QoS 1 on the same persistent session. The water topic matters
         # more for this than the status one: it publishes only once another
         # cubic metre has gone through the meter, so
         # a missed message is a missing DAY, not a missing sample among many.
+        # The two status topics are retained, so subscribing delivers the
+        # controller's current setpoints immediately on connect rather than
+        # waiting for it to change something.
         client.subscribe([(config.CAMPUS_MQTT_TOPIC, 1),
-                          (config.CAMPUS_WATER_MQTT_TOPIC, 1)])
+                          (config.CAMPUS_WATER_MQTT_TOPIC, 1),
+                          (config.CAMPUS_WATER_TEMP_TOPIC, 1),
+                          (config.CAMPUS_SETPOINT_STATUS_TOPIC, 1),
+                          (config.CAMPUS_WATER_SETPOINT_STATUS_TOPIC, 1)])
     else:
         print(f"[campus-mqtt-bridge] connect failed: {reason_code}")
 
@@ -391,6 +421,55 @@ def _check_water_arithmetic(payload: dict) -> None:
               f"{last} - {start} = {last - start}, but Day_consumption={day}")
 
 
+def _store_reported(kind: str, payload: dict) -> None:
+    """
+    Record what the controller says its own setpoints are.
+
+    Kept in a small JSON file rather than InfluxDB because it is current state,
+    not a time series: one answer to "what is the hardware running right now",
+    which the API reads and the dashboard shows beside what it last sent.
+
+    The two are different claims and were treated as one for a long time. The
+    dashboard displayed its own last publish as though it were the controller's
+    configuration, so when the publishes stopped arriving -- wrong topic, for
+    three weeks -- the screen went on showing values no hardware held. Nothing
+    in the system could tell the difference. This file is how it can.
+
+    Written whole on each message; a partial write losing one key would be
+    worse than a stale file, and the file is tiny.
+    """
+    try:
+        os.makedirs(os.path.dirname(REPORTED_SETPOINTS_PATH), exist_ok=True)
+        try:
+            with open(REPORTED_SETPOINTS_PATH) as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            data = {}
+        data[kind] = {
+            "values":      payload,
+            "reported_at": datetime.now(config.TIMEZONE).isoformat(),
+        }
+        with open(REPORTED_SETPOINTS_PATH, "w") as f:
+            json.dump(data, f, indent=2)
+        print(f"[campus-mqtt-bridge] controller reports {kind}: {payload}")
+    except Exception as e:
+        # Never let this interfere with the sensor feed, which is the job that
+        # actually matters.
+        print(f"[campus-mqtt-bridge] could not store reported {kind}: {e}")
+
+
+def _water_temp_due() -> bool:
+    """Throttle the 5-second probe to one stored reading per configured interval."""
+    global _last_water_temp_write
+    now = datetime.now(config.TIMEZONE)
+    if _last_water_temp_write is not None:
+        elapsed = (now - _last_water_temp_write).total_seconds()
+        if elapsed < config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S:
+            return False
+    _last_water_temp_write = now
+    return True
+
+
 def _on_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage) -> None:
     try:
         payload = json.loads(msg.payload.decode("utf-8"))
@@ -400,8 +479,30 @@ def _on_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage) -> None:
 
     # Route on the topic, not on the payload's shape. Guessing from the keys
     # would misfile a message the moment the firmware adds a field.
+
+    # The controller's own report of its setpoints. State, not a measurement,
+    # so it is stored and the write path below is skipped entirely.
+    if msg.topic == config.CAMPUS_SETPOINT_STATUS_TOPIC:
+        _store_reported("relay_setpoints", payload)
+        return
+    if msg.topic == config.CAMPUS_WATER_SETPOINT_STATUS_TOPIC:
+        _store_reported("water_setpoint", payload)
+        return
+
     is_water = msg.topic == config.CAMPUS_WATER_MQTT_TOPIC
-    spec = WATER_FIELDS if is_water else None
+    is_water_temp = msg.topic == config.CAMPUS_WATER_TEMP_TOPIC
+
+    if is_water_temp:
+        # Arrives every 5 s. Dropping most of them is the point; see
+        # config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S.
+        if not _water_temp_due():
+            return
+        spec = WATER_TEMP_FIELDS
+    elif is_water:
+        spec = WATER_FIELDS
+    else:
+        spec = None
+
     if is_water:
         _check_water_arithmetic(payload)
 

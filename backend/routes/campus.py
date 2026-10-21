@@ -10,6 +10,9 @@ threshold model in routes/setpoint.py, which is proxied through it):
     the controller's own MQTT_Setpoint_Sub topic expects on every publish,
     not a partial per-zone update.
 """
+import json
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -95,3 +98,38 @@ def send_campus_setpoint(
     setpoint_service.save(FARM_ID, 3, body.hum_low3,  body.hum_high3)
 
     return payload
+
+
+@router.get("/reported")
+def get_campus_reported(user: dict = Depends(auth_service.require_auth)) -> dict:
+    """
+    What the CONTROLLER says its own setpoints are, as opposed to what the
+    dashboard last sent.
+
+    These are different claims and the system treated them as one for a long
+    time. /setpoint returns the last publish this dashboard made; it says
+    nothing about whether any hardware received it. For three weeks every
+    publish went to a topic the controller was not subscribed to, so the screen
+    showed setpoints no device held, and nothing anywhere could tell.
+
+    The controller publishes its own configuration on a retained topic. The
+    MQTT bridge subscribes and writes it to data/campus_reported.json, which
+    this reads. Shape:
+
+        {"relay_setpoints": {"values": {...}, "reported_at": "..."},
+         "water_setpoint":  {"values": {"Set_water_temp": 34.6}, ...}}
+
+    An empty object means the bridge has not seen a status message yet — it is
+    not the same as the controller having no setpoints, and the UI says so
+    rather than drawing a comparison it cannot make.
+    """
+    auth_service.require_farm_access(user, FARM_ID)
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "data", "campus_reported.json")
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"campus_reported.json is unreadable: {e}")

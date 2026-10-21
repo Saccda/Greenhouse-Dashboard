@@ -130,6 +130,42 @@ CAMPUS_SETPOINT_TOPIC = os.getenv(
     "CAMPUS_SETPOINT_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/relays/setpoints"
 )
 
+# The controller REPORTS BACK on these, retained. Reading them is what turns a
+# whole class of silent failure into a visible one: the dashboard otherwise
+# displays the setpoints it last SENT, which is not the same thing as the ones
+# the hardware is running. Those two drifted apart for weeks while every send
+# reported success, because the publishes were going to a topic nothing was
+# subscribed to. A device that states its own setpoints settles that argument
+# in one reading.
+CAMPUS_SETPOINT_STATUS_TOPIC = os.getenv(
+    "CAMPUS_SETPOINT_STATUS_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/relays/setpoints/status"
+)
+
+# CH4 is not driven by the three relay setpoints above. The controller runs it
+# from its own water-temperature target, on its own topic, in its own payload
+# shape: {"Set_water_temp": 28.5}. Until this was wired up there was no way to
+# see or change it from the dashboard at all.
+CAMPUS_WATER_SETPOINT_TOPIC = os.getenv(
+    "CAMPUS_WATER_SETPOINT_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/water_temp/setpoint"
+)
+CAMPUS_WATER_SETPOINT_STATUS_TOPIC = os.getenv(
+    "CAMPUS_WATER_SETPOINT_STATUS_TOPIC",
+    f"{CAMPUS_TOPIC_ROOT}/phnom_penh/water_temp/setpoint/status",
+)
+
+# The NTC probe in the cooling tank, published every 5 seconds — twelve times
+# more often than the status feed, and until now discarded entirely.
+CAMPUS_WATER_TEMP_TOPIC = os.getenv(
+    "CAMPUS_WATER_TEMP_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/water_temp_data"
+)
+
+# Every 5 seconds is 17,280 points a day for ONE field, against 1,440 for the
+# whole status feed. A cooling tank does not change meaningfully in five
+# seconds, so the bridge keeps one reading per interval and drops the rest.
+# Resolution stays well ahead of the 60-second status feed while the write
+# volume stays in the same order of magnitude as everything else.
+CAMPUS_WATER_TEMP_MIN_INTERVAL_S = float(os.getenv("CAMPUS_WATER_TEMP_MIN_INTERVAL", "30"))
+
 # Example values straight from the firmware's own topic comment — used as the
 # UI's pre-fill defaults before anything has ever actually been sent.
 CAMPUS_SETPOINT_DEFAULTS: dict[str, float] = {
@@ -419,6 +455,21 @@ FARMS: dict[str, dict] = {
             "liters_per_unit": CAMPUS_WATER_LITERS_PER_UNIT,
             "topic":           CAMPUS_WATER_MQTT_TOPIC,
         },
+        # NTC probe in the cooling tank. A capability of the farm, like the
+        # water meter above, rather than a hardcoded field name: a farm without
+        # one gets no panel instead of an empty chart promising a reading that
+        # can never arrive.
+        "water_temp_sensor": {
+            "payload_key": "Water_Temperature",
+            "field":       "water_temperature",
+            "label":       "Water temperature",
+            "unit":        "°C",
+            # Instrument range, not the range seen so far -- a tank that holds
+            # steady would otherwise get an axis that magnifies its noise.
+            "min":         0,
+            "max":         60,
+            "topic":       CAMPUS_WATER_TEMP_TOPIC,
+        },
         # Planned, not installed. Fill this in when probes are wired and the
         # dashboard panel starts showing readings instead of saying there are
         # none.
@@ -558,6 +609,17 @@ EXPECTED_SAMPLE_INTERVAL_S = int(os.getenv("EXPECTED_SAMPLE_INTERVAL_S", "30"))
 # overnight shutdown from being reported as one 16-hour heat episode.
 EXCEEDANCE_MAX_GAP_S = int(os.getenv("EXCEEDANCE_MAX_GAP_S", "300"))
 
+def water_temp_sensor(farm_id: str) -> dict | None:
+    """The farm's cooling-tank probe spec, or None when it has no sensor."""
+    return (FARMS.get(farm_id) or {}).get("water_temp_sensor") or None
+
+
+def water_temp_field(farm_id: str) -> str | None:
+    """Influx field name for the farm's water temperature, or None."""
+    spec = water_temp_sensor(farm_id)
+    return spec.get("field") if spec else None
+
+
 def soil_probes(farm_id: str) -> list[dict]:
     """
     The configured soil probes for a farm, or [] when none are fitted.
@@ -579,7 +641,8 @@ def soil_fields(farm_id: str) -> list[str]:
 # automatically the moment probes are configured, which is what makes
 # /latest and /history return them without either route being touched.
 FARM_FIELDS: dict[str, list[str]] = {
-    farm_id: ["temperature", "humidity", *channels.keys(), *soil_fields(farm_id)]
+    farm_id: ["temperature", "humidity", *channels.keys(), *soil_fields(farm_id),
+              *([water_temp_field(farm_id)] if water_temp_field(farm_id) else [])]
     for farm_id, channels in FARM_CHANNELS.items()
 }
 

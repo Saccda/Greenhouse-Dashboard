@@ -31,6 +31,12 @@ const DEFAULTS: Record<string, number> = {
 };
 
 type Values = Record<string, number>;
+
+/** What the controller reports about itself, via the MQTT bridge. */
+interface ReportedState {
+  relay_setpoints?: { values: Record<string, number>; reported_at: string };
+  water_setpoint?:  { values: { Set_water_temp?: number }; reported_at: string };
+}
 type SpStatus = "idle" | "sending" | "sent" | "error" | "unauthorized";
 
 interface Props {
@@ -49,6 +55,26 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
   const { data: stored } = useSWR<StoredZones>(
     `/api/campus/setpoint`, swrFetcher, { refreshInterval: 15_000 },
   );
+
+  // What the CONTROLLER says it is running, which is not the same claim as
+  // what this dashboard last sent. The two silently disagreed for three weeks
+  // while every send reported success, because the publishes were going to a
+  // topic the device was not subscribed to. Showing both is what makes that
+  // visible instead of invisible.
+  const { data: reported } = useSWR<ReportedState>(
+    `/api/campus/reported`, swrFetcher, { refreshInterval: 15_000 },
+  );
+  const deviceValues = reported?.relay_setpoints?.values;
+  const waterSetpoint = reported?.water_setpoint?.values?.Set_water_temp;
+  // Compared against what is STORED as last-sent, not against the form, so a
+  // half-typed edit does not read as a disagreement with the hardware.
+  const disagrees = deviceValues
+    ? ZONES.some((z) => {
+        const sent = stored?.[String(z.index)];
+        if (!sent) return false;
+        return deviceValues[z.lowKey] !== sent.low || deviceValues[z.highKey] !== sent.high;
+      })
+    : false;
 
   // Apply last-sent values once, the same "checkpoint" pattern SetpointPanel
   // uses — not on every poll tick, so a half-edited form doesn't jump under
@@ -105,6 +131,52 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
           Auto Setpoints
         </p>
       </div>
+
+      {/* What the hardware says it is running. Shown whether or not it agrees,
+          because "the controller confirms these values" is worth as much as
+          the warning is — it is the only evidence on this screen that a send
+          actually landed. */}
+      {deviceValues ? (
+        <div
+          className={clsx(
+            "rounded-lg px-3 py-2.5 text-[12px] leading-relaxed",
+            disagrees
+              ? "bg-amber-500/10 border border-amber-500/30 text-slate-200"
+              : "bg-surface-hover text-slate-400",
+          )}
+        >
+          {disagrees ? (
+            <>
+              <strong className="text-[color:var(--warn-ink)]">
+                The controller is running different values than this dashboard last sent.
+              </strong>{" "}
+              It reports{" "}
+              <span className="font-mono-num text-slate-200">
+                {ZONES.map((z) => `${deviceValues[z.lowKey]}–${deviceValues[z.highKey]}`).join(" · ")}
+              </span>
+              . A send that reports success still goes nowhere if the topic is wrong, so trust
+              this line over the boxes below.
+            </>
+          ) : (
+            <>
+              Controller confirms{" "}
+              <span className="font-mono-num text-slate-300">
+                {ZONES.map((z) => `${deviceValues[z.lowKey]}–${deviceValues[z.highKey]}`).join(" · ")}
+              </span>
+              {waterSetpoint != null && (
+                <> · CH4 water target <span className="font-mono-num text-slate-300">{waterSetpoint} °C</span></>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        // Never seen a status message. Not the same as "no setpoints", and
+        // saying so beats drawing a comparison that cannot be made.
+        <p className="text-[12px] text-slate-500">
+          The controller has not reported its own setpoints yet, so the values below are what
+          this dashboard last sent rather than what the hardware confirms.
+        </p>
+      )}
 
       {ZONES.map((zone) => (
         <div key={zone.index} className="space-y-2">
