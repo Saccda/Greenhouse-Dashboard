@@ -81,13 +81,15 @@ export default function HmiDashboard() {
   const from = to - period.minutes * 60_000;
 
   const merged = mergeByTime(series("temperature"), series("humidity"));
-  // Setpoint 1 drives CH1, the system enable: the controller switches the
-  // system ON above its high value. It is a THRESHOLD, not a target to sit
-  // inside — which is how this page first came to report "temperature in
-  // band", a figure that quietly rewarded the greenhouse for being hot.
+  // Setpoint 1 drives CH1, 2 drives CH2 and 3 drives CH3 — confirmed with the
+  // farm team on 2026-10-21, after a round trip through two other readings of
+  // the same six numbers. CH4 is NOT in this set: the controller runs it from
+  // its own water-temperature setpoint, on a separate topic.
   //
-  // Setpoint 2 drives CH2 (spraying) and 3 drives CH3 (humidity). Naming them
-  // "zones" cost a real conversation, so they are named for their channels.
+  // These are THRESHOLDS, not targets to sit inside. The controller switches a
+  // channel on above the high value, which is how this page once came to
+  // report "temperature in band" — a figure that quietly rewarded the
+  // greenhouse for being hot.
   const enableBand = zones?.["1"] ?? null;
 
   // How much of the period actually arrived.
@@ -249,11 +251,12 @@ export default function HmiDashboard() {
             }
           />
           <WaterStat water={water} />
-          {/* Not "temperature in band". CH1 switches the system on ABOVE its
-              high setpoint, so what matters is how much of the period was hot
-              enough to need it, not how much sat between two numbers. */}
+          {/* Not "temperature in band". The controller switches CH1 on ABOVE
+              its high setpoint, so what matters is how much of the period was
+              hot enough to call the system in, not how much of it sat between
+              two numbers. */}
           <Stat
-            label="Called for cooling"
+            label="Above system enable"
             value={aboveEnable == null ? "—" : pct(aboveEnable)}
             note={
               aboveEnable == null

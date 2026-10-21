@@ -67,17 +67,27 @@ MQTT_BROKER_PORT  = int(os.getenv("MQTT_BROKER_PORT", "8883"))  # TLS port (Hive
 MQTT_USERNAME     = os.getenv("MQTT_USERNAME", "")
 MQTT_PASSWORD     = os.getenv("MQTT_PASSWORD", "")
 # The campus controller publishes under a root of its own choosing, and that
-# root CHANGED when the hardware was reworked in October 2026: it was
-# RUPP_CAMPUS_1 (named for the site) and is now Device01 (named for the device,
-# matching the "ID" field the ESP32 puts in its own payload).
+# root has now changed TWICE:
 #
-# Everything campus hangs off this, so a device rename is one line rather than
-# four. It is worth the indirection because getting it wrong is SILENT in both
-# directions: reads simply show no data, and writes publish successfully to a
-# topic nothing is subscribed to, so the dashboard reports a relay command sent
-# that no hardware ever hears. That is how the rig spent 17 days looking
-# offline while the ESP32 was publishing every 60 seconds.
-CAMPUS_TOPIC_ROOT = os.getenv("CAMPUS_TOPIC_ROOT", "Device01")
+#   originally      RUPP_CAMPUS_1   named for the site
+#   ~1 Oct 2026     Device01        named for the device
+#   21 Oct 2026     RUPP_CAMPUS_1   changed back
+#
+# Everything campus hangs off this, so following a rename is one line rather
+# than four. The indirection earns its keep because getting it wrong is SILENT
+# IN BOTH DIRECTIONS: reads simply show no data, and writes publish
+# successfully to a topic nothing is subscribed to, so the dashboard reports a
+# relay command sent that no hardware ever hears.
+#
+# Both failures have now happened for real. The first rename cost 18 days of
+# campus history while the ESP32 published every 60 seconds to a topic nothing
+# read. The second broke remote setpoints the other way: the dashboard went on
+# accepting setpoint changes and reporting success while the controller, back
+# on RUPP_CAMPUS_1, heard none of them.
+#
+# If campus goes quiet again, check this FIRST. One listen settles it:
+#     python scripts/mqtt_listen.py --seconds 90 --topic '#'
+CAMPUS_TOPIC_ROOT = os.getenv("CAMPUS_TOPIC_ROOT", "RUPP_CAMPUS_1")
 
 CAMPUS_MQTT_TOPIC = os.getenv(
     "CAMPUS_MQTT_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/infor/status"
@@ -470,7 +480,12 @@ FARM_CHANNELS: dict[str, dict[str, dict]] = {
         "CH1": {
             "label":        "System Enable",
             "icon":         "thermometer",
-            "description":  "System ON when temperature exceeds 32°C",
+            # CH1 has no setpoint of its own. The controller holds it ON
+            # whenever any of CH2, CH3 or CH4 is on, so it is an indicator of
+            # "something is running" rather than a threshold channel. It used
+            # to read "System ON when temperature exceeds 32 degC", which was
+            # the CH2 spray setpoint wearing CH1's name.
+            "description":  "ON whenever CH2, CH3 or CH4 is running",
             "controllable": True,
         },
         "CH2": {
