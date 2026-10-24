@@ -14,13 +14,44 @@ import type { Farm } from "@/types";
  * useLocalStorage.ts). Falls back to the first farm the account actually
  * has access to if the stored default isn't in its list (access changed, or
  * this is a first login before any default is set).
+ *
+ * WHY THE ERROR IS RETURNED RATHER THAN SWALLOWED
+ *   This used to end in `.catch(() => {})`. An empty farm list then meant
+ *   three completely different things and looked identical in all of them:
+ *
+ *     the request failed            — a problem to fix
+ *     the account has no farms      — an access question for an admin
+ *     the account has exactly one   — normal, nothing wrong
+ *
+ *   The page hides its farm selector when there is one farm or fewer, so a
+ *   failed request silently removed every other site from the interface with
+ *   nothing anywhere saying so. Callers now get `error` and `loading` and can
+ *   tell a broken list from a short one.
  */
 export function useFarmSelection() {
   const { settings, update } = useSettings();
   const [farms, setFarms] = useState<Farm[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFarms().then((r) => setFarms(r.farms)).catch(() => {});
+    let cancelled = false;
+    fetchFarms()
+      .then((r) => {
+        if (cancelled) return;
+        setFarms(r.farms);
+        setError(null);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        // Kept as a message rather than a boolean: "401" and "Failed to fetch"
+        // need different actions from whoever is reading it.
+        setError(e instanceof Error ? e.message : "Could not load the farm list");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const farm = settings.defaultFarm;
@@ -33,5 +64,5 @@ export function useFarmSelection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [farms, farm]);
 
-  return { farm, setFarm, farms };
+  return { farm, setFarm, farms, error, loading };
 }

@@ -140,7 +140,10 @@ function FarmAnnotation({ farm }: { farm: Farm }) {
 
 export default function HomePage() {
   const { isDark } = useTheme();
-  const { farm: selectedFarmId, setFarm: setSelectedFarmId, farms } = useFarmSelection();
+  const {
+    farm: selectedFarmId, setFarm: setSelectedFarmId, farms,
+    error: farmsError, loading: farmsLoading,
+  } = useFarmSelection();
 
   const [query,    setQuery]    = useState("");
   // Which hero source failed, rather than a boolean: a boolean stays true
@@ -317,8 +320,23 @@ export default function HomePage() {
           {/* Divider */}
           <div className={clsx("w-px h-4 shrink-0", isDark ? "bg-white/10" : "bg-slate-200")} />
 
-          {/* Farm selector */}
-          {farms.length > 1 && (
+          {/* Farm selector. Hidden when there is one farm or none — but an
+              EMPTY list is reported instead of hidden, because that is a
+              fault or an access problem rather than a farm having no
+              siblings, and silently dropping every other site from the
+              interface is how this went unnoticed. */}
+          {farmsError ? (
+            <span
+              className="text-[12px] text-[color:var(--warn-ink)] max-w-[16rem] leading-snug"
+              title={farmsError}
+            >
+              Farm list unavailable — showing the last farm you selected
+            </span>
+          ) : !farmsLoading && farms.length === 0 ? (
+            <span className="text-[12px] text-[color:var(--warn-ink)]">
+              This account has no farms assigned
+            </span>
+          ) : farms.length > 1 ? (
             <select
               value={selectedFarmId}
               onChange={(e) => setSelectedFarmId(e.target.value)}
@@ -333,7 +351,7 @@ export default function HomePage() {
                 <option key={f.id} value={f.id}>{f.display_name}</option>
               ))}
             </select>
-          )}
+          ) : null}
 
           {/* Search */}
           <div className="relative">

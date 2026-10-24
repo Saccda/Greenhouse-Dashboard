@@ -22,9 +22,6 @@ router = APIRouter(
     tags=["farms"],
     dependencies=[Depends(auth_service.require_auth)],
 )
-
-
-@router.get("/", response_model=FarmsResponse)
 def _water_temp_probe(info: dict) -> SoilProbe | None:
     """
     The farm's cooling-tank probe, described the same way a soil probe is.
@@ -46,8 +43,9 @@ def _water_temp_probe(info: dict) -> SoilProbe | None:
     )
 
 
+@router.get("/", response_model=FarmsResponse)
 def list_farms(user: dict = Depends(auth_service.require_auth)) -> FarmsResponse:
-    allowed = user.get("farms")
+    allowed = auth_service.allowed_farms(user)
     farms = [
         FarmInfo(
             id=farm_id,

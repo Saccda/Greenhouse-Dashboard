@@ -73,7 +73,9 @@ def _farm_filter(user: dict, farm: str | None) -> str | list[str] | None:
     if farm is not None:
         auth_service.require_farm_access(user, farm)
         return farm
-    return user.get("farms")
+    # Normalised, not raw: a farms field saved as a string would otherwise be
+    # passed down as one here and filter by substring further along.
+    return auth_service.allowed_farms(user)
 
 
 @router.get("/log")

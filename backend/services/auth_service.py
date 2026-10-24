@@ -249,6 +249,38 @@ async def require_developer(user: dict = Depends(require_auth)) -> dict:
     return user
 
 
+def allowed_farms(user: dict) -> list[str] | None:
+    """
+    This account's farm allowlist, or None when unrestricted.
+
+    Exists to stop a STRING being treated as a list. `"kampot" in ["kampot"]`
+    and `"kampot" in "kampot"` are both True, so a farms field saved as
+    "campus" rather than ["campus"] passes every check that looks right and
+    silently becomes a SUBSTRING test everywhere else:
+
+        "kampot" in "campus"  ->  False
+        "kep"    in "campus"  ->  False
+        "campus" in "campus"  ->  True
+
+    An account scoped that way sees exactly one farm, with no error anywhere
+    and nothing in the interface saying why — which is how an owner with
+    access to three farms ended up able to reach only one.
+
+    A string is read as the single farm it names rather than rejected: the
+    account's intent is unambiguous, and refusing it would lock someone out
+    of the farm they do have rather than fixing their access.
+    """
+    farms = user.get("farms")
+    if farms is None:
+        return None
+    if isinstance(farms, str):
+        print(f"[auth] WARNING account {user.get('username')!r} has farms stored as a "
+              f"string ({farms!r}) rather than a list; reading it as [{farms!r}]. "
+              f"Fix it in data/users.json or on the Users page.")
+        return [farms]
+    return list(farms)
+
+
 def require_farm_access(user: dict, farm_id: str) -> None:
     """
     Raise 403 if this account isn't allowed to see farm_id.
@@ -257,6 +289,6 @@ def require_farm_access(user: dict, farm_id: str) -> None:
     role — a "pending" account can still be scoped to a farm it may view,
     just not write to.
     """
-    farms = user.get("farms")
+    farms = allowed_farms(user)
     if farms is not None and farm_id not in farms:
         raise HTTPException(status_code=403, detail=f"Your account doesn't have access to farm '{farm_id}'")
