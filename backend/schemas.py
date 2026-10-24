@@ -92,6 +92,11 @@ class SoilProbe(BaseModel):
     min:   Optional[float] = None
     max:   Optional[float] = None
     depth_cm: Optional[float] = None
+    # Which decision this reading serves: "conditions" (is the root zone wet
+    # enough — irrigation) or "nutrients" (does the crop need feeding). The
+    # two arrive on separate topics and are acted on by different people, so
+    # the dashboard gives them separate cards rather than one crowded one.
+    group: Optional[str] = None
 
 
 class FarmInfo(BaseModel):
@@ -128,6 +133,15 @@ class FarmInfo(BaseModel):
     # without knowing any probe name in advance -- the day a second probe is
     # added it appears on its own, with no frontend release.
     soil_probes: list["SoilProbe"] = []
+    # The cooling-tank probe, when the farm has one. Same shape as a soil
+    # probe because it is the same kind of thing: a named reading with a unit
+    # and an instrument range, which the dashboard can draw without knowing in
+    # advance that it exists.
+    water_temp: Optional["SoilProbe"] = None
+    # Electricity meter channels, when the farm has one. Same shape again:
+    # named readings with units and ranges, which the dashboard draws without
+    # knowing voltage from potassium.
+    energy: list["SoilProbe"] = []
 
 
 class FarmsResponse(BaseModel):

@@ -166,6 +166,32 @@ CAMPUS_WATER_TEMP_TOPIC = os.getenv(
 # volume stays in the same order of magnitude as everything else.
 CAMPUS_WATER_TEMP_MIN_INTERVAL_S = float(os.getenv("CAMPUS_WATER_TEMP_MIN_INTERVAL", "30"))
 
+# Energy, NPK and soil moisture/temperature each publish on their own topic.
+# Payload shapes below are READ FROM THE BROKER, not guessed:
+#
+#   energy_data               {"voltage":222.37,"current":0.07,"power_w":0}
+#   soil_npk_data             {"nitrogen":2,"phosphorus":3,"potassium":6}
+#   soil_moisture_temp_data   {"soil_moisture":0.2,"soil_temperature":34.5}
+#
+# None of these carry the "ID" field the status topic does, so points written
+# from them have no device_id tag. Worth knowing before anyone tries to split
+# a chart by device.
+CAMPUS_ENERGY_TOPIC = os.getenv(
+    "CAMPUS_ENERGY_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/energy_data"
+)
+CAMPUS_SOIL_NPK_TOPIC = os.getenv(
+    "CAMPUS_SOIL_NPK_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/soil_npk_data"
+)
+CAMPUS_SOIL_MOISTURE_TOPIC = os.getenv(
+    "CAMPUS_SOIL_MOISTURE_TOPIC", f"{CAMPUS_TOPIC_ROOT}/phnom_penh/soil_moisture_temp_data"
+)
+
+# Same thinning as the tank probe, and for the same reason: energy arrives
+# every 5 s and soil every 10 s, which is 17,280 and 8,640 points per day per
+# field against 1,440 for the whole status feed. Neither soil nor a mains
+# supply changes meaningfully inside half a minute.
+CAMPUS_FAST_FEED_MIN_INTERVAL_S = float(os.getenv("CAMPUS_FAST_FEED_MIN_INTERVAL", "30"))
+
 # Example values straight from the firmware's own topic comment — used as the
 # UI's pre-fill defaults before anything has ever actually been sent.
 CAMPUS_SETPOINT_DEFAULTS: dict[str, float] = {
@@ -473,7 +499,52 @@ FARMS: dict[str, dict] = {
         # Planned, not installed. Fill this in when probes are wired and the
         # dashboard panel starts showing readings instead of saying there are
         # none.
-        "soil_sensors": None,
+        # Soil, live since 2026-10-23. Payload keys read from the broker, not
+        # guessed -- the two topics carry different probes and each probe
+        # names the topic it arrives on, so the bridge can route without a
+        # second lookup table.
+        #
+        # UNITS ARE PROVISIONAL. soil_moisture arrives as a bare 0.2 with no
+        # unit, which could be 0.2%, a 0-1 fraction, or a raw count; NPK
+        # sensors of this kind usually report mg/kg but the firmware does not
+        # say. Labels are cheap to correct and the readings are not, so these
+        # are stored now and the units confirmed with the farm team after.
+        "soil_sensors": {
+            "depth_cm": None,   # not yet confirmed
+            "probes": [
+                {"payload_key": "soil_moisture", "field": "soil_moisture",
+                 "label": "Soil moisture", "unit": "%", "min": 0, "max": 100, "group": "conditions",
+                 "topic": CAMPUS_SOIL_MOISTURE_TOPIC},
+                {"payload_key": "soil_temperature", "field": "soil_temperature",
+                 "label": "Soil temperature", "unit": "°C", "min": 0, "max": 60, "group": "conditions",
+                 "topic": CAMPUS_SOIL_MOISTURE_TOPIC},
+                {"payload_key": "nitrogen", "field": "soil_nitrogen",
+                 "label": "Nitrogen", "unit": "mg/kg", "min": 0, "max": 200, "group": "nutrients",
+                 "topic": CAMPUS_SOIL_NPK_TOPIC},
+                {"payload_key": "phosphorus", "field": "soil_phosphorus",
+                 "label": "Phosphorus", "unit": "mg/kg", "min": 0, "max": 200, "group": "nutrients",
+                 "topic": CAMPUS_SOIL_NPK_TOPIC},
+                {"payload_key": "potassium", "field": "soil_potassium",
+                 "label": "Potassium", "unit": "mg/kg", "min": 0, "max": 200, "group": "nutrients",
+                 "topic": CAMPUS_SOIL_NPK_TOPIC},
+            ],
+        },
+        # Mains supply feeding the rig. power_w has read exactly 0 since the
+        # feed appeared, while voltage and current are plainly alive -- see
+        # the note raised with the farm team. Stored regardless: a field that
+        # turns out to be broken is worth having recorded from the day it
+        # started, and InfluxDB cannot be backfilled.
+        "energy_meter": {
+            "topic": CAMPUS_ENERGY_TOPIC,
+            "channels": [
+                {"payload_key": "voltage", "field": "voltage",
+                 "label": "Voltage", "unit": "V", "min": 180, "max": 260},
+                {"payload_key": "current", "field": "current",
+                 "label": "Current", "unit": "A", "min": 0, "max": 20},
+                {"payload_key": "power_w", "field": "power_w",
+                 "label": "Power", "unit": "W", "min": 0, "max": 4000},
+            ],
+        },
     },
 }
 DEFAULT_FARM = "kampot"
@@ -619,6 +690,22 @@ def water_temp_field(farm_id: str) -> str | None:
     spec = water_temp_sensor(farm_id)
     return spec.get("field") if spec else None
 
+def energy_meter(farm_id: str) -> dict | None:
+    """The farm's electricity meter spec, or None when it has none."""
+    return (FARMS.get(farm_id) or {}).get("energy_meter") or None
+
+
+def energy_channels(farm_id: str) -> list[dict]:
+    """Voltage/current/power channels for a farm's meter, or [] when unfitted."""
+    spec = energy_meter(farm_id)
+    return list(spec.get("channels") or []) if spec else []
+
+
+def energy_fields(farm_id: str) -> list[str]:
+    """Influx field names for the farm's energy meter, in configured order."""
+    return [c["field"] for c in energy_channels(farm_id) if c.get("field")]
+
+
 
 def soil_probes(farm_id: str) -> list[dict]:
     """
@@ -642,7 +729,8 @@ def soil_fields(farm_id: str) -> list[str]:
 # /latest and /history return them without either route being touched.
 FARM_FIELDS: dict[str, list[str]] = {
     farm_id: ["temperature", "humidity", *channels.keys(), *soil_fields(farm_id),
-              *([water_temp_field(farm_id)] if water_temp_field(farm_id) else [])]
+              *([water_temp_field(farm_id)] if water_temp_field(farm_id) else []),
+              *energy_fields(farm_id)]
     for farm_id, channels in FARM_CHANNELS.items()
 }
 

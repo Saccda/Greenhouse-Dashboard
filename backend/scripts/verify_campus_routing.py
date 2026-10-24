@@ -68,7 +68,7 @@ def check(label, cond):
 def reset():
     WRITES.clear()
     PG.clear()
-    bridge._last_water_temp_write = None
+    bridge._last_fast_write.clear()
 
 
 STATUS = {"ID": "Device01", "CH1": 0, "CH2": 1, "CH3": 0, "CH4": 1,
@@ -103,8 +103,7 @@ for _ in range(12):           # a minute of readings at 5 s
     send(config.CAMPUS_WATER_TEMP_TOPIC, WTEMP)
 check("twelve rapid readings store only one", len(WRITES) == 1)
 
-# Wind the clock back past the interval and the next one is taken.
-bridge._last_water_temp_write = (
+bridge._last_fast_write[config.CAMPUS_WATER_TEMP_TOPIC] = (
     datetime.now(config.TIMEZONE)
     - timedelta(seconds=config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S + 1)
 )
@@ -141,6 +140,67 @@ check("a malformed payload is dropped, not written", len(WRITES) == 0)
 reset()
 send("RUPP_CAMPUS_1/phnom_penh/something/else", {"x": 1})
 check("an unknown topic falls through to the status path",
+      len(WRITES) == 1 and WRITES[0][1] is None)
+
+# ── 5. Energy and soil, each on its own topic ───────────────────────────────
+# Three sensors arrived at once, on three topics, with payload keys that look
+# nothing like the field names they are stored under. A mapping error here is
+# invisible: the write succeeds, the field is simply absent, and the chart
+# shows a sensor that is "fitted but never reported".
+print("\n=== 5. Energy and soil route to their own fields ===")
+ENERGY = {"voltage": 222.37, "current": 0.07, "power_w": 0}
+NPK = {"nitrogen": 2, "phosphorus": 3, "potassium": 6}
+MOIST = {"soil_moisture": 0.2, "soil_temperature": 34.5}
+
+reset()
+send(config.CAMPUS_ENERGY_TOPIC, ENERGY)
+check("energy writes with the meter's own field spec",
+      len(WRITES) == 1 and WRITES[0][1] == bridge.ENERGY_FIELDS)
+
+reset()
+send(config.CAMPUS_SOIL_NPK_TOPIC, NPK)
+check("NPK writes with the NPK field spec", len(WRITES) == 1)
+check("and renames nitrogen -> soil_nitrogen, not nitrogen",
+      dict(WRITES[0][1]) == {"nitrogen": "soil_nitrogen",
+                             "phosphorus": "soil_phosphorus",
+                             "potassium": "soil_potassium"})
+
+reset()
+send(config.CAMPUS_SOIL_MOISTURE_TOPIC, MOIST)
+check("moisture and soil temperature share one topic and one spec",
+      len(WRITES) == 1 and dict(WRITES[0][1]) == {"soil_moisture": "soil_moisture",
+                                                  "soil_temperature": "soil_temperature"})
+
+check("the two soil topics do NOT share a field spec",
+      bridge.SOIL_BY_TOPIC[config.CAMPUS_SOIL_NPK_TOPIC]
+      != bridge.SOIL_BY_TOPIC[config.CAMPUS_SOIL_MOISTURE_TOPIC])
+
+print("\n=== 6. Fast feeds are thinned independently ===")
+reset()
+for _ in range(6):
+    send(config.CAMPUS_ENERGY_TOPIC, ENERGY)
+    send(config.CAMPUS_SOIL_NPK_TOPIC, NPK)
+# One each, not one between them: a shared clock would let the 5-second feed
+# consume the window and leave the 10-second one mostly unrecorded.
+check("energy and soil each store one, not one in total", len(WRITES) == 2)
+
+reset()
+for _ in range(4):
+    send(config.CAMPUS_MQTT_TOPIC, STATUS)
+check("the status feed is never thinned", len(WRITES) == 4)
+
+reset()
+for _ in range(3):
+    send(config.CAMPUS_WATER_MQTT_TOPIC, WATER)
+# The meter reports once per cubic metre; a dropped message is a missing day.
+check("the water meter is never thinned", len(WRITES) == 3)
+
+print("\n=== 7. Soil no longer rides on the status payload ===")
+reset()
+send(config.CAMPUS_MQTT_TOPIC, {**STATUS, "soil_moisture": 99})
+# Guarding the old arrangement: soil used to be expected inside the status
+# message, and a stray key there must not quietly become a soil reading.
+check("a soil key inside a status payload is not stored as soil",
       len(WRITES) == 1 and WRITES[0][1] is None)
 
 os.unlink(_tmp.name)

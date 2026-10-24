@@ -107,6 +107,13 @@ export interface Farm {
    * is a backend config edit, not a frontend release.
    */
   soil_probes?: SoilProbe[];
+  /**
+   * The cooling-tank probe, when fitted. Same shape as a soil probe because
+   * it is the same kind of thing — a named reading with a unit and a range.
+   */
+  water_temp?: SoilProbe | null;
+  /** Electricity meter channels, when fitted. Empty for farms without one. */
+  energy?: SoilProbe[];
 }
 
 export interface SoilProbe {
@@ -118,6 +125,12 @@ export interface SoilProbe {
   min?:  number | null;
   max?:  number | null;
   depth_cm?: number | null;
+  /**
+   * Which decision this reading serves: "conditions" (irrigation) or
+   * "nutrients" (feeding). They arrive on separate topics and are acted on by
+   * different people, so they get separate cards.
+   */
+  group?: string | null;
 }
 
 export interface FarmsResponse {

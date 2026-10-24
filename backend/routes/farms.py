@@ -25,6 +25,27 @@ router = APIRouter(
 
 
 @router.get("/", response_model=FarmsResponse)
+def _water_temp_probe(info: dict) -> SoilProbe | None:
+    """
+    The farm's cooling-tank probe, described the same way a soil probe is.
+
+    Same shape on purpose: both are a named reading with a unit and an
+    instrument range, and the dashboard can draw either without knowing in
+    advance that it exists. A farm without the sensor gets None and no panel,
+    rather than an empty chart promising a reading that can never arrive.
+    """
+    spec = info.get("water_temp_sensor")
+    if not spec:
+        return None
+    return SoilProbe(
+        field=spec["field"],
+        label=spec.get("label", spec["field"]),
+        unit=spec.get("unit", ""),
+        min=spec.get("min"),
+        max=spec.get("max"),
+    )
+
+
 def list_farms(user: dict = Depends(auth_service.require_auth)) -> FarmsResponse:
     allowed = user.get("farms")
     farms = [
@@ -46,8 +67,17 @@ def list_farms(user: dict = Depends(auth_service.require_auth)) -> FarmsResponse
                     min=p.get("min"),
                     max=p.get("max"),
                     depth_cm=(info.get("soil_sensors") or {}).get("depth_cm"),
+                    group=p.get("group"),
                 )
                 for p in config.soil_probes(farm_id)
+            ],
+            water_temp=_water_temp_probe(info),
+            energy=[
+                SoilProbe(
+                    field=c["field"], label=c.get("label", c["field"]),
+                    unit=c.get("unit", ""), min=c.get("min"), max=c.get("max"),
+                )
+                for c in config.energy_channels(farm_id)
             ],
         )
         for farm_id, info in config.FARMS.items()

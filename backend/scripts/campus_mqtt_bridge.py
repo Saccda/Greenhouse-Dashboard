@@ -82,10 +82,44 @@ LITERAL_FIELDS  = [(k, k) for k in CHANNEL_FIELDS]
 # Keys the payload does not carry are simply absent from a reading — the write
 # loop skips a missing value — so a probe added here before the firmware sends
 # it costs nothing and starts recording by itself the day it does.
-SOIL_FIELDS = [
-    (p["payload_key"], p["field"])
-    for p in config.soil_probes("campus")
-    if p.get("payload_key") and p.get("field")
+def _pairs(specs: list[dict]) -> list[tuple[str, str]]:
+    """(payload key, influx field) for every spec that names both."""
+    return [
+        (s["payload_key"], s["field"])
+        for s in specs
+        if s.get("payload_key") and s.get("field")
+    ]
+
+
+# Soil probes, grouped by the topic they arrive on. They used to be expected
+# inside the status payload; the firmware publishes them on two topics of their
+# own instead, so each probe names its topic and the routing is a lookup rather
+# than a chain of conditionals that grows every time a sensor is added.
+SOIL_BY_TOPIC: dict[str, list[tuple[str, str]]] = {}
+for _p in config.soil_probes("campus"):
+    if _p.get("topic") and _p.get("payload_key") and _p.get("field"):
+        SOIL_BY_TOPIC.setdefault(_p["topic"], []).append((_p["payload_key"], _p["field"]))
+
+ENERGY_FIELDS = _pairs(config.energy_channels("campus"))
+
+# Topics that publish faster than they change. Thinned before writing; see
+# _fast_feed_due.
+FAST_TOPICS = {
+    config.CAMPUS_WATER_TEMP_TOPIC,
+    config.CAMPUS_ENERGY_TOPIC,
+    *SOIL_BY_TOPIC.keys(),
+}
+
+# Everything this bridge listens to, in one list so the subscribe call and the
+# connect log cannot drift apart from each other.
+ALL_TOPICS = [
+    config.CAMPUS_MQTT_TOPIC,
+    config.CAMPUS_WATER_MQTT_TOPIC,
+    config.CAMPUS_WATER_TEMP_TOPIC,
+    config.CAMPUS_ENERGY_TOPIC,
+    *SOIL_BY_TOPIC.keys(),
+    config.CAMPUS_SETPOINT_STATUS_TOPIC,
+    config.CAMPUS_WATER_SETPOINT_STATUS_TOPIC,
 ]
 
 # The flow meter's own topic. Daily totals, not per-reading values, so these
@@ -109,10 +143,11 @@ _WT = config.water_temp_sensor("campus") or {}
 WATER_TEMP_FIELDS = (
     [(_WT["payload_key"], _WT["field"])] if _WT.get("payload_key") and _WT.get("field") else []
 )
-
-# Last time a water-temperature reading was stored. The probe publishes every
-# 5 seconds; see config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S for why most of those
-# are dropped rather than written.
+# When each fast-publishing topic last had a reading stored. Keyed by topic so
+# one busy feed cannot starve another: a single shared timestamp would let
+# energy, arriving every 5 s, consume the window and leave soil at 10 s mostly
+# unrecorded.
+_last_fast_write: dict[str, datetime] = {}
 _last_water_temp_write: datetime | None = None
 
 # Where the controller's OWN reported setpoints are kept. Written by this
@@ -246,7 +281,7 @@ def _write_postgres(payload: dict, ts: datetime, spec: list[tuple[str, str]] | N
     # Soil joins the default set so the archive keeps the same columns as the
     # live store; a probe recorded in one and not the other is the kind of gap
     # that only shows up months later when the ML work goes looking for it.
-    for payload_key, field in (spec if spec is not None else RENAMED_FIELDS + LITERAL_FIELDS + SOIL_FIELDS):
+    for payload_key, field in (spec if spec is not None else RENAMED_FIELDS + LITERAL_FIELDS):
         value = payload.get(payload_key)
         if value is not None:
             # double precision throughout, channels included. Postgres does not
@@ -328,15 +363,6 @@ def _write_point(payload: dict, spec: list[tuple[str, str]] | None = None) -> No
         if value is not None:
             point = point.field(influx_field, int(value))
             written_any = True
-    # Soil, float for the same reason as temperature above: a probe reading
-    # exactly 40 would otherwise lock the field to integer on its first write
-    # and reject every decimal afterwards. Influx does not allow that to be
-    # undone, so the cast matters more than it looks.
-    for payload_key, influx_field in SOIL_FIELDS:
-        value = payload.get(payload_key)
-        if value is not None:
-            point = point.field(influx_field, float(value))
-            written_any = True
 
     if not written_any:
         print(f"[campus-mqtt-bridge] payload had none of the expected fields, skipped: {payload}")
@@ -355,15 +381,17 @@ def _on_connect(client: mqtt.Client, userdata, flags, reason_code, properties=No
         # actually remembered us from before — if the last run ended with a
         # clean disconnect (or this is the very first run), it won't, and this
         # subscribe is required again even with clean_session=False.
+        # Printed from ALL_TOPICS rather than listed by hand, so a topic that
+        # is subscribed but missing from the log (or the reverse) cannot
+        # happen. Reading this block is how you confirm a restart picked up a
+        # topic change -- which has mattered twice now.
         print(
             f"[campus-mqtt-bridge] connected to {config.MQTT_BROKER_HOST} "
-            f"(session_present={flags.session_present}), subscribing to:\n"
-            f"    status        {config.CAMPUS_MQTT_TOPIC}\n"
-            f"    water meter   {config.CAMPUS_WATER_MQTT_TOPIC}\n"
-            f"    water temp    {config.CAMPUS_WATER_TEMP_TOPIC}\n"
-            f"    setpoints     {config.CAMPUS_SETPOINT_STATUS_TOPIC}\n"
-            f"    water setpt   {config.CAMPUS_WATER_SETPOINT_STATUS_TOPIC}"
+            f"(session_present={flags.session_present}), subscribing to "
+            f"{len(ALL_TOPICS)} topics:"
         )
+        for _t in ALL_TOPICS:
+            print(f"    {_t}")
         # Both at QoS 1 on the same persistent session. The water topic matters
         # more for this than the status one: it publishes only once another
         # cubic metre has gone through the meter, so
@@ -371,11 +399,7 @@ def _on_connect(client: mqtt.Client, userdata, flags, reason_code, properties=No
         # The two status topics are retained, so subscribing delivers the
         # controller's current setpoints immediately on connect rather than
         # waiting for it to change something.
-        client.subscribe([(config.CAMPUS_MQTT_TOPIC, 1),
-                          (config.CAMPUS_WATER_MQTT_TOPIC, 1),
-                          (config.CAMPUS_WATER_TEMP_TOPIC, 1),
-                          (config.CAMPUS_SETPOINT_STATUS_TOPIC, 1),
-                          (config.CAMPUS_WATER_SETPOINT_STATUS_TOPIC, 1)])
+        client.subscribe([(t, 1) for t in ALL_TOPICS])
     else:
         print(f"[campus-mqtt-bridge] connect failed: {reason_code}")
 
@@ -457,16 +481,21 @@ def _store_reported(kind: str, payload: dict) -> None:
         # actually matters.
         print(f"[campus-mqtt-bridge] could not store reported {kind}: {e}")
 
+def _fast_feed_due(topic: str, interval_s: float) -> bool:
+    """
+    Should this fast topic's reading be stored, or dropped?
 
-def _water_temp_due() -> bool:
-    """Throttle the 5-second probe to one stored reading per configured interval."""
-    global _last_water_temp_write
+    Energy publishes every 5 s and the soil probes every 10 s. Storing all of
+    them would be tens of thousands of points a day per field against 1,440
+    for the whole status feed, and none of these quantities changes
+    meaningfully inside the interval. Per topic, so one feed cannot starve
+    another.
+    """
     now = datetime.now(config.TIMEZONE)
-    if _last_water_temp_write is not None:
-        elapsed = (now - _last_water_temp_write).total_seconds()
-        if elapsed < config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S:
-            return False
-    _last_water_temp_write = now
+    last = _last_fast_write.get(topic)
+    if last is not None and (now - last).total_seconds() < interval_s:
+        return False
+    _last_fast_write[topic] = now
     return True
 
 
@@ -490,18 +519,28 @@ def _on_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage) -> None:
         return
 
     is_water = msg.topic == config.CAMPUS_WATER_MQTT_TOPIC
-    is_water_temp = msg.topic == config.CAMPUS_WATER_TEMP_TOPIC
 
-    if is_water_temp:
-        # Arrives every 5 s. Dropping most of them is the point; see
-        # config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S.
-        if not _water_temp_due():
+    # Every topic that carries its own field set, looked up rather than
+    # branched on. Adding a sensor is a config entry and a line here, not a
+    # new conditional in a chain that nobody can read after the sixth one.
+    by_topic = {
+        config.CAMPUS_WATER_MQTT_TOPIC: WATER_FIELDS,
+        config.CAMPUS_WATER_TEMP_TOPIC: WATER_TEMP_FIELDS,
+        config.CAMPUS_ENERGY_TOPIC:     ENERGY_FIELDS,
+        **SOIL_BY_TOPIC,
+    }
+    spec = by_topic.get(msg.topic)
+
+    # The fast feeds -- tank probe every 5 s, energy every 5 s, soil every
+    # 10 s -- are thinned before anything is written. The status topic and the
+    # water meter are not: one is already slow and the other reports once per
+    # cubic metre, where a dropped message is a missing DAY.
+    if msg.topic in FAST_TOPICS:
+        interval = (config.CAMPUS_WATER_TEMP_MIN_INTERVAL_S
+                    if msg.topic == config.CAMPUS_WATER_TEMP_TOPIC
+                    else config.CAMPUS_FAST_FEED_MIN_INTERVAL_S)
+        if not _fast_feed_due(msg.topic, interval):
             return
-        spec = WATER_TEMP_FIELDS
-    elif is_water:
-        spec = WATER_FIELDS
-    else:
-        spec = None
 
     if is_water:
         _check_water_arithmetic(payload)

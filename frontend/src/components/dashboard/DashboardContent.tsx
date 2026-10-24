@@ -44,6 +44,7 @@ import {
   Thermometer, Droplets, Droplet, Timer, WifiOff, ArrowUpRight, AlertTriangle,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { clsx } from "clsx";
 import useSWR from "swr";
 
 import { useDashboard } from "@/hooks/useDashboard";
@@ -55,6 +56,7 @@ import KPICard from "@/components/ui/KPICard";
 import SensorChart from "@/components/charts/SensorChart";
 import ChannelSummary from "@/components/dashboard/ChannelSummary";
 import SoilPanel from "@/components/dashboard/SoilPanel";
+import CampusSections from "@/components/dashboard/CampusSections";
 import { TIME_RANGE_OPTIONS, type Farm, type TimeRange, type Aggregation, type WaterResponse } from "@/types";
 
 export default function DashboardContent() {
@@ -79,6 +81,9 @@ export default function DashboardContent() {
   // Empty until probes are configured, at which point the panel appears on its
   // own. Nothing here names a probe.
   const soilProbes = thisFarm?.soil_probes ?? [];
+  // Campus gets the section grid; the other farms keep the flat row. One
+  // condition, so promoting the layout later is a change here and nowhere else.
+  const isCampus = farm === "campus";
 
   const { data: water } = useSWR<WaterResponse>(
     measuresWater ? `/api/sensors/water?farm=${farm}` : null,
@@ -142,6 +147,50 @@ export default function DashboardContent() {
 
       <main className="flex-1 overflow-y-auto p-5 space-y-5">
 
+        {/* ── Range ───────────────────────────────────────────────────── */}
+        <section className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] text-slate-500 uppercase tracking-wider mr-1">Range:</span>
+          {(["-1h", "-6h", "-24h", "-7d", "-30d"] as TimeRange[]).map((r) => (
+            <button
+              key={r}
+              onClick={() => setTimeRange(r)}
+              className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                timeRange === r
+                  ? "bg-brand-green/15 text-brand-green border border-brand-green/30"
+                  : "bg-surface-card text-slate-500 border border-surface-border hover:text-slate-300"
+              }`}
+            >
+              {r.replace("-", "")}
+            </button>
+          ))}
+          {interrupted > 0 && (
+            <span className="flex items-center gap-1.5 ml-auto text-[11px] text-[color:var(--warn-ink)]">
+              <AlertTriangle size={13} className="shrink-0" />
+              {interrupted} spray{interrupted === 1 ? "" : "s"} cut short by a gap in the feed — runtime above is a minimum
+            </span>
+          )}
+        </section>
+        {/* PP Campus gets one card per sensor domain; Kampot and Kep keep the
+            flat row below. Campus is the farm whose readings are growing — it
+            gained a tank probe this week and soil is next — while the other
+            two still report temperature, humidity and three relays, which the
+            row handles well. Proving the layout on one farm first means it can
+            be withdrawn without touching the farms people depend on. */}
+        {isCampus ? (
+          <CampusSections
+            farm={thisFarm}
+            latest={latest}
+            history={history}
+            water={water}
+            sprayStats={sprayStats}
+            isOffline={isOffline}
+            tempWarn={tempWarn}
+            humWarn={humWarn}
+            rangeLabel={rangeLabel}
+          />
+        ) : (
+        <>
+
         {/* ── Conditions and today's work ─────────────────────────────
             Four, not five. The fifth was "Total Spray" beside "Sprays" and
             "Avg Duration", which is the same fact three ways — total is
@@ -192,29 +241,6 @@ export default function DashboardContent() {
           />
         </section>
 
-        {/* ── Range ───────────────────────────────────────────────────── */}
-        <section className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] text-slate-500 uppercase tracking-wider mr-1">Range:</span>
-          {(["-1h", "-6h", "-24h", "-7d", "-30d"] as TimeRange[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => setTimeRange(r)}
-              className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                timeRange === r
-                  ? "bg-brand-green/15 text-brand-green border border-brand-green/30"
-                  : "bg-surface-card text-slate-500 border border-surface-border hover:text-slate-300"
-              }`}
-            >
-              {r.replace("-", "")}
-            </button>
-          ))}
-          {interrupted > 0 && (
-            <span className="flex items-center gap-1.5 ml-auto text-[11px] text-[color:var(--warn-ink)]">
-              <AlertTriangle size={13} className="shrink-0" />
-              {interrupted} spray{interrupted === 1 ? "" : "s"} cut short by a gap in the feed — runtime above is a minimum
-            </span>
-          )}
-        </section>
 
         {/* ── The chart ───────────────────────────────────────────────── */}
         <section className="bg-surface-card border border-surface-border rounded-xl p-4">
@@ -235,33 +261,40 @@ export default function DashboardContent() {
             isLoading={isLoading && !history}
           />
         </section>
+        </>
+        )}
 
-        {/* Soil, when fitted. Sits under the chart because it is a slower
-            story than air temperature, and above the status cards because a
-            root-zone reading is a condition, not a control. */}
-        <SoilPanel
-          probes={soilProbes}
-          latest={latest}
-          history={history}
-          isOffline={isOffline}
-        />
+        {/* Soil, when fitted. Campus shows it as a section card instead, so
+            this is the other farms' route to the same readings. */}
+        {!isCampus && (
+          <SoilPanel
+            probes={soilProbes}
+            latest={latest}
+            history={history}
+            isOffline={isOffline}
+          />
+        )}
 
         {/* ── What is running, and anything wrong ─────────────────────
             Both read-only. The relay panel that used to sit here offered
             the same switches as the Control page; two places to turn a
             pump on is one place too many. */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card
-            title="What's running now"
-            href="/control"
-            hrefLabel="Control"
-          >
-            <ChannelSummary
-              relays={latest?.relays ?? []}
-              isLoading={isLoading && !latest}
-              isOffline={isOffline}
-            />
-          </Card>
+        <section className={clsx("grid gap-4", isCampus ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
+          {/* Campus names what is running inside its Spraying card, so showing
+              it again here would be the duplication this redesign removes. */}
+          {!isCampus && (
+            <Card
+              title="What's running now"
+              href="/control"
+              hrefLabel="Control"
+            >
+              <ChannelSummary
+                relays={latest?.relays ?? []}
+                isLoading={isLoading && !latest}
+                isOffline={isOffline}
+              />
+            </Card>
+          )}
 
           <Card
             title={activeAlerts.length ? `Active alerts (${activeAlerts.length})` : "Active alerts"}
