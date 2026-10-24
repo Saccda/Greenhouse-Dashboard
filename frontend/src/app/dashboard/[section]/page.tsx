@@ -15,7 +15,7 @@
  * like, whether spraying actually cooled anything. These pages show the
  * readings themselves. Each page links across rather than redrawing the other.
  */
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import useSWR from "swr";
@@ -71,8 +71,11 @@ const SPECS: Record<string, Spec> = {
   },
 };
 
-export default function SectionPage({ params }: { params: Promise<{ section: string }> }) {
-  const { section } = use(params);
+export default function SectionPage({ params }: { params: { section: string } }) {
+  // Next 14 passes params as a plain object. It only becomes a Promise (and
+  // only then needs React.use) in Next 15 — calling use() on a non-thenable
+  // throws, which crashed every one of these pages on entry.
+  const { section } = params;
   const spec = SPECS[section];
 
   const { settings } = useSettings();
