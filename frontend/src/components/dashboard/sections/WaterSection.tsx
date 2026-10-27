@@ -1,138 +1,82 @@
 "use client";
 /**
- * Water: what was drawn, how cold the tank is, and when the pump ran.
+ * Water consumption — how much was used, day by day.
  *
- * Spraying belongs here rather than on a card of its own — it IS the water
- * consumption, and separating them made you read cause and effect in two
- * places. Together the chart answers a question neither could alone: the tank
- * temperature line with spray periods shaded beneath it shows whether
- * spraying is drawing the tank down, and whether the water it drew was cold
- * enough to be worth spraying.
+ * The meter reports once another cubic metre has passed, so this is genuinely
+ * a per-day figure rather than a sampled level, and it is drawn as bars for
+ * that reason: a line between two daily totals implies the value passed
+ * through everything in between, which is meaningless for a number that only
+ * exists once the day is over.
  *
- * That matters here specifically. The campus tank has been sitting at ambient
- * temperature, and a full tank of 31 °C water sprayed into a 31 °C greenhouse
- * removes no heat at all — which looks identical to an empty tank in every
- * figure except this one.
+ * Campus measures it. Kampot and Kep have no meter and the figure is estimated
+ * from spray runtime and nozzle flow instead — a different claim, and the card
+ * says which one it is showing rather than letting the two look alike.
  *
- * Consumption stays a chip rather than a line: the meter reports only once
- * another cubic metre has passed, which can be days apart and makes a poor
- * trend. Campus measures it; Kampot and Kep estimate it from runtime, and the
- * card never blurs the two.
+ * Tank temperature and the spray cycle list used to share this card. They
+ * belong to the same subject but not to the same question, and they now live
+ * on /dashboard/water where there is room to show them properly.
  */
 import { Droplet } from "lucide-react";
 
 import SectionCard from "./SectionCard";
-import SectionChart, { toRows, type ChartSeries } from "./SectionChart";
-import type {
-  Farm, HistoryResponse, LatestResponse, RelayStatus, SprayStatsResponse, WaterResponse,
-} from "@/types";
+import ConsumptionChart, { type Bucket } from "./ConsumptionChart";
+import type { Farm, SprayStatsResponse, WaterResponse } from "@/types";
 
 export default function WaterSection({
-  farm, water, history, latest, sprayStats, relays, rangeLabel, isOffline,
+  farm, water, sprayStats, rangeLabel,
 }: {
   farm?: Farm;
   water?: WaterResponse;
-  history?: HistoryResponse;
-  latest?: LatestResponse;
   sprayStats?: SprayStatsResponse;
-  relays: RelayStatus[];
   rangeLabel: string;
-  isOffline: boolean;
 }) {
   const metered = farm?.water_source === "measured";
-  const probe = farm?.water_temp ?? null;
-  const sprayField = farm?.spray_field ?? "relay3";
+  const unitLabel = water?.unit_label ?? "m³";
 
-  const tankPoints = probe ? history?.series?.[probe.field] ?? [] : [];
-  const sprayPoints = history?.series?.[sprayField] ?? [];
-  const tankSeen = tankPoints.map((p) => p.value).filter((v): v is number => v != null);
+  // Oldest first, so time runs left to right like every other chart here.
+  const buckets: Bucket[] = metered
+    ? [...(water?.readings ?? [])].reverse().map((r) => ({
+        ts: new Date(r.timestamp).getTime(),
+        // A day whose totalizer reset is not a day of enormous usage; the API
+        // nulls those rather than reporting the reset as consumption.
+        value: r.consumption ?? null,
+      }))
+    : [];
 
-  const rows = toRows([
-    { key: "tank", points: tankPoints },
-    { key: "spray", points: sprayPoints },
-  ]);
-
-  const series: ChartSeries[] = [];
-  if (probe) {
-    series.push({
-      key: "tank", label: probe.label, unit: probe.unit, axis: "left",
-      color: "#0ea5e9",
-      // Scaled to what was seen: a tank moving two degrees across a day is a
-      // flat line on the probe's 0–60 range, hiding the only thing worth
-      // seeing.
-      domain: tankSeen.length
-        ? [Math.floor(Math.min(...tankSeen) - 1), Math.ceil(Math.max(...tankSeen) + 1)]
-        : ["auto", "auto"],
-    });
-  }
-  // Steps, because a channel is on or off — a curve between those two states
-  // would describe something that never happened.
-  series.push({
-    key: "spray", label: "Spraying", unit: "", axis: probe ? "right" : "left",
-    color: "#8b5cf6", domain: [0, 1], step: true,
-  });
-
-  const stats = sprayStats?.stats;
-  const interrupted = (stats?.spray_events ?? []).filter(
-    (e) => (e as { gap_interrupted?: boolean }).gap_interrupted,
-  ).length;
-
-  const reading = water?.readings?.[0];
-  const unit = water?.unit_label ?? "";
-  const used = metered
-    ? reading?.consumption != null ? `${reading.consumption} ${unit}` : "—"
-    : stats?.estimated_water_liters != null
-      ? `${Math.round(stats.estimated_water_liters).toLocaleString()} L`
-      : "—";
-
-  const tankNow = probe && !isOffline ? latest?.readings?.[probe.field]?.value : undefined;
-  const spraying = relays.some((r) => r.state === "ON" && /spray/i.test(r.label));
-
-  const chips: { label: string; value: string; tone?: "normal" | "good" | "warn" }[] = [
-    { label: metered ? "Used (metered)" : "Used (estimated)", value: used },
-  ];
-  if (probe) {
-    chips.push({
-      label: "Tank water",
-      value: tankNow != null ? `${tankNow.toFixed(1)} °C` : "—",
-    });
-  }
-  chips.push({
-    label: "Pump ran",
-    value: stats?.total_spray_display ?? "—",
-    // A run bounded by a blackout is a lower bound, not a measurement, and the
-    // two look identical in a figure.
-    tone: interrupted > 0 ? "warn" : "normal",
-  });
-  chips.push({
-    label: "Cycles",
-    value: isOffline
-      ? "unknown"
-      : stats
-        ? `${stats.total_sprays}${spraying ? " · running" : ""}`
-        : "—",
-    tone: isOffline ? "warn" : spraying ? "good" : "normal",
-  });
+  const used = buckets.reduce((s, b) => s + (b.value ?? 0), 0);
+  const days = buckets.filter((b) => b.value != null).length;
+  const estimated = sprayStats?.stats?.estimated_water_liters;
 
   return (
     <SectionCard
       icon={Droplet}
       iconClass="bg-sky-500/15 text-sky-400"
-      title="Water"
+      title="Water consumption"
       subtitle={
-        interrupted > 0
-          ? `Consumption and spraying · ${interrupted} cycle${interrupted === 1 ? "" : "s"} cut short by a feed gap`
-          : probe
-            ? "Tank temperature, consumption and spraying"
-            : `Consumption and spraying, last ${rangeLabel}`
+        metered
+          ? days > 0
+            ? `${used} ${unitLabel} over ${days} metered day${days === 1 ? "" : "s"}`
+            : "Metered, nothing reported yet"
+          : estimated != null
+            ? `About ${Math.round(estimated).toLocaleString()} L, estimated from runtime · last ${rangeLabel}`
+            : "No meter, and no nozzle spec to estimate from"
       }
       href="/dashboard/water"
-      footer={chips}
     >
-      <SectionChart
-        data={rows}
-        series={series}
-        empty={`No tank or spray readings stored for the last ${rangeLabel}.`}
+      <ConsumptionChart
+        buckets={buckets}
+        unit={unitLabel}
+        color="#0ea5e9"
+        xLabel="Day"
+        yLabel={`Water used (${unitLabel})`}
+        labelFormat={(ts) =>
+          new Date(ts).toLocaleDateString([], { day: "numeric", month: "short" })
+        }
+        empty={
+          metered
+            ? "The meter has not reported yet. It sends only once another cubic metre has passed, so quiet is normal on a system that runs briefly."
+            : "This farm has no water meter. The figure above is estimated from spray runtime."
+        }
       />
     </SectionCard>
   );

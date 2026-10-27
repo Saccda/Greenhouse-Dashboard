@@ -45,7 +45,7 @@ export default function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-surface-card border border-surface-border rounded-xl p-4 flex flex-col min-w-0">
+    <section className="bg-surface-card border border-surface-border rounded-xl p-4 flex flex-col min-w-0 h-full">
       <div className="flex items-start gap-3">
         <span className={clsx("shrink-0 grid place-items-center w-9 h-9 rounded-xl", iconClass)}>
           <Icon size={17} />
@@ -65,7 +65,7 @@ export default function SectionCard({
         </Link>
       </div>
 
-      <div className="flex-1 min-w-0 mt-4">{children}</div>
+      <div className="flex-1 min-w-0 min-h-0 mt-4 flex flex-col">{children}</div>
 
       {/* Current values as chips under the chart. Boxed rather than bare so
           they read as a row of readings instead of a caption — the chart is

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { clsx } from "clsx";
 import type { LucideIcon } from "lucide-react";
 
@@ -16,6 +17,15 @@ interface KPICardProps {
   rawValue?:  number;
   decimals?:  number;
   status?:    "ok" | "warn" | "danger";
+  /**
+   * Makes the whole card a link to the page that owns this reading.
+   *
+   * PP Campus had its own near-identical tile component for exactly this, and
+   * two cards that are meant to look the same but are maintained separately
+   * do not stay looking the same. The campus tiles are this card now, and the
+   * only thing they needed that it lacked was somewhere to go.
+   */
+  href?:      string;
   // kept for backward compat, ignored
   accent?:    string;
   featured?:  boolean;
@@ -64,14 +74,20 @@ export default function KPICard({
   rawValue,
   decimals  = 1,
   status,
+  href,
 }: KPICardProps) {
   const animatedRaw  = useCountUp(rawValue);
   const displayValue = rawValue != null && animatedRaw != null
     ? animatedRaw.toFixed(decimals)
     : value;
 
+  // Same element either way, so a linked card and a plain one cannot drift
+  // apart visually — only the tag and the href change.
+  const Root = (href ? Link : "div") as React.ElementType;
+
   return (
-    <div
+    <Root
+      {...(href ? { href } : {})}
       className={clsx(
         "group relative flex flex-col rounded-2xl p-5 overflow-hidden min-h-[10rem]",
         "bg-surface-card border border-surface-border transition-all duration-300",
@@ -144,20 +160,21 @@ export default function KPICard({
         {/* Bottom: subtitle. When the card is stale this line carries the
             reason ("No signal from sensor"), so it gets the warning ink
             rather than the most muted step in the scale. */}
-        {subtitle && (
-          <p className={clsx(
-            "text-xs leading-snug transition-colors duration-300 group-hover:text-white/60",
-            isStale ? "text-[color:var(--warn-ink)] font-medium" : "text-slate-500",
-          )}>
-            {subtitle}
-          </p>
-        )}
+        {/* Always rendered, subtitle or not. In a grid the tallest card sets
+            the height of its whole row, so one card missing this line left a
+            row of eight looking mismatched against the row above it. */}
+        <p className={clsx(
+          "text-xs leading-snug min-h-[1rem] transition-colors duration-300 group-hover:text-white/60",
+          isStale ? "text-[color:var(--warn-ink)] font-medium" : "text-slate-500",
+        )}>
+          {subtitle}
+        </p>
       </div>
 
       {/* Stale pulse dot */}
       {isStale && (
         <span className="absolute top-3 right-3 z-20 w-1.5 h-1.5 rounded-full bg-status-warning animate-pulse" />
       )}
-    </div>
+    </Root>
   );
 }

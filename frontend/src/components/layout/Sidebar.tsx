@@ -24,6 +24,7 @@ import FullscreenToggle from "./FullscreenToggle";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
+import { useFullscreen } from "@/hooks/useFullscreen";
 
 const NAV_ITEMS = [
   { href: "/overview",   label: "Overview",   icon: Info            },
@@ -63,7 +64,37 @@ export default function Sidebar() {
   const [menuOpen, setMenuOpen]   = useState(false);
   const { settings } = useSettings();
   const { user, logout } = useAuth();
-  const { farm } = useFarmSelection();
+  const { farm, farms } = useFarmSelection();
+  const { isFullscreen } = useFullscreen();
+
+  // Collapsing normally leaves a strip of icons, which is right at a desk: the
+  // destinations stay one click away. Fullscreen is a different intent — it is
+  // chosen to put one screen in front of people and nothing else — so there
+  // collapsing takes the sidebar away entirely. The toggle stays on screen, so
+  // this is never a door that locks behind you, and leaving fullscreen brings
+  // the icons back on its own.
+  const hidden = isFullscreen && collapsed;
+
+  // The Dashboard children mirror the dashboard cards exactly, read from the
+  // same farm registry, so Kampot is never offered a Soil page for probes it
+  // does not have. Ambient and Water are on every farm: every site reports
+  // temperature and humidity, and every site uses water whether it is metered
+  // or estimated from runtime.
+  const thisFarm = farms.find((f) => f.id === farm);
+  const sectionChildren = [
+    { href: "/dashboard/ambient", label: "Ambient" },
+    { href: "/dashboard/water",   label: "Water" },
+    ...((thisFarm?.soil_probes?.length ?? 0) > 0
+      ? [{ href: "/dashboard/soil", label: "Soil" }] : []),
+    ...((thisFarm?.energy?.length ?? 0) > 0
+      ? [{ href: "/dashboard/energy", label: "Energy" }] : []),
+  ];
+
+  // Opens itself when you are already on one of its pages, so arriving from a
+  // dashboard card does not leave the sidebar disagreeing with the content.
+  const onSection = pathname.startsWith("/dashboard/");
+  const [sectionsOpen, setSectionsOpen] = useState(onSection);
+  useEffect(() => { if (onSection) setSectionsOpen(true); }, [onSection]);
 
   const initials = getInitials(user?.username || settings.userName || "ME Team");
 
@@ -76,30 +107,53 @@ export default function Sidebar() {
   }, [menuOpen]);
 
   return (
+    <>
     <aside
       className={clsx(
         "relative flex flex-col shrink-0 min-h-screen",
-        "bg-surface-card border-r border-surface-border",
-        "transition-all duration-300 ease-in-out",
-        collapsed ? "w-[68px]" : "w-56",
+        "bg-surface-card transition-all duration-300 ease-in-out",
+        // overflow-hidden only while hidden: the account menu opens to the
+        // RIGHT of the collapsed rail, and making it permanent would cut the
+        // menu off at the sidebar's edge.
+        hidden
+          ? "w-0 overflow-hidden"
+          : clsx("border-r border-surface-border", collapsed ? "w-[68px]" : "w-56"),
       )}
     >
+      {/* Not rendered at all when hidden, rather than hidden with CSS: content
+          clipped to zero width is still in the tab order, and tabbing into a
+          sidebar nobody can see is worse than the sidebar being gone. */}
+      {!hidden && (
+      <>
 
-      {/* ── Logo — click to go home ───────────────────────────── */}
+      {/* ── Logo — click to go home ───────────────────────────────
+          No bottom border. This rule used to sit at 88px while the header's
+          sits at 56px, and two horizontal lines meeting the content area at
+          different heights read as a mistake all the way across the top of
+          the screen. Matching them would have meant shrinking the logo into a
+          56px bar, so the line goes instead: the logo needs no underline to
+          be legible as a logo, and one line across the header is cleaner than
+          two that agree. */}
       <Link
         href="/"
         aria-label="Go to home"
         className={clsx(
-          "group flex items-center justify-center border-b border-surface-border",
+          "group flex items-center justify-center shrink-0",
           collapsed ? "py-4" : "py-5",
         )}
       >
+        {/* 56px open, 44px collapsed. The collapsed rail is only 68px wide,
+            so a logo much larger than this sits a couple of pixels from each
+            edge and reads as overflowing rather than as a logo. */}
         <Image
           src="/me-logo.png"
           alt="Home"
-          width={48}
-          height={48}
-          className="object-contain transition-transform duration-200 group-hover:scale-110"
+          width={64}
+          height={64}
+          className={clsx(
+            "w-auto object-contain transition-all duration-200 group-hover:scale-110",
+            collapsed ? "h-11" : "h-14",
+          )}
           priority
         />
       </Link>
@@ -112,22 +166,75 @@ export default function Sidebar() {
           ...(ROLE_NAV_ITEMS[user?.role ?? ""] ?? []),
         ].map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
+          // Dashboard carries the section pages. They had no sidebar entry at
+          // all before this — the only way in was clicking a card, so anyone
+          // who landed on one had no way back to its siblings.
+          const expandable = href === "/dashboard" && !collapsed && sectionChildren.length > 0;
+
           return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? label : undefined}
-              className={clsx(
-                "flex items-center rounded-xl transition-all duration-150",
-                collapsed ? "justify-center p-3" : "gap-3 px-4 py-2.5",
-                active
-                  ? "bg-sky-700 text-white font-semibold shadow-md shadow-sky-500/20"
-                  : "text-slate-400 font-medium hover:bg-surface-hover hover:text-slate-100",
+            <div key={href}>
+              <div className="flex items-stretch">
+                <Link
+                  href={href}
+                  title={collapsed ? label : undefined}
+                  className={clsx(
+                    "flex items-center flex-1 min-w-0 transition-all duration-150",
+                    collapsed ? "justify-center p-3 rounded-xl" : "gap-3 px-4 py-2.5",
+                    expandable ? "rounded-l-xl" : "rounded-xl",
+                    active
+                      ? "bg-sky-700 text-white font-semibold shadow-md shadow-sky-500/20"
+                      : "text-slate-400 font-medium hover:bg-surface-hover hover:text-slate-100",
+                  )}
+                >
+                  <Icon size={20} className="shrink-0" />
+                  {!collapsed && <span className="text-[15px] truncate">{label}</span>}
+                </Link>
+
+                {/* A separate control, not part of the link: opening the list
+                    and going to the page are different intentions, and one
+                    target doing both means you cannot do either deliberately. */}
+                {expandable && (
+                  <button
+                    onClick={() => setSectionsOpen((o) => !o)}
+                    aria-label={sectionsOpen ? "Hide sections" : "Show sections"}
+                    aria-expanded={sectionsOpen}
+                    className={clsx(
+                      "px-2 rounded-r-xl transition-colors",
+                      active
+                        ? "bg-sky-700 text-white"
+                        : "text-slate-500 hover:bg-surface-hover hover:text-slate-200",
+                    )}
+                  >
+                    <ChevronUp
+                      size={15}
+                      className={clsx("transition-transform duration-150", !sectionsOpen && "rotate-180")}
+                    />
+                  </button>
+                )}
+              </div>
+
+              {expandable && sectionsOpen && (
+                <div className="mt-0.5 ml-[26px] pl-3 border-l border-surface-border flex flex-col">
+                  {sectionChildren.map((c) => {
+                    const childActive = pathname === c.href;
+                    return (
+                      <Link
+                        key={c.href}
+                        href={c.href}
+                        className={clsx(
+                          "text-[13px] rounded-lg px-3 py-1.5 transition-colors",
+                          childActive
+                            ? "text-sky-400 font-semibold bg-sky-500/10"
+                            : "text-slate-500 hover:text-slate-200 hover:bg-surface-hover",
+                        )}
+                      >
+                        {c.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <Icon size={20} className="shrink-0" />
-              {!collapsed && <span className="text-[15px]">{label}</span>}
-            </Link>
+            </div>
           );
         })}
       </nav>
@@ -136,21 +243,6 @@ export default function Sidebar() {
       <div className="pb-3 px-3">
         <FullscreenToggle collapsed={collapsed} />
       </div>
-
-      {/* ── Collapse toggle ──────────────────────────────────── */}
-      <button
-        onClick={() => setCollapsed(c => !c)}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className={clsx(
-          "absolute -right-3 top-[78px] z-10",
-          "flex items-center justify-center w-6 h-6 rounded-full",
-          "bg-surface-card border border-surface-border text-slate-400",
-          "hover:bg-surface-hover hover:text-slate-200",
-          "shadow-sm transition-colors duration-150",
-        )}
-      >
-        {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-      </button>
 
       {/* ── Account menu ─────────────────────────────────────── */}
       {user ? (
@@ -236,6 +328,35 @@ export default function Sidebar() {
         </Link>
       )}
 
+      </>
+      )}
     </aside>
+
+    {/* ── Collapse toggle ──────────────────────────────────────────
+        Fixed to the viewport rather than pinned to the sidebar's edge,
+        because the sidebar can now be zero pixels wide: anchored to that edge
+        the button would sit half off the left of the screen, which is the one
+        state it absolutely has to be usable in. The left offset tracks the
+        width by hand instead, and transitions with it. */}
+    <button
+      onClick={() => setCollapsed(c => !c)}
+      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      title={hidden ? "Show sidebar" : undefined}
+      className={clsx(
+        "fixed top-[78px] z-50",
+        "flex items-center justify-center w-6 h-6 rounded-full",
+        "bg-surface-card border border-surface-border text-slate-400",
+        "hover:bg-surface-hover hover:text-slate-200",
+        "transition-all duration-300 ease-in-out",
+        // Sidebar is 224px / 68px / 0px wide; the button straddles that edge,
+        // except when there is no edge left to straddle.
+        hidden ? "left-3 shadow-md" : collapsed ? "left-[56px] shadow-sm" : "left-[212px] shadow-sm",
+      )}
+    >
+      {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+    </button>
+    </>
   );
 }
+
+

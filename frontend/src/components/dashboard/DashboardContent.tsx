@@ -145,7 +145,7 @@ export default function DashboardContent() {
         </div>
       )}
 
-      <main className="flex-1 overflow-y-auto p-5 space-y-5">
+      <main className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
 
         {/* ── Range ───────────────────────────────────────────────────── */}
         <section className="flex items-center gap-2 flex-wrap">
@@ -257,7 +257,6 @@ export default function DashboardContent() {
             humidity={history?.series?.humidity}
             relay3={history?.series?.[sprayField]}
             tempWarn={tempWarn}
-            humWarn={humWarn}
             isLoading={isLoading && !history}
           />
         </section>
