@@ -14,7 +14,7 @@ import json
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 import config
 from services import auth_service, mqtt_publish_service, setpoint_service
@@ -59,12 +59,23 @@ def send_relay_command(
 # ── Auto threshold setpoints (zones 1/2 = temperature, zone 3 = humidity) ──
 
 class SetpointRequest(BaseModel):
-    temp_low1:  float
-    temp_high1: float
-    temp_low2:  float
-    temp_high2: float
-    hum_low3:   float
-    hum_high3:  float
+    # The same ranges the panel enforces. Typed values reach the hardware on one
+    # click, so a slip like 260 has to be refused here as well as in the browser.
+    temp_low1:  float = Field(..., ge=0, le=50)
+    temp_high1: float = Field(..., ge=0, le=50)
+    temp_low2:  float = Field(..., ge=0, le=50)
+    temp_high2: float = Field(..., ge=0, le=50)
+    hum_low3:   float = Field(..., ge=0, le=100)
+    hum_high3:  float = Field(..., ge=0, le=100)
+
+    @model_validator(mode="after")
+    def low_below_high(self) -> "SetpointRequest":
+        for low, high in ((self.temp_low1, self.temp_high1),
+                          (self.temp_low2, self.temp_high2),
+                          (self.hum_low3,  self.hum_high3)):
+            if low >= high:
+                raise ValueError(f"low setpoint {low} must be below high setpoint {high}")
+        return self
 
 
 @router.get("/setpoint")

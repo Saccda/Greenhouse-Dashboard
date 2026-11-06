@@ -4,9 +4,14 @@
  * Distinct from SetpointPanel (Kampot/Kep, one relay at a time, proxied
  * through Node-RED): campus's controller expects all three channels' low/high
  * values in one combined MQTT publish every time (see routes/campus.py), so
- * this panel edits all three at once instead of switching between them.
+ * this panel shows all three at once instead of switching between them.
+ *
+ * Each value is typed and sent by its own Set button, one click like the relay
+ * ON/OFF buttons. The publish still has to carry all six, so the five values
+ * not being set are filled from what the controller is known to be running and
+ * never from another box: a number typed but not Set must stay unsent.
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { LogIn } from "lucide-react";
@@ -37,22 +42,58 @@ interface ReportedState {
   relay_setpoints?: { values: Record<string, number>; reported_at: string };
   water_setpoint?:  { values: { Set_water_temp?: number }; reported_at: string };
 }
-type SpStatus = "idle" | "sending" | "sent" | "error" | "unauthorized";
+type SpStatus = "sending" | "sent" | "error" | "unauthorized";
 
 interface Props {
   canWrite:  boolean;
   className?: string;
 }
 
+/**
+ * The six values the hardware should be running, zone by zone: whichever of
+ * the controller's report and this dashboard's last send is newer. The report
+ * alone would undo a Set made moments ago if a second one followed before the
+ * controller had answered; the last send alone would overwrite a change made
+ * at the controller itself.
+ */
+function knownValues(stored: StoredZones | undefined, reported: ReportedState | undefined) {
+  const values: Values = { ...DEFAULTS };
+  let anyUnknown = false;
+  const device = reported?.relay_setpoints;
+
+  for (const zone of ZONES) {
+    const sent = stored?.[String(zone.index)];
+    const low = device?.values[zone.lowKey];
+    const high = device?.values[zone.highKey];
+    const deviceIsNewer = device && low != null && high != null
+      && (!sent || Date.parse(device.reported_at) > Date.parse(sent.updated_at));
+
+    if (deviceIsNewer) {
+      values[zone.lowKey] = low;
+      values[zone.highKey] = high;
+    } else if (sent) {
+      values[zone.lowKey] = sent.low;
+      values[zone.highKey] = sent.high;
+    } else {
+      anyUnknown = true;
+    }
+  }
+  return { values, anyUnknown };
+}
+
 export default function CampusSetpointPanel({ canWrite, className }: Props) {
   const { user, logout } = useAuth();
 
-  const [values, setValues] = useState<Values>(DEFAULTS);
-  const [spStatus, setSpStatus] = useState<SpStatus>("idle");
+  // Only what has been typed and not yet Set. Everything else displays the
+  // known value, so a poll updates the untouched boxes and cannot move a number
+  // out from under someone typing.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState<{ key: string; state: SpStatus } | null>(null);
   const [lastSent, setLastSent] = useState<string | null>(null);
-  const appliedRef = useRef(false);
+  // When the last Set went out, until the controller has answered or 30 s pass.
+  const [awaitingSince, setAwaitingSince] = useState<number | null>(null);
 
-  const { data: stored } = useSWR<StoredZones>(
+  const { data: stored, mutate: mutateStored } = useSWR<StoredZones>(
     `/api/campus/setpoint`, swrFetcher, { refreshInterval: 15_000 },
   );
 
@@ -61,8 +102,8 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
   // while every send reported success, because the publishes were going to a
   // topic the device was not subscribed to. Showing both is what makes that
   // visible instead of invisible.
-  const { data: reported } = useSWR<ReportedState>(
-    `/api/campus/reported`, swrFetcher, { refreshInterval: 15_000 },
+  const { data: reported, error: reportedError } = useSWR<ReportedState>(
+    `/api/campus/reported`, swrFetcher, { refreshInterval: awaitingSince ? 2_000 : 15_000 },
   );
   const deviceValues = reported?.relay_setpoints?.values;
   const waterSetpoint = reported?.water_setpoint?.values?.Set_water_temp;
@@ -76,52 +117,60 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
       })
     : false;
 
-  // Apply last-sent values once, the same "checkpoint" pattern SetpointPanel
-  // uses — not on every poll tick, so a half-edited form doesn't jump under
-  // the user mid-edit.
+  // A controller that has not answered yet is not yet a disagreement. The
+  // warning returns after 30 s, because by then it may well be a real one.
+  const awaiting = awaitingSince !== null && disagrees;
   useEffect(() => {
-    if (appliedRef.current) return;
-    if (spStatus === "sending") return;
-    if (stored === undefined) return;
+    if (awaitingSince === null) return;
+    if (!disagrees) { setAwaitingSince(null); return; }
+    const timer = setTimeout(() => setAwaitingSince(null), 30_000);
+    return () => clearTimeout(timer);
+  }, [awaitingSince, disagrees]);
 
-    const next: Values = { ...DEFAULTS };
-    for (const zone of ZONES) {
-      const z = stored[String(zone.index)];
-      if (z) { next[zone.lowKey] = z.low; next[zone.highKey] = z.high; }
-    }
-    setValues(next);
-    appliedRef.current = true;
-  }, [stored, spStatus]);
+  const { values: known, anyUnknown } = knownValues(stored, reported);
+  // Until both answers are in, the values filling the rest of a send are guesses.
+  const ready = stored !== undefined && (reported !== undefined || reportedError !== undefined);
 
-  const setField = (key: string, v: number) => setValues((prev) => ({ ...prev, [key]: v }));
+  const flashStatus = (key: string, state: SpStatus, ms: number) => {
+    setStatus({ key, state });
+    setTimeout(() => setStatus((s) => (s?.key === key && s.state === state ? null : s)), ms);
+  };
 
-  const hasInvalidZone = ZONES.some((z) => values[z.lowKey] >= values[z.highKey]);
-
-  const handleSend = async () => {
-    if (hasInvalidZone) { alert("Each zone's low setpoint must be less than its high setpoint."); return; }
-    setSpStatus("sending");
+  const handleSet = async (key: string, value: number, label: string, unit: string) => {
+    const body: Values = { ...known, [key]: value };
+    setStatus({ key, state: "sending" });
     try {
       const res = await fetch(`${API_BASE}/api/campus/setpoint`, {
         method:      "POST",
         headers:     { "Content-Type": "application/json" },
         credentials: "include",
-        body:        JSON.stringify(values),
+        body:        JSON.stringify(body),
       });
       if (res.status === 401) {
         logout();
-        setSpStatus("unauthorized");
-        setTimeout(() => setSpStatus("idle"), 4000);
+        flashStatus(key, "unauthorized", 4000);
         return;
       }
       if (!res.ok) throw new Error(await res.text());
-      setSpStatus("sent");
-      setLastSent(`Sent ${format(new Date(), "HH:mm:ss")}`);
-      setTimeout(() => setSpStatus("idle"), 3000);
+
+      // Written into the cache rather than waiting on a poll, so a second Set
+      // straight after this one builds on this value instead of reverting it.
+      const updated_at = new Date().toISOString();
+      await mutateStored(
+        Object.fromEntries(ZONES.map((z) => [
+          String(z.index), { low: body[z.lowKey], high: body[z.highKey], updated_at },
+        ])),
+      );
+      setDrafts(({ [key]: _sent, ...rest }) => rest);
+      setAwaitingSince(Date.now());
+      setLastSent(`Sent ${label} ${value}${unit} at ${format(new Date(), "HH:mm:ss")}`);
+      flashStatus(key, "sent", 3000);
     } catch {
-      setSpStatus("error");
-      setTimeout(() => setSpStatus("idle"), 4000);
+      flashStatus(key, "error", 4000);
     }
   };
+
+  const sending = status?.state === "sending";
 
   return (
     <div className={clsx("border border-surface-border bg-surface-card rounded-xl p-4 flex flex-col gap-4", className)}>
@@ -140,12 +189,14 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
         <div
           className={clsx(
             "rounded-lg px-3 py-2.5 text-[12px] leading-relaxed",
-            disagrees
+            disagrees && !awaiting
               ? "bg-amber-500/10 border border-amber-500/30 text-slate-200"
               : "bg-surface-hover text-slate-400",
           )}
         >
-          {disagrees ? (
+          {awaiting ? (
+            <>Sent. Waiting for the controller to confirm…</>
+          ) : disagrees ? (
             <>
               <strong className="text-[color:var(--warn-ink)]">
                 The controller is running different values than this dashboard last sent.
@@ -184,65 +235,104 @@ export default function CampusSetpointPanel({ canWrite, className }: Props) {
             {zone.label} — {zone.param === "temp" ? "Temperature" : "Humidity"}
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[10px] uppercase tracking-widest text-slate-500">Low</label>
-                <span className="text-xs font-mono-num text-[color:var(--ok-ink)]">
-                  {values[zone.lowKey]}{zone.unit}
-                </span>
-              </div>
-              <input
-                type="range" min={zone.min} max={zone.max} step={zone.step}
-                value={values[zone.lowKey]}
-                onChange={(e) => setField(zone.lowKey, Number(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-green-500 bg-surface-hover"
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[10px] uppercase tracking-widest text-slate-500">High</label>
-                <span className="text-xs font-mono-num text-orange-800">
-                  {values[zone.highKey]}{zone.unit}
-                </span>
-              </div>
-              <input
-                type="range" min={zone.min} max={zone.max} step={zone.step}
-                value={values[zone.highKey]}
-                onChange={(e) => setField(zone.highKey, Number(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-orange-500 bg-surface-hover"
-              />
-            </div>
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              { key: zone.lowKey,  name: "Low",  other: zone.highKey },
+              { key: zone.highKey, name: "High", other: zone.lowKey },
+            ]).map(({ key, name, other }) => {
+              const text = drafts[key] ?? String(known[key]);
+              const value = Number(text);
+              const isLow = name === "Low";
+              // Checked against the other end's KNOWN value, not its box: that
+              // is what would actually go out beside this one.
+              const problem =
+                text.trim() === "" || !Number.isFinite(value) ? "Enter a number"
+                : value < zone.min || value > zone.max ? `Must be ${zone.min}–${zone.max}${zone.unit}`
+                : isLow && value >= known[other] ? `Must be below High (${known[other]}${zone.unit})`
+                : !isLow && value <= known[other] ? `Must be above Low (${known[other]}${zone.unit})`
+                : null;
+              const edited = drafts[key] !== undefined && value !== known[key];
+              const fieldStatus = status?.key === key ? status.state : null;
+              const label = `CH${zone.index} ${name}`;
+              const canSet = canWrite && ready && !sending && !problem;
+              const set = () => { if (canSet) handleSet(key, value, label, zone.unit); };
 
-          {values[zone.lowKey] >= values[zone.highKey] && (
-            <p className="text-[11px] font-mono text-[color:var(--warn-ink)]">⚠ Low must be less than high</p>
-          )}
+              return (
+                <div key={key}>
+                  <label
+                    htmlFor={`setpoint-${key}`}
+                    className="block mb-1 text-[10px] uppercase tracking-widest text-slate-500"
+                  >
+                    {name}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        id={`setpoint-${key}`}
+                        type="number" inputMode="decimal"
+                        min={zone.min} max={zone.max} step={zone.step}
+                        value={text}
+                        readOnly={!canWrite}
+                        onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === "Enter") set(); }}
+                        className={clsx(
+                          "w-full bg-surface-hover border rounded-lg pl-3 pr-8 py-2 text-sm font-mono-num text-slate-200 focus:outline-none transition-colors",
+                          problem ? "border-amber-500/60"
+                            : edited ? "border-brand-green/60"
+                            : "border-surface-border focus:border-brand-green/40",
+                        )}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">
+                        {zone.unit}
+                      </span>
+                    </div>
+                    {canWrite && (
+                      <button
+                        onClick={set}
+                        disabled={!canSet}
+                        className={clsx(
+                          "shrink-0 min-w-[4.25rem] px-3 py-2 rounded-lg text-xs font-semibold transition-all active:scale-[0.98] border",
+                          fieldStatus === "sent"
+                            ? "bg-green-500/15 text-[color:var(--ok-ink)] border-green-500/30"
+                            : fieldStatus === "error" || fieldStatus === "unauthorized"
+                            ? "bg-red-500/15 text-[color:var(--danger-ink)] border-red-500/30"
+                            : !canSet
+                            ? "bg-surface-hover border-surface-border text-slate-400 cursor-not-allowed"
+                            : edited
+                            ? "bg-brand-green text-black hover:bg-brand-green/90 border-transparent"
+                            : "text-slate-400 border-surface-border hover:border-brand-green/40 hover:text-slate-200",
+                        )}
+                      >
+                        {fieldStatus === "sent"    ? "✓ Sent"
+                        : fieldStatus === "error"  ? "Retry"
+                        : fieldStatus === "sending" ? "…"
+                        :                            "Set"}
+                      </button>
+                    )}
+                  </div>
+                  {problem && (
+                    <p className="mt-1 text-[11px] font-mono text-[color:var(--warn-ink)]">⚠ {problem}</p>
+                  )}
+                  {fieldStatus === "error" && (
+                    <p className="mt-1 text-[11px] font-mono text-[color:var(--danger-ink)]">Send failed. Try again.</p>
+                  )}
+                  {fieldStatus === "unauthorized" && (
+                    <p className="mt-1 text-[11px] font-mono text-[color:var(--danger-ink)]">Session expired. Log in again.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       ))}
 
-      {canWrite ? (
-        <button
-          onClick={handleSend}
-          disabled={spStatus === "sending" || hasInvalidZone}
-          className={clsx(
-            "w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase transition-all active:scale-[0.98] border",
-            spStatus === "sent"
-              ? "bg-green-500/15 text-[color:var(--ok-ink)] border-green-500/30"
-              : spStatus === "error" || spStatus === "unauthorized"
-              ? "bg-red-500/15 text-[color:var(--danger-ink)] border-red-500/30"
-              : spStatus === "sending" || hasInvalidZone
-              ? "bg-surface-hover border-surface-border text-slate-400 cursor-not-allowed"
-              : "bg-brand-green text-black hover:bg-brand-green/90 border-transparent",
-          )}
-        >
-          {spStatus === "sent"          ? "✓  Sent to Controller"
-          : spStatus === "unauthorized" ? "✗  Session expired — log in again"
-          : spStatus === "error"        ? "✗  Failed — Retry"
-          : spStatus === "sending"      ? "Sending…"
-          :                               "Send to Controller"}
-        </button>
-      ) : user ? (
+      {canWrite && ready && anyUnknown && (
+        <p className="text-[12px] text-[color:var(--warn-ink)]">
+          Some channels have never been sent or reported, so pressing Set also sends the default values shown for them.
+        </p>
+      )}
+
+      {canWrite ? null : user ? (
         <p className="w-full py-3 rounded-xl text-xs font-mono-num font-bold tracking-[0.15em] uppercase text-center text-[color:var(--warn-ink)] bg-amber-500/10 border border-amber-500/30">
           Awaiting owner approval
         </p>
