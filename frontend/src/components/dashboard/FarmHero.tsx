@@ -1,11 +1,15 @@
 "use client";
 /**
- * The photograph the Dashboard is arranged around.
+ * The picture the Dashboard is arranged around.
  *
  * It is the farm's OWN photo, picked by the same map the landing page uses, so
  * selecting campus shows the campus rig rather than a stock greenhouse or
  * somebody else's pepper field. A hero image that is not of your farm is
  * decoration; one that is, is orientation.
+ *
+ * A farm with footage of its system running plays that instead, silently and on
+ * a loop, and falls back to its photo if the clip cannot play. It holds on the
+ * first frame for anyone who has asked their system for reduced motion.
  *
  * The overlay carries only what the photograph itself is for: which farm this
  * is, whether the feed is alive, and which relays are running right now. Air
@@ -19,7 +23,7 @@
  * A farm whose photo is missing gets the cards and no gap: the image is the
  * anchor, not the content.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { MapPin, Wifi, WifiOff } from "lucide-react";
 
@@ -29,6 +33,13 @@ const FARM_PHOTO: Record<string, string> = {
   campus: "/campus/campus-right.jpg",
 };
 const DEFAULT_PHOTO = "/farm.jpg";
+
+const FARM_VIDEO: Record<string, { src: string; poster: string }> = {
+  campus: {
+    src: "/campus/campus-operation-front.mp4",
+    poster: "/campus/campus-operation-front-poster.jpg",
+  },
+};
 
 export default function FarmHero({
   farm, latest, isOffline,
@@ -43,11 +54,38 @@ export default function FarmHero({
   const [failed, setFailed] = useState<string | null>(null);
   const broken = failed === src;
 
+  const video = farm && FARM_VIDEO[farm.id];
+  const [failedVideo, setFailedVideo] = useState<string | null>(null);
+  const videoSrc = video && failedVideo !== video.src ? video.src : undefined;
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Started here rather than with autoPlay, which has no way to honour reduced
+  // motion. A rejected play() just leaves the poster showing.
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.muted = true;
+    el.play().catch(() => {});
+  }, [videoSrc]);
+
   const running = (latest?.relays ?? []).filter((r) => r.state === "ON");
 
   return (
     <section className="relative rounded-xl overflow-hidden border border-surface-border bg-surface-card h-full min-h-[22rem] lg:min-h-[34rem]">
-      {!broken ? (
+      {videoSrc ? (
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          poster={video?.poster}
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-label={farm ? `${farm.display_name} system in operation` : "System in operation"}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => setFailedVideo(videoSrc)}
+        />
+      ) : !broken ? (
         <Image
           src={src}
           alt={farm ? `${farm.display_name}, ${farm.location}` : "Farm"}

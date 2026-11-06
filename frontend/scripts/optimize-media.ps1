@@ -44,6 +44,10 @@ if (-not $ffmpeg) {
 # The Kampot clips are included because they have exactly the same faults as the
 # campus ones, so the Overview page has been downloading each in full before the
 # first frame.
+#
+# campus-operation-front.mp4 has since been stabilised by hand with vidstabdetect
+# and vidstabtransform (tripod=1). Re-running this job overwrites that with the
+# shaky version.
 $Jobs = @(
     @{ Src = "PP Campus in Operation Side View.MOV";  Folder = "campus"; Out = "campus-operation-side.mp4"  }
     @{ Src = "PP Campus in Operation Front View.mp4"; Folder = "campus"; Out = "campus-operation-front.mp4" }
