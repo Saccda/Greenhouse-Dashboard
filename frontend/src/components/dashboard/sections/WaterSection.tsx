@@ -68,7 +68,7 @@ export default function WaterSection({
         unit={unitLabel}
         color="#0ea5e9"
         xLabel="Day"
-        yLabel={`Water used (${unitLabel})`}
+        yLabel={`Water consumption (${unitLabel})`}
         labelFormat={(ts) =>
           new Date(ts).toLocaleDateString([], { day: "numeric", month: "short" })
         }

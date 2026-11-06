@@ -181,7 +181,7 @@ export default function EnergyDetail({
           color="#eab308"
           height={280}
           xLabel="Hour"
-          yLabel="Energy used (Wh)"
+          yLabel="Energy consumption (Wh)"
           labelFormat={(ts) =>
             new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           }

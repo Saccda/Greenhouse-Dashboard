@@ -19,6 +19,10 @@
  *   temperature says whether spraying can remove any heat at all — a tank
  *   sitting at ambient cools nothing, and that looks identical to a working
  *   system in every other figure on this page.
+ *
+ *   That panel was headed "Tank water against air", which named two things and
+ *   not the quantity being compared — it could as easily have meant level or
+ *   pressure. It says temperature now, because that is what is plotted.
  */
 import useSWR from "swr";
 import { Waves, Clock, Timer, Power } from "lucide-react";
@@ -147,7 +151,7 @@ export default function WaterDetail({
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel
           className="lg:col-span-2"
-          title={metered ? "Water used, by day" : "Water used, estimated"}
+          title={metered ? "Water Consumption by Day" : "Water Consumption, Estimated"}
           aside={
             <span className="text-[11px] text-slate-500">
               {metered ? "from the meter" : "from runtime and nozzle flow"}
@@ -161,7 +165,7 @@ export default function WaterDetail({
               color="#0ea5e9"
               height={220}
               xLabel="Day"
-              yLabel={`Water used (${unitLabel})`}
+              yLabel={`Water consumption (${unitLabel})`}
               labelFormat={(ts) =>
                 new Date(ts).toLocaleDateString([], { day: "numeric", month: "short" })
               }
@@ -230,7 +234,7 @@ export default function WaterDetail({
 
       {tankField && (
         <Panel
-          title="Tank water against air"
+          title="Temperature Inside Cooling Tank vs Air Temperature"
           aside={<ChartLegendHints spray />}
         >
           <OverlayChart

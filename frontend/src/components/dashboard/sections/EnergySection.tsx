@@ -98,7 +98,7 @@ export default function EnergySection({
         unit="Wh"
         color="#eab308"
         xLabel="Hour"
-        yLabel="Energy used (Wh)"
+        yLabel="Energy consumption (Wh)"
         labelFormat={(ts) =>
           new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         }

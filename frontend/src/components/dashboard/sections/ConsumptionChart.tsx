@@ -30,6 +30,11 @@ import {
  * class sets the colour and the fill resolves it. A fill-slate-500 would
  * reach past the themed text scale into raw Tailwind and come out wrong in
  * light mode.
+ *
+ * The same three lines exist in OverlayChart, which captions a line chart the
+ * same way. Kept separate rather than shared because this component is on the
+ * main dashboard and that one is not, and importing it would pull the whole
+ * line chart into that bundle for three lines of style.
  */
 const AXIS_LABEL = {
   className: "text-slate-500",
@@ -97,10 +102,15 @@ export default function ConsumptionChart({
             tickFormatter={labelFormat}
             // The caption lives inside the axis band rather than in the chart
             // margin, so switching it on cannot shift the plot area under it.
-            height={xLabel ? 42 : 30}
+            height={xLabel ? 44 : 30}
           >
+            {/* The offset is clearance for DESCENDERS. Recharts puts an
+                insideBottom label's BASELINE at the bottom edge of the band,
+                which here is the bottom edge of the SVG, so at offset 0 the
+                tail of the "y" in "Day" fell outside the viewport and was
+                clipped off. Six pixels at 10px type clears any descender. */}
             {xLabel && (
-              <Label value={xLabel} position="insideBottom" offset={0} {...AXIS_LABEL} />
+              <Label value={xLabel} position="insideBottom" offset={6} {...AXIS_LABEL} />
             )}
           </XAxis>
           <YAxis

@@ -23,18 +23,45 @@
  *   and did the soil respond? That is cause and effect, from data we already
  *   had and were drawing in two unrelated places.
  *
+ * THE UNIT RIDES IN THE LEGEND
+ *   A legend reading "Temperature" and "Humidity" over two axes marked "°C"
+ *   and "%" leaves the reader to pair them up by guessing which line belongs
+ *   to which side. "Temperature (°C)" and "Humidity (%)" pairs them by
+ *   reading. The unit stays on the axis as well, because that is the half of
+ *   the pairing that says WHICH side — drop it and the legend names units with
+ *   nothing to match them against.
+ *
+ *   The caller still passes label and unit apart. The legend joins them, so a
+ *   call site cannot forget the unit or write the join differently, and the
+ *   tooltip keeps the plain label — "Temperature  28.4 °C" rather than
+ *   "Temperature (°C)  28.4 °C", which says it twice.
+ *
+ * THE BOTTOM AXIS IS CAPTIONED
+ *   It carried a row of clock times and nothing saying they were clock times.
+ *   On a one-day range that is guessable; on a seven-day range, where the same
+ *   hours repeat down the axis, a reader has no way to tell times from any
+ *   other ascending number without being told. The caption is drawn from
+ *   currentColor so it themes with the rest — a fill-slate-500 would reach
+ *   past the themed text scale into raw Tailwind and come out wrong in light
+ *   mode. ConsumptionChart holds the same three lines for the same reason.
+ *
  * GAPS STAY GAPS
  *   connectNulls is off everywhere. A line drawn through a dead feed invents
  *   readings nobody took, and this system has lost eighteen days to a silence
  *   that a joined-up line would have hidden completely.
  */
 import {
-  CartesianGrid, Legend, Line, LineChart, ReferenceArea, ReferenceLine,
+  CartesianGrid, Label, Legend, Line, LineChart, ReferenceArea, ReferenceLine,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
 import type { SprayEvent, TimePoint } from "@/types";
 import { exceedSpans, mergeSeries } from "@/lib/series";
+
+const AXIS_LABEL = {
+  className: "text-slate-500",
+  style: { fontSize: 10, fill: "currentColor" } as const,
+};
 
 export interface SeriesSpec {
   field: string;
@@ -48,8 +75,17 @@ export interface SeriesSpec {
   threshold?: number | null;
 }
 
+/**
+ * What the legend shows for a series. Both the Line's name and the Tooltip's
+ * lookup go through this, so they cannot drift apart — the tooltip matches on
+ * whatever name the Line was given, and a mismatch would silently cost every
+ * tooltip row its unit.
+ */
+const legendName = (s: SeriesSpec) => (s.unit ? `${s.label} (${s.unit})` : s.label);
+
 export default function OverlayChart({
   series, specs, sprayEvents, height = 340, leftUnit, rightUnit, leftDomain, rightDomain,
+  xLabel = "Time",
 }: {
   series: Record<string, TimePoint[]> | undefined;
   specs: SeriesSpec[];
@@ -60,6 +96,11 @@ export default function OverlayChart({
   rightUnit?: string;
   leftDomain?: [number | "auto", number | "auto"];
   rightDomain?: [number | "auto", number | "auto"];
+  /**
+   * What the bottom axis counts along. Every chart here is against time, so
+   * that is the default; pass an empty string to drop the caption.
+   */
+  xLabel?: string;
 }) {
   const rows = mergeSeries(series, specs.map((s) => s.field));
 
@@ -132,7 +173,18 @@ export default function OverlayChart({
             tickFormatter={(t: number) =>
               new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
             }
-          />
+            // Inside the axis band, not the chart margin, so the caption
+            // cannot shift the plot area under it.
+            height={xLabel ? 44 : 30}
+          >
+            {/* Offset 6, not 0: Recharts puts an insideBottom label's BASELINE
+                at the bottom edge of the band, which is the bottom edge of the
+                SVG here, so descenders fall outside the viewport and get
+                clipped. */}
+            {xLabel && (
+              <Label value={xLabel} position="insideBottom" offset={6} {...AXIS_LABEL} />
+            )}
+          </XAxis>
           <YAxis
             yAxisId="left" domain={leftDomain ?? ["auto", "auto"]}
             tick={{ fontSize: 11, fill: "currentColor" }} className="text-slate-500"
@@ -157,14 +209,19 @@ export default function OverlayChart({
           <Tooltip
             labelFormatter={(t: number) => new Date(t).toLocaleString()}
             formatter={(v: number, name: string) => {
-              const spec = specs.find((s) => s.label === name);
-              return [`${v?.toFixed(1)} ${spec?.unit ?? ""}`, name];
+              const spec = specs.find((s) => legendName(s) === name);
+              return [`${v?.toFixed(1)} ${spec?.unit ?? ""}`, spec?.label ?? name];
             }}
             contentStyle={{ fontSize: 12, borderRadius: 8, padding: "6px 10px" }}
           />
+          {/* No fixed height. It was 26px, which was one line of 11px type and
+              no more — and the labels carry their units now, so three nutrients
+              at "Nitrogen (mg/kg)" wrap to a second line on a phone and the
+              second line was being cut off. Left to measure itself, Recharts
+              reserves whatever the legend actually occupies. */}
           {specs.length > 1 && (
             <Legend
-              verticalAlign="top" height={26}
+              verticalAlign="top"
               wrapperStyle={{ fontSize: 11, paddingBottom: 4 }}
             />
           )}
@@ -182,7 +239,7 @@ export default function OverlayChart({
             <Line
               key={s.field}
               yAxisId={s.axis === "right" ? "right" : "left"}
-              dataKey={s.field} name={s.label}
+              dataKey={s.field} name={legendName(s)}
               type="monotone" strokeWidth={1.8} dot={false}
               stroke={s.color}
               strokeDasharray={s.dashed ? "5 4" : undefined}
