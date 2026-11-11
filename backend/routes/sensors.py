@@ -1,6 +1,7 @@
 """
 /api/sensors  — live readings, history, spray stats, health
 """
+import re
 from datetime import datetime
 
 import pandas as pd
@@ -9,11 +10,12 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 import config
 from schemas import (
     LatestResponse, FieldReading, RelayStatus, Alert,
-    HistoryResponse, TimePoint,
+    HistoryResponse, TimePoint, ExtremesResponse, FieldExtremes,
     SprayStatsResponse, SprayStats, SprayEvent,
     HealthResponse,
 )
 from services import auth_service
+from services.anomaly_service import PHYSICAL_BOUNDS
 from services import influxdb_service as db
 from services import spray_analysis
 
@@ -114,6 +116,51 @@ def get_history(
     }
 
     return HistoryResponse(farm=farm, range=range, aggregation=agg, series=series)
+
+
+# ── GET /api/sensors/extremes ─────────────────────────────────────────────
+
+_RELATIVE_RANGE = re.compile(r"^-\d{1,4}[mhd]$")
+_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+@router.get("/extremes", response_model=ExtremesResponse)
+def get_extremes(
+    farm:       str        = Query(default=config.DEFAULT_FARM),
+    range:      str        = Query(default=config.DEFAULT_TIME_RANGE),
+    fields:     str        = Query(default="temperature", description="Comma-separated field names"),
+    start_date: str | None = Query(default=None, description="YYYY-MM-DD absolute start"),
+    end_date:   str | None = Query(default=None, description="YYYY-MM-DD absolute end"),
+    user:       dict       = Depends(auth_service.require_auth),
+) -> ExtremesResponse:
+    """
+    The real highest and lowest reading of each field over the range.
+
+    /history cannot answer this: it returns window averages, which flatten a
+    short peak (40.2 °C became 39.8) and move it to the end of its window.
+    Readings outside the sensor's physical range -- the 0.0 a failed read
+    sends -- are skipped, so a glitch is never reported as the day's low.
+    """
+    auth_service.require_farm_access(user, farm)
+    measurement = _measurement(farm)
+
+    # Both end up inside the Flux text, so only known shapes get through.
+    if not (start_date and end_date) and not _RELATIVE_RANGE.match(range):
+        raise HTTPException(status_code=422, detail=f"Bad range '{range}'")
+    for d in (start_date, end_date):
+        if d is not None and not _DATE.match(d):
+            raise HTTPException(status_code=422, detail=f"Bad date '{d}'")
+
+    wanted = [f.strip() for f in fields.split(",") if f.strip()]
+    unknown = [f for f in wanted if f not in config.FARM_FIELDS[farm]]
+    if not wanted or unknown:
+        raise HTTPException(status_code=422, detail=f"Unknown field(s) for {farm}: {unknown or fields}")
+
+    raw = db.get_extremes(measurement, wanted, PHYSICAL_BOUNDS, range, start_date, end_date)
+    return ExtremesResponse(
+        farm=farm, range=range,
+        extremes={f: FieldExtremes(**v) for f, v in raw.items()},
+    )
 
 
 # ── GET /api/sensors/spray-stats ──────────────────────────────────────────

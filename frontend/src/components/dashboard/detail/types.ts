@@ -1,5 +1,6 @@
 import type {
-  Farm, HistoryResponse, LatestResponse, SprayStatsResponse, TimeRange, WaterResponse,
+  ExtremesResponse, Farm, HistoryResponse, LatestResponse, SprayStatsResponse, TimeRange,
+  WaterResponse,
 } from "@/types";
 
 /**
@@ -17,6 +18,11 @@ export interface DetailProps {
   /** The equivalent window immediately before this one, for comparisons. */
   previous?: HistoryResponse;
   water?: WaterResponse;
+  /**
+   * The real highest and lowest readings. `history` is 15-minute averages,
+   * which flatten a short peak, so a "peak" card must not be read from it.
+   */
+  extremes?: ExtremesResponse;
   sprayStats?: SprayStatsResponse;
   isOffline: boolean;
   isLoading: boolean;

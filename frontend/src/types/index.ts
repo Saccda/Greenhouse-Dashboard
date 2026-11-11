@@ -50,6 +50,18 @@ export interface HistoryResponse {
   series:      Record<string, TimePoint[]>;
 }
 
+/** Real highest/lowest readings — not window averages like HistoryResponse. */
+export interface FieldExtremes {
+  max: TimePoint | null;
+  min: TimePoint | null;
+}
+
+export interface ExtremesResponse {
+  farm:     string;
+  range:    string;
+  extremes: Record<string, FieldExtremes>;
+}
+
 export interface SprayEvent {
   start_time:        string;
   end_time:          string;

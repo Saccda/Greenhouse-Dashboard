@@ -149,6 +149,68 @@ def _tz_offset() -> str:
     return f"{sign}{hours:02d}:{mins:02d}"
 
 
+def _range_clause(time_range: str, start_date: str | None, end_date: str | None) -> str:
+    """Flux range() for either a relative range (-24h) or a pair of local dates."""
+    if start_date and end_date:
+        tz = _tz_offset()
+        return f"range(start: {start_date}T00:00:00{tz}, stop: {end_date}T23:59:59{tz})"
+    return f"range(start: {time_range})"
+
+
+def get_extremes(
+    measurement: str,
+    fields:      list[str],
+    bounds:      dict[str, tuple[float, float]],
+    time_range:  str = "-24h",
+    start_date:  str | None = None,
+    end_date:    str | None = None,
+) -> dict:
+    """
+    The single highest and lowest RAW reading of each field, with its time.
+
+    Not taken from get_history(): that averages every window, and the average
+    of a window can never be higher than the hottest reading inside it. On
+    10 Nov 2026 campus reached 40.2 °C at 14:35, yet its best 15-minute mean
+    was 39.77 and was stamped 15:00 (aggregateWindow labels a window by its
+    END). The card then reported 39.8 °C at 3 PM -- the wrong number at the
+    wrong time, on the one day the farm team remembered being over 40.
+
+    Readings outside `bounds` are skipped. The lower bound is EXCLUSIVE: an
+    exact 0.0 is what the sensor sends when a read fails (one arrived at
+    14:31:52 that same afternoon, mid-heatwave), and as a raw minimum it would
+    have become the day's "low".
+
+    Returns { field: {"max": {"time", "value"} | None, "min": ... | None} }.
+    """
+    plausible = " and ".join(
+        f'(r._field != "{f}" or (r._value > {lo} and r._value <= {hi}))'
+        for f, (lo, hi) in bounds.items() if f in fields
+    ) or "true"
+
+    base = f'''
+from(bucket: "{config.INFLUXDB_BUCKET}")
+  |> {_range_clause(time_range, start_date, end_date)}
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => {_field_filter(fields)})
+  |> toFloat()
+  |> filter(fn: (r) => {plausible})
+  |> group(columns: ["_field"])
+'''
+    out: dict = {f: {"max": None, "min": None} for f in fields}
+    for which in ("max", "min"):
+        try:
+            df = _run_query(base + f"  |> {which}()\n")
+        except Exception as e:
+            print(f"[InfluxDB] get_extremes({which}) failed: {e}")
+            continue
+        for _, row in df.iterrows():
+            out[row["field"]][which] = {
+                "time":  row["time"].isoformat(),
+                "value": float(row["value"]),
+            }
+    return out
+
+
 def get_history(
     measurement: str,
     fields:      list[str],
@@ -165,12 +227,7 @@ def get_history(
     Returns a dict of  { field: [{"time": iso_str, "value": float}, ...] }
     """
     bucket = config.INFLUXDB_BUCKET
-
-    if start_date and end_date:
-        tz = _tz_offset()
-        range_clause = f"range(start: {start_date}T00:00:00{tz}, stop: {end_date}T23:59:59{tz})"
-    else:
-        range_clause = f"range(start: {time_range})"
+    range_clause = _range_clause(time_range, start_date, end_date)
 
     flux = f'''
 from(bucket: "{bucket}")

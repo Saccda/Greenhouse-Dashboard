@@ -28,14 +28,21 @@ import { Thermometer, Droplets, Gauge, TrendingUp } from "lucide-react";
 import KPICard from "@/components/ui/KPICard";
 import ConsumptionChart from "@/components/dashboard/sections/ConsumptionChart";
 import { dewPoint, vpd, vpdBand } from "@/lib/psychro";
-import { at, dailyMinutesOver, duration, extreme, minutesOver } from "@/lib/series";
+import { at, dailyMinutesOver, duration, minutesOver } from "@/lib/series";
 
 import OverlayChart, { ChartLegendHints } from "./OverlayChart";
 import { Panel, Stat, ThresholdRow } from "./Panel";
 import type { DetailProps } from "./types";
 
+/** How the range reads in a sentence: "in the last 24 h". */
+const RANGE_PHRASE: Record<string, string> = {
+  "-1h": "last hour", "-6h": "last 6 h", "-12h": "last 12 h", "-24h": "last 24 h",
+  "-3d": "last 3 days", "-7d": "last 7 days", "-30d": "last 30 days",
+};
+
 export default function AmbientDetail({
-  latest, history, sprayStats, isOffline, isLoading, tempWarn, humWarn, rangeWord,
+  latest, history, extremes, sprayStats, isOffline, isLoading, tempWarn, humWarn,
+  range, rangeWord,
 }: DetailProps) {
   const read = (f: string) => (!isOffline ? latest?.readings?.[f]?.value : undefined);
   const temp = read("temperature");
@@ -44,8 +51,18 @@ export default function AmbientDetail({
   const tempPts = history?.series?.temperature ?? [];
   const humPts = history?.series?.humidity ?? [];
 
-  const peak = extreme(tempPts, "max");
-  const low = extreme(tempPts, "min");
+  // From the raw readings, NOT from tempPts: those are 15-minute averages,
+  // and an average is always lower than the hottest reading inside it. On
+  // 10 Nov this card said 39.8 °C at 3 PM while the sensor had read 40.2 °C at
+  // 2:35 PM. Faulty readings (a failed read sends 0.0) are dropped server-side.
+  const peak = extremes?.extremes?.temperature?.max ?? null;
+  const low = extremes?.extremes?.temperature?.min ?? null;
+  const multiDay = range === "-3d" || range === "-7d" || range === "-30d";
+  const peakWhen = peak
+    ? multiDay
+      ? `${new Date(peak.time).toLocaleDateString([], { day: "numeric", month: "short" })}, ${at(peak.time)}`
+      : at(peak.time)
+    : "";
   const hotMin = minutesOver(tempPts, tempWarn);
   const humidMin = minutesOver(humPts, humWarn);
 
@@ -93,13 +110,20 @@ export default function AmbientDetail({
           title="Peak temperature" icon={TrendingUp}
           value={peak ? peak.value.toFixed(1) : "—"} rawValue={peak?.value} decimals={1}
           unit={peak ? "°C" : undefined}
-          isLoading={isLoading && !history}
+          isLoading={!extremes}
           // The TIME of the peak is the actionable half. "38.3 °C" tells you
           // this week was bad; "38.3 °C at 14:35" tells you when to be in the
           // greenhouse tomorrow.
+          //
+          // Spelled out in full ("highest single reading", "lowest") because
+          // the chart beside it shows averages, and a reader comparing the
+          // two needs to know why this number is higher than the line.
           subtitle={
-            peak ? `at ${at(peak.time)}${low ? ` · low ${low.value.toFixed(1)} °C` : ""}`
-              : `This ${rangeWord}`
+            peak
+              ? `Highest single reading in the ${RANGE_PHRASE[range] ?? `last ${rangeWord}`}, at ${peakWhen}.${
+                  low ? ` Lowest: ${low.value.toFixed(1)} °C.` : ""
+                }`
+              : `No readings in the ${RANGE_PHRASE[range] ?? `last ${rangeWord}`}`
           }
         />
       </section>

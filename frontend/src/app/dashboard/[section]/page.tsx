@@ -37,7 +37,9 @@ import Header from "@/components/layout/Header";
 import { useFarmSelection } from "@/hooks/useFarmSelection";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useSettings } from "@/hooks/useSettings";
-import type { Farm, TimeRange, Aggregation, HistoryResponse, WaterResponse } from "@/types";
+import type {
+  Farm, TimeRange, Aggregation, HistoryResponse, WaterResponse, ExtremesResponse,
+} from "@/types";
 
 import SectionInsights, {
   ambientInsights, waterInsights, soilInsights,
@@ -148,6 +150,17 @@ export default function SectionPage({ params }: { params: { section: string } })
     swrFetcher, { refreshInterval: 300_000 },
   );
 
+  // The peak and low cards need the real highest and lowest readings. The
+  // history above is 15-minute averages: on 10 Nov campus hit 40.2 °C, and
+  // the card built from averages said 39.8. Ambient only, the one page that
+  // shows them.
+  const { data: extremes } = useSWR<ExtremesResponse>(
+    section === "ambient"
+      ? `/api/sensors/extremes?farm=${farm}&range=${range}&fields=temperature`
+      : null,
+    swrFetcher, { refreshInterval: 30_000, revalidateOnFocus: false },
+  );
+
   if (!spec) notFound();
 
   const isOffline = latest ? !latest.is_online : false;
@@ -173,7 +186,7 @@ export default function SectionPage({ params }: { params: { section: string } })
 
   const detail = {
     farm: thisFarm,
-    latest, history, previous, water, sprayStats,
+    latest, history, previous, water, extremes, sprayStats,
     isOffline, isLoading,
     tempWarn: settings.tempWarn,
     humWarn: settings.humWarn,

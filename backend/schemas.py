@@ -57,6 +57,18 @@ class HistoryResponse(BaseModel):
     series:      dict[str, list[TimePoint]]
 
 
+class FieldExtremes(BaseModel):
+    """The single highest and lowest raw reading; None when nothing in range."""
+    max: TimePoint | None = None
+    min: TimePoint | None = None
+
+
+class ExtremesResponse(BaseModel):
+    farm:     str
+    range:    str
+    extremes: dict[str, FieldExtremes]
+
+
 # ── Spray analysis ────────────────────────────────────────────────────────
 
 class SprayEvent(BaseModel):
