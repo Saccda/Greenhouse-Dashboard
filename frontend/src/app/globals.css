@@ -173,7 +173,10 @@
 html, body {
   background-color: var(--body-bg);
   color:            var(--body-fg);
-  font-family: var(--font-sans), "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* The fallback INSIDE var() matters. Without it, an undefined --font-sans
+     makes this whole declaration invalid and the browser drops to its
+     default serif, which is what production showed on 11 Nov 2026. */
+  font-family: var(--font-sans, system-ui), ui-sans-serif, system-ui, sans-serif;
   font-size: 14.5px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -399,7 +402,7 @@ html, body {
 .value-updated { animation: value-flash 0.6s ease-out; }
 
 .font-mono-num {
-  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono, ui-monospace), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 

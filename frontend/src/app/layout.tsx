@@ -1,30 +1,36 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 /**
- * Fonts, self-hosted.
+ * Fonts, self-hosted FROM THE REPO.
  *
- * globals.css used to pull these from Google with an @import, which had two
- * problems. It is a render-blocking request to a third party on every cold
- * load, and once the Content-Security-Policy went enforcing it was simply
- * BLOCKED — style-src and font-src both name 'self' — so the whole app
- * silently fell back to system fonts.
+ * globals.css used to pull these from Google with an @import, which the
+ * enforcing Content-Security-Policy then blocked. next/font/google fixed that
+ * by downloading them at build time -- and introduced a subtler failure.
  *
- * next/font downloads them at build time and serves them from our own origin,
- * which fixes all of that at once: no third-party request, nothing for the CSP
- * to block, no flash of unstyled text, and no dependency on Google being
- * reachable from wherever this is deployed.
+ * next/font names each font's CSS class after a hash of the CSS Google
+ * returns. Vercel's build cache let two halves of one build disagree about
+ * that response: the prerendered HTML put class __variable_176161 on <html>,
+ * while the stylesheet and the browser bundle used __variable_8b3a0b
+ * (production, 11 Nov 2026). No rule defined --font-sans for the class the
+ * page actually had, so `font-family: var(--font-sans), ...` was invalid as a
+ * whole and EVERY page fell back to the browser's default serif.
+ *
+ * Shipping the files makes the hash a function of bytes in this repo, the
+ * same in every layer and on every build, with no network fetch at build time.
+ * Both are the Latin subsets Google served (variable fonts, so one file covers
+ * every weight). SIL Open Font License, which permits redistribution.
  */
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const inter = localFont({
+  src: "./fonts/inter-latin.woff2",
+  weight: "400 700",
   variable: "--font-sans",
   display: "swap",
 });
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const jetbrainsMono = localFont({
+  src: "./fonts/jetbrains-mono-latin.woff2",
+  weight: "400 600",
   variable: "--font-mono",
   display: "swap",
 });
