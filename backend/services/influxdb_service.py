@@ -211,6 +211,51 @@ from(bucket: "{config.INFLUXDB_BUCKET}")
     return out
 
 
+def get_product_extremes(
+    measurement: str,
+    a:           str,
+    b:           str,
+    time_range:  str = "-24h",
+    start_date:  str | None = None,
+    end_date:    str | None = None,
+) -> dict:
+    """
+    Highest and lowest of a × b, multiplied reading by reading.
+
+    For apparent power (voltage × current). It has to be multiplied BEFORE
+    taking the maximum, and per message: the largest volts and the largest
+    amps rarely arrive together, and multiplying two 15-minute averages is
+    what put the campus Peak draw card at 282 W on a day the meter read
+    369.9 W (232.65 V × 1.59 A at 14:11, 11 Nov 2026).
+
+    Both fields come from the same MQTT message, so they share a _time and
+    pivot pairs them exactly. A timestamp carrying only one of them is
+    dropped rather than paired with a neighbour.
+    """
+    base = f'''
+from(bucket: "{config.INFLUXDB_BUCKET}")
+  |> {_range_clause(time_range, start_date, end_date)}
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => r._field == "{a}" or r._field == "{b}")
+  |> toFloat()
+  |> group()
+  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> filter(fn: (r) => exists r.{a} and exists r.{b})
+  |> map(fn: (r) => ({{_time: r._time, _field: "product", _value: r.{a} * r.{b}}}))
+'''
+    out: dict = {"max": None, "min": None}
+    for which in ("max", "min"):
+        try:
+            df = _run_query(base + f"  |> {which}()\n")
+        except Exception as e:
+            print(f"[InfluxDB] get_product_extremes({which}) failed: {e}")
+            continue
+        if not df.empty:
+            row = df.iloc[0]
+            out[which] = {"time": row["time"].isoformat(), "value": float(row["value"])}
+    return out
+
+
 def get_history(
     measurement: str,
     fields:      list[str],

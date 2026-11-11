@@ -50,8 +50,15 @@ export interface Bucket {
 }
 
 export default function ConsumptionChart({
-  buckets, unit, color, height, labelFormat, empty, xLabel, yLabel,
+  buckets, unit, color, height, labelFormat, empty, xLabel, yLabel, showZeros,
 }: {
+  /**
+   * Draw a measured zero as a thin line, so it reads differently from a
+   * bucket with no data. Without it the two are the same blank space, and a
+   * meter that reported "0 m³" every day looked like a chart that failed to
+   * load.
+   */
+  showZeros?: boolean;
   buckets: Bucket[];
   unit: string;
   color: string;
@@ -135,13 +142,20 @@ export default function ConsumptionChart({
           <Tooltip
             cursor={{ fill: "currentColor", className: "text-surface-hover", opacity: 0.4 }}
             labelFormatter={(ts: number) => labelFormat(ts)}
-            formatter={(v: number, _n, p) => [
-              `${v?.toFixed(v >= 100 ? 0 : 1)} ${unit}`,
-              (p?.payload as Bucket)?.partial ? "so far" : "used",
-            ]}
+            formatter={(v, _n, p) =>
+              typeof v !== "number"
+                ? ["—", "no report"]
+                : [
+                    `${v.toFixed(v >= 100 ? 0 : 1)} ${unit}`,
+                    (p?.payload as Bucket)?.partial ? "so far" : "used",
+                  ]
+            }
             contentStyle={{ fontSize: 12, borderRadius: 8, padding: "6px 10px" }}
           />
-          <Bar dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+          <Bar
+            dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={false}
+            minPointSize={showZeros ? (v) => (v === 0 ? 2 : 0) : undefined}
+          >
             {buckets.map((b, i) => (
               <Cell
                 key={i}

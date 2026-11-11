@@ -28,21 +28,15 @@ import { Thermometer, Droplets, Gauge, TrendingUp } from "lucide-react";
 import KPICard from "@/components/ui/KPICard";
 import ConsumptionChart from "@/components/dashboard/sections/ConsumptionChart";
 import { dewPoint, vpd, vpdBand } from "@/lib/psychro";
-import { at, dailyMinutesOver, duration, minutesOver } from "@/lib/series";
+import { atWhen, dailyMinutesOver, duration, minutesOver, rangePhrase } from "@/lib/series";
 
 import OverlayChart, { ChartLegendHints } from "./OverlayChart";
 import { Panel, Stat, ThresholdRow } from "./Panel";
 import type { DetailProps } from "./types";
 
-/** How the range reads in a sentence: "in the last 24 h". */
-const RANGE_PHRASE: Record<string, string> = {
-  "-1h": "last hour", "-6h": "last 6 h", "-12h": "last 12 h", "-24h": "last 24 h",
-  "-3d": "last 3 days", "-7d": "last 7 days", "-30d": "last 30 days",
-};
-
 export default function AmbientDetail({
   latest, history, extremes, sprayStats, isOffline, isLoading, tempWarn, humWarn,
-  range, rangeWord,
+  range,
 }: DetailProps) {
   const read = (f: string) => (!isOffline ? latest?.readings?.[f]?.value : undefined);
   const temp = read("temperature");
@@ -57,12 +51,6 @@ export default function AmbientDetail({
   // 2:35 PM. Faulty readings (a failed read sends 0.0) are dropped server-side.
   const peak = extremes?.extremes?.temperature?.max ?? null;
   const low = extremes?.extremes?.temperature?.min ?? null;
-  const multiDay = range === "-3d" || range === "-7d" || range === "-30d";
-  const peakWhen = peak
-    ? multiDay
-      ? `${new Date(peak.time).toLocaleDateString([], { day: "numeric", month: "short" })}, ${at(peak.time)}`
-      : at(peak.time)
-    : "";
   const hotMin = minutesOver(tempPts, tempWarn);
   const humidMin = minutesOver(humPts, humWarn);
 
@@ -120,10 +108,10 @@ export default function AmbientDetail({
           // two needs to know why this number is higher than the line.
           subtitle={
             peak
-              ? `Highest single reading in the ${RANGE_PHRASE[range] ?? `last ${rangeWord}`}, at ${peakWhen}.${
+              ? `Highest single reading in the ${rangePhrase(range)}, at ${atWhen(peak.time, range)}.${
                   low ? ` Lowest: ${low.value.toFixed(1)} °C.` : ""
                 }`
-              : `No readings in the ${RANGE_PHRASE[range] ?? `last ${rangeWord}`}`
+              : `No readings in the ${rangePhrase(range)}`
           }
         />
       </section>

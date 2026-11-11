@@ -49,6 +49,15 @@ import WaterDetail from "@/components/dashboard/detail/WaterDetail";
 import SoilDetail from "@/components/dashboard/detail/SoilDetail";
 import EnergyDetail from "@/components/dashboard/detail/EnergyDetail";
 
+/**
+ * The fields each page shows a real peak or lowest for. apparent_power is
+ * volts × amps per message, worked out by the backend.
+ */
+const EXTREME_FIELDS: Record<string, string> = {
+  ambient: "temperature",
+  energy: "voltage,apparent_power",
+};
+
 /** The window before the one on screen, fetched as a doubled range. */
 const DOUBLED: Record<string, string> = {
   "-6h": "-12h", "-24h": "-48h", "-7d": "-14d", "-30d": "-60d",
@@ -150,13 +159,15 @@ export default function SectionPage({ params }: { params: { section: string } })
     swrFetcher, { refreshInterval: 300_000 },
   );
 
-  // The peak and low cards need the real highest and lowest readings. The
-  // history above is 15-minute averages: on 10 Nov campus hit 40.2 °C, and
-  // the card built from averages said 39.8. Ambient only, the one page that
-  // shows them.
+  // Peak and lowest figures need the real highest and lowest readings. The
+  // history above is 15-minute averages: on 10 Nov campus hit 40.2 °C and the
+  // card built from averages said 39.8; on 11 Nov the pump drew 370 W and the
+  // averages said 282. Only the pages that show such figures ask.
+  const extremeFields =
+    section === "energy" && !(thisFarm?.energy ?? []).length ? undefined : EXTREME_FIELDS[section];
   const { data: extremes } = useSWR<ExtremesResponse>(
-    section === "ambient"
-      ? `/api/sensors/extremes?farm=${farm}&range=${range}&fields=temperature`
+    extremeFields
+      ? `/api/sensors/extremes?farm=${farm}&range=${range}&fields=${extremeFields}`
       : null,
     swrFetcher, { refreshInterval: 30_000, revalidateOnFocus: false },
   );

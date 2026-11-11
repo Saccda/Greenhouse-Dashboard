@@ -123,6 +123,10 @@ def get_history(
 _RELATIVE_RANGE = re.compile(r"^-\d{1,4}[mhd]$")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
+# Fields no sensor sends, computed per message from two that it does. The
+# meter's own power_w reads 0 on a live supply, so power is volts x amps.
+_DERIVED = {"apparent_power": ("voltage", "current")}
+
 
 @router.get("/extremes", response_model=ExtremesResponse)
 def get_extremes(
@@ -151,12 +155,20 @@ def get_extremes(
         if d is not None and not _DATE.match(d):
             raise HTTPException(status_code=422, detail=f"Bad date '{d}'")
 
+    have = config.FARM_FIELDS[farm]
     wanted = [f.strip() for f in fields.split(",") if f.strip()]
-    unknown = [f for f in wanted if f not in config.FARM_FIELDS[farm]]
+    unknown = [
+        f for f in wanted
+        if f not in have and not (f in _DERIVED and all(x in have for x in _DERIVED[f]))
+    ]
     if not wanted or unknown:
         raise HTTPException(status_code=422, detail=f"Unknown field(s) for {farm}: {unknown or fields}")
 
-    raw = db.get_extremes(measurement, wanted, PHYSICAL_BOUNDS, range, start_date, end_date)
+    plain = [f for f in wanted if f not in _DERIVED]
+    raw = db.get_extremes(measurement, plain, PHYSICAL_BOUNDS, range, start_date, end_date) if plain else {}
+    for f in wanted:
+        if f in _DERIVED:
+            raw[f] = db.get_product_extremes(measurement, *_DERIVED[f], range, start_date, end_date)
     return ExtremesResponse(
         farm=farm, range=range,
         extremes={f: FieldExtremes(**v) for f, v in raw.items()},

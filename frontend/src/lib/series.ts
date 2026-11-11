@@ -100,6 +100,71 @@ export const mean = (v: number[]) => v.reduce((s, x) => s + x, 0) / v.length;
 export const at = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+const RANGE_PHRASE: Record<string, string> = {
+  "-1h": "last hour", "-6h": "last 6 h", "-12h": "last 12 h", "-24h": "last 24 h",
+  "-3d": "last 3 days", "-7d": "last 7 days", "-30d": "last 30 days",
+};
+
+/** How a range reads in a sentence: "in the last 24 h". */
+export const rangePhrase = (range: string) => RANGE_PHRASE[range] ?? "selected period";
+
+/**
+ * When something happened, precise enough for the range: the time alone
+ * within a day, the date as well once the range spans several, where
+ * "02:35 PM" on its own would not say which day.
+ */
+export function atWhen(iso: string, range: string): string {
+  if (!range.endsWith("d")) return at(iso);
+  const day = new Date(iso).toLocaleDateString([], { day: "numeric", month: "short" });
+  return `${day}, ${at(iso)}`;
+}
+
+/** Local midnight, so days split where the farm's day splits. */
+function localDay(ts: number): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/**
+ * Meter messages, turned into ONE figure per calendar day.
+ *
+ * The campus meter sends Day_consumption as a running total for the day, and
+ * may send several times a day (on reconnect and on every new cubic metre).
+ * Drawn one bar per message, 22 Oct appeared five times along the axis; and
+ * summed, a day reported three times was counted three times. The day's
+ * figure is its LAST report, which already includes the earlier ones.
+ *
+ * Every day from the first report to today is present, so a day the meter
+ * said nothing about is a visible gap (`value: null`) and not a day silently
+ * missing from the axis. Today is `partial` — still filling.
+ */
+export function dailyFromMeter(
+  readings: { timestamp: string; consumption: number | null }[],
+): { ts: number; value: number | null; partial?: boolean }[] {
+  const byDay = new Map<number, number | null>();
+  const oldestFirst = [...readings].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+  for (const r of oldestFirst) {
+    const day = localDay(new Date(r.timestamp).getTime());
+    // Latest report wins, except that a reset (null) never overwrites a real
+    // figure from earlier the same day.
+    if (r.consumption != null || !byDay.has(day)) byDay.set(day, r.consumption);
+  }
+  if (!byDay.size) return [];
+
+  const today = localDay(Date.now());
+  const first = Math.min(...byDay.keys());
+  const out: { ts: number; value: number | null; partial?: boolean }[] = [];
+  // Stepped by date rather than by 24 h, so a DST change cannot skip a day.
+  for (const d = new Date(first); d.getTime() <= today; d.setDate(d.getDate() + 1)) {
+    const ts = d.getTime();
+    out.push({ ts, value: byDay.get(ts) ?? null, partial: ts === today || undefined });
+  }
+  return out;
+}
+
 export function duration(min: number): string {
   if (min < 1) return `${Math.round(min * 60)} sec`;
   if (min < 90) return `${Math.round(min)} min`;

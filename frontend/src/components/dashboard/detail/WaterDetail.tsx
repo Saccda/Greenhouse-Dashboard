@@ -30,7 +30,7 @@ import { Waves, Clock, Timer, Power } from "lucide-react";
 import { swrFetcher } from "@/lib/api";
 import KPICard from "@/components/ui/KPICard";
 import ConsumptionChart, { type Bucket } from "@/components/dashboard/sections/ConsumptionChart";
-import { duration } from "@/lib/series";
+import { dailyFromMeter, duration } from "@/lib/series";
 
 import OverlayChart, { ChartLegendHints } from "./OverlayChart";
 import SprayTimeline from "./SprayTimeline";
@@ -63,12 +63,12 @@ export default function WaterDetail({
 
   const metered = farm?.water_source === "measured";
   const unitLabel = water?.unit_label ?? "m³";
-  const buckets: Bucket[] = metered
-    ? [...(water?.readings ?? [])].reverse().map((r) => ({
-        ts: new Date(r.timestamp).getTime(),
-        value: r.consumption ?? null,
-      }))
-    : [];
+  // One bar per day, from the day's last report. It was one bar per MESSAGE,
+  // which put "Oct 22" on the axis five times under a title saying "by Day".
+  const buckets: Bucket[] = metered ? dailyFromMeter(water?.readings ?? []) : [];
+  const reportedDays = buckets.filter((b) => b.value != null).length;
+  const meterTotal = +buckets.reduce((s, b) => s + (b.value ?? 0), 0).toFixed(2);
+  const litresPerUnit = water?.liters_per_unit ?? null;
 
   const sinceLast = last && !last.ongoing
     ? (Date.now() - new Date(last.end_time).getTime()) / 60_000
@@ -148,31 +148,54 @@ export default function WaterDetail({
         />
       </Panel>
 
+      {/* The chart sets this row's height and the Cycles list fits inside it,
+          scrolling. Before, the list grew with every cycle and dragged the row
+          down with it, leaving the chart at the top of a tall, mostly empty
+          card. */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel
           className="lg:col-span-2"
           title={metered ? "Water Consumption by Day" : "Water Consumption, Estimated"}
           aside={
             <span className="text-[11px] text-slate-500">
-              {metered ? "from the meter" : "from runtime and nozzle flow"}
+              {metered
+                ? reportedDays > 0
+                  ? `${meterTotal} ${unitLabel} over ${reportedDays} reported day${reportedDays === 1 ? "" : "s"} · from the meter`
+                  : "from the meter"
+                : "from runtime and nozzle flow"}
             </span>
           }
         >
           {metered ? (
-            <ConsumptionChart
-              buckets={buckets}
-              unit={unitLabel}
-              color="#0ea5e9"
-              height={220}
-              xLabel="Day"
-              yLabel={`Water consumption (${unitLabel})`}
-              labelFormat={(ts) =>
-                new Date(ts).toLocaleDateString([], { day: "numeric", month: "short" })
-              }
-              empty="The meter has not reported yet. It sends only once another cubic metre has passed, so quiet is normal on a system that runs briefly."
-            />
+            <>
+              <ConsumptionChart
+                buckets={buckets}
+                unit={unitLabel}
+                color="#0ea5e9"
+                height={240}
+                xLabel="Day"
+                yLabel={`Water consumption (${unitLabel})`}
+                showZeros
+                labelFormat={(ts) =>
+                  new Date(ts).toLocaleDateString([], { day: "numeric", month: "short" })
+                }
+                empty="The meter has not reported yet. It sends only once another cubic metre has passed, so quiet is normal on a system that runs briefly."
+              />
+              {/* How to read it. An all-zero month is the normal state of a
+                  meter that counts whole cubic metres on a rig that sprays for
+                  minutes, and without this it reads as a broken chart. */}
+              {reportedDays > 0 && (
+                <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+                  Each bar is the meter&apos;s total for that day. A thin line
+                  means it reported 0 {unitLabel}; no bar means it sent nothing
+                  that day. The meter counts whole {unitLabel}
+                  {litresPerUnit ? ` (${litresPerUnit.toLocaleString()} L each)` : ""},
+                  so a day of short spray cycles often shows 0.
+                </p>
+              )}
+            </>
           ) : (
-            <div className="h-[220px] grid place-items-center">
+            <div className="h-[240px] grid place-items-center">
               <p className="text-[13px] text-slate-400 text-center max-w-sm leading-relaxed">
                 {stats?.estimated_water_liters != null
                   ? `About ${Math.round(stats.estimated_water_liters).toLocaleString()} L this ${rangeWord}, worked out from spray runtime and the nozzle's rated flow. This farm has no meter, so it is an estimate rather than a measurement.`
@@ -182,19 +205,32 @@ export default function WaterDetail({
           )}
         </Panel>
 
-        <div className="flex flex-col gap-4 min-w-0">
-          <Panel title="Cycles" className="flex-1">
+        <Panel
+          title="Cycles"
+          aside={
+            events.length > 0 ? (
+              <span className="text-[11px] text-slate-500">
+                {events.length} · newest first
+              </span>
+            ) : undefined
+          }
+        >
             {events.length === 0 ? (
               <p className="text-[13px] text-slate-400 leading-relaxed">
                 The pump did not run in this period.
               </p>
             ) : (
-              <div className="overflow-x-auto -mx-1">
+              // On wide screens the list is taken out of the flow (absolute),
+              // so it adds nothing to the row's height and fills whatever the
+              // chart beside it sets. On a phone, where the two stack, it is
+              // capped and scrolls instead.
+              <div className="relative flex-1 min-h-[12rem]">
+                <div className="max-h-80 overflow-y-auto pr-1 lg:max-h-none lg:absolute lg:inset-0">
                 <table className="w-full text-[12px]">
                   <thead>
                     <tr className="text-[10px] uppercase tracking-wider text-slate-500">
-                      <th className="text-left font-medium pb-2">Started</th>
-                      <th className="text-right font-medium pb-2">Ran for</th>
+                      <th className="sticky top-0 bg-surface-card text-left font-medium pb-2">Started</th>
+                      <th className="sticky top-0 bg-surface-card text-right font-medium pb-2">Ran for</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -226,10 +262,10 @@ export default function WaterDetail({
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
-          </Panel>
-        </div>
+        </Panel>
       </section>
 
       {tankField && (

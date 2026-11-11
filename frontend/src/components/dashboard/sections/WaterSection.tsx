@@ -21,6 +21,7 @@ import { Droplet } from "lucide-react";
 import SectionCard from "./SectionCard";
 import ConsumptionChart, { type Bucket } from "./ConsumptionChart";
 import type { Farm, SprayStatsResponse, WaterResponse } from "@/types";
+import { dailyFromMeter } from "@/lib/series";
 
 export default function WaterSection({
   farm, water, sprayStats, rangeLabel,
@@ -33,15 +34,12 @@ export default function WaterSection({
   const metered = farm?.water_source === "measured";
   const unitLabel = water?.unit_label ?? "m³";
 
-  // Oldest first, so time runs left to right like every other chart here.
-  const buckets: Bucket[] = metered
-    ? [...(water?.readings ?? [])].reverse().map((r) => ({
-        ts: new Date(r.timestamp).getTime(),
-        // A day whose totalizer reset is not a day of enormous usage; the API
-        // nulls those rather than reporting the reset as consumption.
-        value: r.consumption ?? null,
-      }))
-    : [];
+  // One bar per calendar day, from the day's LAST report (the meter's figure
+  // is a running total for the day). It was one bar per message, so a day
+  // reported three times was drawn three times and counted three times in
+  // the total below. A reset is null from the API and never wins over a
+  // real figure.
+  const buckets: Bucket[] = metered ? dailyFromMeter(water?.readings ?? []) : [];
 
   const used = buckets.reduce((s, b) => s + (b.value ?? 0), 0);
   const days = buckets.filter((b) => b.value != null).length;
@@ -69,6 +67,7 @@ export default function WaterSection({
         color="#0ea5e9"
         xLabel="Day"
         yLabel={`Water consumption (${unitLabel})`}
+        showZeros
         labelFormat={(ts) =>
           new Date(ts).toLocaleDateString([], { day: "numeric", month: "short" })
         }

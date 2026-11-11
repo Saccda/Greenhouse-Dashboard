@@ -30,7 +30,7 @@ import { Zap, Activity, TrendingUp, Waves } from "lucide-react";
 import KPICard from "@/components/ui/KPICard";
 import ConsumptionChart, { type Bucket } from "@/components/dashboard/sections/ConsumptionChart";
 import type { HistoryResponse } from "@/types";
-import { at, extreme } from "@/lib/series";
+import { atWhen, rangePhrase } from "@/lib/series";
 
 import OverlayChart, { ChartLegendHints } from "./OverlayChart";
 import { Empty, Panel, Stat } from "./Panel";
@@ -79,7 +79,8 @@ const fmtEnergy = (wh: number) =>
   wh >= 1000 ? `${(wh / 1000).toFixed(2)} kWh` : `${wh.toFixed(0)} Wh`;
 
 export default function EnergyDetail({
-  farm, latest, history, previous, sprayStats, isOffline, isLoading, rangeWord,
+  farm, latest, history, previous, extremes, sprayStats, isOffline, isLoading,
+  range, rangeWord,
 }: DetailProps) {
   if (!(farm?.energy ?? []).length) {
     return <Empty>This farm has no energy meter fitted.</Empty>;
@@ -94,9 +95,16 @@ export default function EnergyDetail({
     .sort((a, b) => a[0] - b[0])
     .map(([ts, wh]) => ({ ts, value: wh, partial: ts === currentHour }));
 
+  // The peak comes from the raw readings, multiplied message by message on
+  // the server. Multiplying 15-minute averages flattened every pump start:
+  // on 11 Nov this card said 282 W while the meter had read 370 W.
+  const peakRaw = extremes?.extremes?.apparent_power?.max ?? null;
+  const peak = peakRaw?.value ?? null;
+
+  // Standing draw stays on the averages ON PURPOSE. It means "what the rig
+  // idles at", and one quiet 5-second reading is not that; the lowest
+  // 15-minute average is.
   const vaValues = samples.map((s) => s.va);
-  const peak = vaValues.length ? Math.max(...vaValues) : null;
-  const peakAt = peak != null ? samples.find((s) => s.va === peak) : null;
   const standing = vaValues.length ? Math.min(...vaValues) : null;
 
   const volts = !isOffline ? latest?.readings?.voltage?.value : undefined;
@@ -108,8 +116,10 @@ export default function EnergyDetail({
 
   const changePct = prev > 0 ? ((total - prev) / prev) * 100 : null;
 
-  const voltLo = extreme(history?.series?.voltage ?? [], "min");
-  const voltHi = extreme(history?.series?.voltage ?? [], "max");
+  // Raw as well: a supply dip lasting seconds is exactly what an average
+  // hides, and it is what makes a motor strain.
+  const voltLo = extremes?.extremes?.voltage?.min ?? null;
+  const voltHi = extremes?.extremes?.voltage?.max ?? null;
 
   return (
     <div className="space-y-4">
@@ -142,11 +152,16 @@ export default function EnergyDetail({
           value={peak != null ? peak.toFixed(1) : "—"}
           rawValue={peak ?? undefined} decimals={1}
           unit={peak != null ? "W" : undefined}
-          isLoading={isLoading && !history}
+          isLoading={!extremes}
+          // Same wording as Peak temperature, so the two read alike. The
+          // second sentence is what the number is FOR: how much the pump adds
+          // on top of what the rig draws doing nothing.
           subtitle={
-            peakAt ? `at ${at(new Date(peakAt.ts).toISOString())}${
-              standing != null ? ` · ${(peak! - standing).toFixed(0)} W above standing` : ""
-            }` : `This ${rangeWord}`
+            peakRaw
+              ? `Highest single reading in the ${rangePhrase(range)}, at ${atWhen(peakRaw.time, range)}.${
+                  standing != null ? ` ${(peakRaw.value - standing).toFixed(0)} W more than at idle.` : ""
+                }`
+              : `No readings in the ${rangePhrase(range)}`
           }
         />
         <KPICard
@@ -242,7 +257,7 @@ export default function EnergyDetail({
             <Stat
               label="Lowest volts"
               value={voltLo ? `${voltLo.value.toFixed(0)} V` : "—"}
-              sub={voltLo ? `at ${at(voltLo.time)}` : undefined}
+              sub={voltLo ? `at ${atWhen(voltLo.time, range)}` : undefined}
               // Nominal here is 230 V; below 200 V motors stall and draw
               // hard, which is a failure the pump feels before anyone sees.
               tone={voltLo && voltLo.value < 200 ? "warn" : undefined}
@@ -250,7 +265,7 @@ export default function EnergyDetail({
             <Stat
               label="Highest volts"
               value={voltHi ? `${voltHi.value.toFixed(0)} V` : "—"}
-              sub={voltHi ? `at ${at(voltHi.time)}` : undefined}
+              sub={voltHi ? `at ${atWhen(voltHi.time, range)}` : undefined}
               tone={voltHi && voltHi.value > 250 ? "warn" : undefined}
             />
             <div className="col-span-2">
@@ -262,9 +277,10 @@ export default function EnergyDetail({
             </div>
           </div>
           <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
-            Standing draw is the lowest reading in the period, so it includes
-            anything that never switched off — it is what the rig idles at, not
-            what the controller alone costs.
+            Volts are single readings, so a brief dip shows. Standing draw is
+            the lowest 15-minute average instead, so it includes anything that
+            never switched off — it is what the rig idles at, not what the
+            controller alone costs.
           </p>
         </Panel>
       </section>
